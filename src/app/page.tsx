@@ -5,8 +5,31 @@ import Search from "./search";
 import Button from "./button";
 import Display from "./Display";
 
+type MatchParticipant = {
+  summonerName: string;
+  championName: string;
+  kills: number;
+  deaths: number;
+  assists: number;
+  win: boolean;
+};
+
+type MatchInfo = {
+  gameDuration: number;
+  participants: MatchParticipant[];
+};
+
+type MatchResult = {
+  summonerName: string;
+  matchId: string;
+  role: string;
+  match: {
+    info: MatchInfo;
+  };
+};
+
 export default function Home() {
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState<MatchResult | null>(null);
   const [aiResult, setAiResult] = useState("");
   const [role, setRole] = useState("Top");
   const handleClick = async () => {
