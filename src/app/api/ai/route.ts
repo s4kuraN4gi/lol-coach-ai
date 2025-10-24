@@ -72,9 +72,11 @@ ${role}ロールに応じて着目点を変えてください。
 
     return Response.json({ advice });
   } catch (err: unknown) {
-    console.log("AI route error:", err);
-    const msg =
-      typeof err?.message === "string" ? err.message : "Internal Server Error";
+    console.error("AI route error:", err);
+    let msg = "Internal Server Error";
+    if (err instanceof Error){
+        msg = err.message;
+    }
     return Response.json({ error: msg }, { status: 500 });
   }
 }
