@@ -71,7 +71,7 @@ ${role}ロールに応じて着目点を変えてください。
       "コーチからのアドバイスを生成できませんでした。";
 
     return Response.json({ advice });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.log("AI route error:", err);
     const msg =
       typeof err?.message === "string" ? err.message : "Internal Server Error";
