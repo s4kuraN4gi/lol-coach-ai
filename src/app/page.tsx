@@ -4,6 +4,8 @@ import { useState } from "react";
 import Search from "./search";
 import Button from "./button";
 import Display from "./Display";
+import SummonerCard from "./Components/SummonerCard";
+import RoleSelect from "./Components/RoleSelect";
 
 type MatchParticipant = {
   summonerName: string;
@@ -28,10 +30,24 @@ type MatchResult = {
   };
 };
 
+
+type HistoryItem = {
+  id: string;
+  date: string;
+  summonerName: string;
+  champion: string;
+  role: string;
+  result: string;
+  kda: string;
+  aiAdvice: string;
+}
+
 export default function Home() {
   const [result, setResult] = useState<MatchResult | null>(null);
   const [aiResult, setAiResult] = useState("");
   const [role, setRole] = useState("Top");
+
+
   const handleClick = async () => {
     const res = await fetch("/api/riot"); //仮通信用でまだ作ってない
     const data = await res.json();
@@ -40,9 +56,9 @@ export default function Home() {
     const aiRes = await fetch("/api/ai", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({...data, role}),
+      body: JSON.stringify({ ...data, role }),
     });
-    
+
     if (!aiRes.ok) {
       // ここで2行に分けているのはjsonで失敗した場合は空のオブジェクトを返すようにしている
       // これを1行でまとめるとsetAiResultで失敗して全体が落ちる
@@ -52,76 +68,72 @@ export default function Home() {
       return;
     }
     const aiData = await aiRes.json();
-    setAiResult(aiData.advice);
+    const advice = aiData.advice as string;
+    setAiResult(advice);
+
+    const newHistory: HistoryItem = {
+      id: new Date().toISOString(),
+      date: new Date().toLocaleString(),
+      summonerName: data.summonerName,
+      champion: data.match.info.participants[0].championName,
+      role,
+      result: data.match.info.participants[0].win ? "Win" : "Lose",
+      kda: `${data.match.info.participants[0].kills}/${data.match.info.participants[0].deaths}/${data.match.info.participants[0].assists}`,
+      aiAdvice: advice
+    }
+
+    const prev = JSON.parse(localStorage.getItem("histories") || "[]")
+    const updated = [newHistory, ...prev];
+    localStorage.setItem("histories", JSON.stringify(updated));
+
   };
 
   return (
-    <main
-      className="min-h-screen w-full py-12 overflow-y-auto"
-    >
+    <main className="min-h-screen w-full py-12 overflow-y-auto">
       <div className="flex flex-col items-center max-w-3xl mx-auto px-4">
-      <Display />
-      <Search />
-      <div className="mt-4 mb-4">
-        <label htmlFor="role" className="mr-2 font-semibold text-white-700">ロールを選択</label>
-        <select
-         id="role"
-         value={role}
-         onChange={(e) => setRole(e.target.value)}
-         className="border border-gray-400 rounded-mb px-3 py-1 bg-white shadow-sm text-black"
-        >
-            <option value="Top">Top</option>
-            <option value="Jungle">Jungle</option>
-            <option value="Mid">Mid</option>
-            <option value="ADC">ADC</option>
-            <option value="Support">Support</option>
-
-        </select>
-
-      </div>
-      <Button onClick={handleClick}>Search</Button>
-      <div id="result" style={{ color: "#000000ff" }}>
+        <Display />
+        <Search />
+        <RoleSelect role={role} onChange={setRole}/>
+        <Button onClick={handleClick}>Search</Button>
         {result && (
-          <div className="p-4 rounded-lg shadow-md border border-gray-300 bg-white text-center">
-            <h3 className="text-lg font-semibold mb-2">
-              {result.summonerName} の戦績
-            </h3>
-            <p>
-              チャンピオン: {result.match.info.participants[0].championName}
-            </p>
-            <p>
-              KDA: {result.match.info.participants[0].kills}/
-              {result.match.info.participants[0].deaths}/
-              {result.match.info.participants[0].assists}
-            </p>
-            <p>
-              勝敗:{" "}
-              {result.match.info.participants[0].win ? "🏆 勝利" : "❌ 敗北"}
-            </p>
-            <p>試合時間: {Math.floor(result.match.info.gameDuration / 60)}分</p>
-          </div>
-        )}
-        {aiResult && (
-          <div className="mt-6 p-4 bg-gray-50 border rounded-lg max-w-md text-left">
-            <h4 className="font-semibold text-gray-700 mb-2">コーチのアドバイス</h4>
-            {aiResult.split("\n").map((line, index) => {
-              const isSectionTitle = line.startsWith("🏹") || line.startsWith("💡") || line.startsWith("🔥") || line.startsWith("💬");
-              return (
-                <p
-                  key={index}
-                  className={`mb-2 whitespace-pre-wrap ${
-                    isSectionTitle ? "font-semibold text-blue-600 mt-4" : "text-gray-700"
-                  }`}
-                >
-                  {line}
-                </p>
-              );
-            })}
-          </div>
-        )}
-        {/* Additional content can go here */}
+        <SummonerCard 
+          summonerName={result.summonerName}
+          championName={result.match.info.participants[0].championName}
+          kills={result.match.info.participants[0].kills}
+          deaths={result.match.info.participants[0].deaths}
+          assists={result.match.info.participants[0].assists}
+          win={result.match.info.participants[0].win}
+          gameDuration={result.match.info.gameDuration}
+          />
+          )}
+                {aiResult && (
+        <div className="mt-6 p-4 bg-gray-50 border rounded-lg max-w-md text-left">
+          <h4 className="font-semibold text-gray-700 mb-2">
+            コーチのアドバイス
+          </h4>
+          {aiResult.split("\n").map((line, index) => {
+            const isSectionTitle =
+              line.startsWith("🏹") ||
+              line.startsWith("💡") ||
+              line.startsWith("🔥") ||
+              line.startsWith("💬");
+            return (
+              <p
+                key={index}
+                className={`mb-2 whitespace-pre-wrap ${
+                  isSectionTitle
+                    ? "font-semibold text-blue-600 mt-4"
+                    : "text-gray-700"
+                }`}
+              >
+                {line}
+              </p>
+            );
+          })}
+        </div>
+      )}
+      {/* Additional content can go here */}
       </div>
-    </div>
     </main>
   );
 }
