@@ -1,0 +1,168 @@
+🧩 riot/route.js に書くべき内容（概念の流れ）
+
+① まず「ファイルの役割」を明確にする
+	•	このファイルは Next.jsのサーバーサイドAPIルート。
+	•	つまり「フロントエンド（ブラウザ）からのリクエストを受け取って、Riot APIに代理でアクセスして、結果を返す」役割。
+
+イメージするとこんな流れ👇
+
+ブラウザ → /api/riot?name=name → [このファイル] → Riot API → データ返す
+
+
+
+⸻
+
+② リクエストを受け取る処理を書く
+	•	GET メソッドでアクセスされることを想定。
+	•	request.url の中から サモナーネーム（クエリパラメータ） を取得する。
+	•	サモナーネームが存在しない場合はエラーを返す（＝バリデーション）。
+
+ここは「入力の受付とチェック」の部分。
+
+⸻
+
+③ サモナーネームを使って、サモナー情報を取得する
+	•	Riotの Summoner-V4 API にアクセスしてサモナー情報を取る。
+	•	ここで欲しいのは「puuid」（プレイヤーを一意に識別するID）。
+	•	このときに使うURLのベースは「https://jp1.api.riotgames.com」。
+
+ここは「ユーザーを特定するためのデータ取得」の段階。
+
+⸻
+
+④ 取得した puuid で、試合リストを取る
+	•	Riotの Match-V5 API にアクセス。
+	•	「puuidから試合IDの一覧を取る」APIを叩く。
+	•	ここでは「直近何件取るか」をクエリに指定（例：最新5件）。
+	•	ベースURLは「https://asia.api.riotgames.com」。
+
+この段階で、「そのサモナーが最近プレイした試合のIDリスト」が取れる。
+
+⸻
+
+⑤ 試合IDを使って、1試合分の詳細データを取る
+	•	取得した試合IDの中から1つ選んで（今回はMVPなので1試合でOK）、
+	•	Riotの「試合詳細取得API」を叩く。
+	•	ここで得られるJSONには、
+	•	どんなチャンピオンを使ったか
+	•	勝敗
+	•	キル数 / デス数 / アシスト数（KDA）
+	•	マップ上の動き などが含まれている。
+
+ここは「実際の試合内容データを取得する」段階。
+
+⸻
+
+⑥ 取得した情報を必要な形に整える
+	•	取得したJSONはかなり巨大なので、
+その中から「自分のプレイヤー情報」だけを抜き出す。
+	•	例えば：
+	•	selectedSummoner
+	•	championName
+	•	kills
+	•	deaths
+	•	assists
+	•	win
+	•	あとでAIに渡しやすいように、シンプルな構造のオブジェクトにまとめる。
+
+この部分が「データの整形・加工」。
+
+⸻
+
+⑦ 加工したデータをレスポンスとして返す
+	•	整形したオブジェクトを JSON にして返す。
+	•	返すときはヘッダーに "Content-Type": "application/json" を付ける。
+	•	成功した場合はHTTPステータス200。
+	•	失敗した場合はエラーコード（例：400, 500）を返す。
+
+ここが「APIとしての返却処理」。
+
+⸻
+
+⑧ エラーが起きた場合の処理
+	•	Riot APIが失敗するケース（APIキーが無効、レート制限、存在しないサモナーなど）を想定。
+	•	try...catch で全体を囲んで、失敗した場合は：
+	•	ステータス500（サーバーエラー）で返す
+	•	メッセージには error: e.message を含める
+
+これで、フロント側でも「エラー原因をUIに出す」ことができる。
+
+⸻
+
+🧠 まとめ：このファイルの処理構成
+
+順番で言うとこんな感じ👇
+	1.	フロントからのリクエストを受け取る
+	2.	サモナーネームを取得してバリデーション
+	3.	RiotのSummoner APIでpuuidを取る
+	4.	RiotのMatch APIで試合IDを取る
+	5.	RiotのMatch APIで試合詳細を取る
+	6.	取得データを整形する（必要部分だけ抜き出す）
+	7.	整形したデータをJSONで返す
+	8.	エラー時はcatchして500を返す
+
+
+
+
+
+
+
+
+
+	const RIOT_BASE_MATCH = "https://asia.api.riotgames.com";
+const RIOT_BASE_SUMMONER = "https://jp1.api.riotgames.com";
+
+async function fetchJson(url) {
+    const res = await fetch(url, {
+        headers: { "X-Riot-Token": process.env.RIOT_API_KEY },
+        cache: 'no-store'
+    });
+    if (!res.ok) throw new Error(`Riot API error ${res.status}`);
+    return res.json();
+}
+
+
+export async function GET(request: Request) {
+    try {
+        const { searchParams } = new URL(request.url);
+        const name = searchParams.get("name");
+
+        if (!name) {
+            return new Response(JSON.stringify({ error: "name parameter required" }), {
+                status: 400,
+                headers: { "Content-Type": "application/json" }
+            });
+        }
+        
+        const summoner = await fetchJson(
+            `${RIOT_BASE_SUMMONER}/lol/summoner/v4/summoners/by-name/${encodeURIComponent(name)}`
+        );
+        console.log("✅ summoner取得成功:", summoner);
+
+        const matches = await fetchJson(
+            `${RIOT_BASE_MATCH}/lol/match/v5/matches/by-puuid/${summoner.puuid}/ids?start=0&count=1`
+        );
+        console.log("✅ matches取得成功:", matches);
+
+        const match = await fetchJson(
+            `${RIOT_BASE_MATCH}/lol/match/v5/matches/${matches[0]}`
+        );
+        console.log("✅ match取得成功:", match);
+
+        return new Response(JSON.stringify({
+            selectedSummoner: summoner.name,
+            matchId: matches[0],
+            match,
+        }),{
+            headers: { "Content-Type": "application/json" }
+        });
+
+    } catch (err) {
+        console.error("🔥 Riot API error detail:", err);
+        return new Response(JSON.stringify({ error: err.message }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" }
+        });
+    }
+    
+}
