@@ -122,6 +122,86 @@ export async function startMockAnalysis(input: string | FormData) {
     }
 }
 
+// 試合の解析を実行 (Match Analysis)
+export async function analyzeMatch(matchId: string, summonerName: string, championName: string, kda: string, win: boolean) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'Not authenticated' }
+
+    // まずDBに既存の解析があるか確認 (節約のため)
+    const { data: existing } = await supabase
+        .from('match_analyses')
+        .select('analysis_text')
+        .eq('match_id', matchId)
+        .eq('user_id', user.id)
+        .single();
+    
+    if(existing) {
+        return { success: true, advice: existing.analysis_text, cached: true };
+    }
+
+    // Gemini API Key Check
+    const apiKey = process.env.GEMINI_API_KEY;
+    let resultAdvice = "";
+
+    if (!apiKey) {
+        console.warn("GEMINI_API_KEY is missing. Using mock response.");
+        await new Promise(resolve => setTimeout(resolve, 1500));
+         const mocks = [
+            `【Mock】${championName}での${kda}は見事ですが、視界スコアが低めです。`,
+            `【Mock】${win ? "勝利おめでとう！" : "惜しい試合でした。"} 集団戦の立ち位置を改善しましょう。`,
+        ];
+        resultAdvice = mocks[Math.floor(Math.random() * mocks.length)];
+    } else {
+        try {
+            const genAI = new GoogleGenerativeAI(apiKey);
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+            const prompt = `
+あなたはLeague of Legendsのプロコーチです。
+以下の試合結果を元に、プレイヤーへの具体的かつ簡潔な改善アドバイス（ダメ出し含む）を日本語で作成してください。
+300文字以内で、箇条書きや絵文字を使って読みやすくしてください。
+
+プレイヤー名: ${summonerName}
+使用チャンピオン: ${championName}
+結果: ${win ? "Win" : "Loss"}
+KDA: ${kda}
+
+アドバイスの構成案:
+1. 良かった点（さらっと）
+2. 改善点（具体的に）
+3. 次へのアクション
+`;
+            
+            const result = await model.generateContent(prompt);
+            resultAdvice = result.response.text();
+
+        } catch (e: unknown) {
+            console.error("Gemini Match Analysis API Error:", e);
+             return { error: 'Failed to generate analysis' };
+        }
+    }
+
+    // DBに保存
+    const { error } = await supabase
+        .from('match_analyses')
+        .insert({
+            user_id: user.id,
+            match_id: matchId,
+            summoner_name: summonerName,
+            champion_name: championName,
+            analysis_text: resultAdvice
+        });
+
+    if (error) {
+        console.error("Failed to save analysis:", error);
+        // 保存失敗しても結果は返す
+    }
+    
+    revalidatePath('/dashboard');
+    return { success: true, advice: resultAdvice };
+}
+
 // プレミアムへアップグレード（モック）
 export async function upgradeToPremium() {
     const supabase = await createClient()

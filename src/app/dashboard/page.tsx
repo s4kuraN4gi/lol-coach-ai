@@ -5,11 +5,12 @@ import SummonerCard from "../Components/SummonerCard";
 import DashboardLayout from "../Components/layout/DashboardLayout";
 import HistoryList from "./components/HistoryList";
 import RankGraph from "./components/RankGraph";
-import ProfileCard from "./components/ProfileCard"; // New component
+import ProfileCard from "./components/ProfileCard";
 import { useRouter } from "next/navigation";
 import { useSummoner } from "../Providers/SummonerProvider";
 import { useAuth } from "../Providers/AuthProvider";
 import { fetchRank, fetchMatchIds, fetchMatchDetail, type LeagueEntryDTO } from "../actions/riot";
+import { analyzeMatch } from "../actions/analysis"; 
 
 type HistoryItem = {
     id: string;
@@ -28,6 +29,7 @@ export default function DashboardPage() {
     const [selectedHistory, setSelectedHistory] = useState<HistoryItem | null>(null)
     const [rankData, setRankData] = useState<LeagueEntryDTO | null>(null);
     const [isFetching, setIsFetching] = useState(false);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
     
     const router = useRouter();
     const {user, loading: authLoading} = useAuth();
@@ -99,6 +101,42 @@ export default function DashboardPage() {
         fetchData();
     }, [fetchData]);
 
+    // AI解析を実行
+    const handleAnalyze = async () => {
+        if (!selectedHistory) return;
+        setIsAnalyzing(true);
+        try {
+            const res = await analyzeMatch(
+                selectedHistory.id,
+                selectedHistory.selectedSummoner,
+                selectedHistory.champion,
+                selectedHistory.kda,
+                selectedHistory.result === "Win"
+            );
+
+            if (res.success && res.advice) {
+                // 成功したらローカルの履歴データを更新して表示に反映
+                const updatedHistory = { ...selectedHistory, aiAdvice: res.advice };
+                setSelectedHistory(updatedHistory);
+
+                // リストの方も更新（次回選択時に反映されるように）
+                setHistories(prev => prev.map(h => h.id === selectedHistory.id ? updatedHistory : h));
+                
+                // localStorageも更新
+                const stored = JSON.parse(localStorage.getItem(`matches_${activeSummoner?.summoner_name}`) || "[]");
+                const updatedStored = stored.map((h: HistoryItem) => h.id === selectedHistory.id ? updatedHistory : h);
+                localStorage.setItem(`matches_${activeSummoner?.summoner_name}`, JSON.stringify(updatedStored));
+            } else {
+                alert("解析に失敗しました: " + (res.error || "Unknown Error"));
+            }
+        } catch (e) {
+            console.error(e);
+            alert("エラーが発生しました");
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
 
     if (authLoading || summonerLoading) {
          return <div className="p-10 text-center mt-10">読み込み中...</div>
@@ -169,15 +207,14 @@ export default function DashboardPage() {
                                 <div className="mt-4 p-4 bg-gray-50 border rounded-lg text-left">
                                     <h4 className="font-semibold text-gray-700 mb-2">AI コーチのアドバイス</h4>
                                     {selectedHistory.aiAdvice
-                                     ? selectedHistory.aiAdvice.split("/n").map((line, index) => (
+                                     ? selectedHistory.aiAdvice.split("\n").map((line, index) => (
                                         <p
                                             key={index}
                                             className={`mb-2 whitespace-pre-wrap ${
-                                            line.startsWith("🏹") ||
-                                            line.startsWith("💡") ||
-                                            line.startsWith("🔥") ||
-                                            line.startsWith("💬")
-                                                ? "font-semibold text-blue-600 mt-4"
+                                            line.startsWith("1.") ||
+                                            line.startsWith("2.") ||
+                                            line.startsWith("3.") 
+                                                ? "font-bold text-gray-800 mt-2"
                                                 : "text-gray-700"
                                             }`}
                                         >
@@ -187,8 +224,12 @@ export default function DashboardPage() {
                                         : (
                                             <div>
                                                 <p className="text-gray-500 mb-2">まだ解析を行っていません。</p>
-                                                <button className="bg-blue-500 text-white text-sm px-4 py-2 rounded">
-                                                    AI解析を実行 (Premium)
+                                                <button 
+                                                    onClick={handleAnalyze}
+                                                    disabled={isAnalyzing}
+                                                    className="bg-blue-600 text-white text-sm px-4 py-2 rounded shadow hover:bg-blue-700 disabled:bg-gray-400 transition"
+                                                >
+                                                    {isAnalyzing ? "AIが試合を分析中..." : "AI解析を実行 (Premium)"}
                                                 </button>
                                             </div>
                                         )}
@@ -206,7 +247,3 @@ export default function DashboardPage() {
     </>
   );
 }
-
-
-
-
