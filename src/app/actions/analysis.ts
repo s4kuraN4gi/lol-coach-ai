@@ -155,8 +155,8 @@ export async function analyzeMatch(matchId: string, summonerName: string, champi
     } else {
         try {
             const genAI = new GoogleGenerativeAI(apiKey);
-            // 'gemini-1.5-flash' failed, trying standard 'gemini-pro'
-            const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+            // Selected from user's available model list: 'gemini-2.0-flash'
+            const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
             const prompt = `
 あなたはLeague of Legendsのプロコーチです。
