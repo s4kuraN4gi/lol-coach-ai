@@ -65,39 +65,45 @@ export default function DashboardPage() {
             */
 
             if (activeSummoner.puuid) {
-                const matchIds = await fetchMatchIds(activeSummoner.puuid, 5); // 直近5件
+                const matchIdsRes = await fetchMatchIds(activeSummoner.puuid, 5); // 直近5件
                 
-                if(matchIds.length === 0) {
-                    setErrorMsg("Match IDs returned empty. Check if account matches region (Asia).");
+                if(!matchIdsRes.success || !matchIdsRes.data) {
+                    setErrorMsg(matchIdsRes.error || "Failed to fetch Match IDs");
+                } else {
+                    const matchIds = matchIdsRes.data;
+                    if(matchIds.length === 0) {
+                        setErrorMsg("Match IDs returned empty. Check if account matches region (Asia).");
+                    }
+
+                    const matchPromises = matchIds.map(id => fetchMatchDetail(id));
+                    const matchesRes = await Promise.all(matchPromises);
+                    
+                    const formattedHistories: HistoryItem[] = matchesRes
+                        .filter(res => res.success && res.data)
+                        .map(res => res.data) // Extract data
+                        .map((m: any) => {
+                            // 自分のPUUIDに一致する参加者を探す
+                            const participant = m.info.participants.find((p: any) => p.puuid === activeSummoner.puuid);
+                            if (!participant) return null;
+
+                            const date = new Date(m.info.gameCreation).toLocaleDateString();
+                            
+                            return {
+                                id: m.metadata.matchId,
+                                date: date,
+                                selectedSummoner: participant.summonerName,
+                                champion: participant.championName,
+                                role: participant.teamPosition || "ARAM", // アリーナ等は空の場合も
+                                result: participant.win ? "Win" : "Loss",
+                                kda: `${participant.kills}/${participant.deaths}/${participant.assists}`,
+                                aiAdvice: "" // まだ解析していないので空
+                            }
+                        })
+                        .filter((item): item is HistoryItem => item !== null);
+
+                    setHistories(formattedHistories);
+                    localStorage.setItem(`matches_${activeSummoner.summoner_name}`, JSON.stringify(formattedHistories));
                 }
-
-                const matchPromises = matchIds.map(id => fetchMatchDetail(id));
-                const matches = await Promise.all(matchPromises);
-                
-                const formattedHistories: HistoryItem[] = matches
-                    .filter(m => m !== null)
-                    .map((m: any) => {
-                        // 自分のPUUIDに一致する参加者を探す
-                        const participant = m.info.participants.find((p: any) => p.puuid === activeSummoner.puuid);
-                        if (!participant) return null;
-
-                        const date = new Date(m.info.gameCreation).toLocaleDateString();
-                        
-                        return {
-                            id: m.metadata.matchId,
-                            date: date,
-                            selectedSummoner: participant.summonerName,
-                            champion: participant.championName,
-                            role: participant.teamPosition || "ARAM", // アリーナ等は空の場合も
-                            result: participant.win ? "Win" : "Loss",
-                            kda: `${participant.kills}/${participant.deaths}/${participant.assists}`,
-                            aiAdvice: "" // まだ解析していないので空
-                        }
-                    })
-                    .filter((item): item is HistoryItem => item !== null);
-
-                setHistories(formattedHistories);
-                localStorage.setItem(`matches_${activeSummoner.summoner_name}`, JSON.stringify(formattedHistories));
             } else {
                 setErrorMsg("No PUUID found for active summoner.");
             }

@@ -113,49 +113,53 @@ export async function fetchRank(summonerId: string): Promise<LeagueEntryDTO[]> {
 }
 
 // 4. Get Match IDs by PUUID
-export async function fetchMatchIds(puuid: string, count: number = 20): Promise<string[]> {
-    if (!RIOT_API_KEY) throw new Error("RIOT_API_KEY is missing");
+export async function fetchMatchIds(puuid: string, count: number = 20): Promise<{ success: boolean, data?: string[], error?: string }> {
+    if (!RIOT_API_KEY) return { success: false, error: "Server Configuration Error: RIOT_API_KEY is missing" };
     
+    // Ensure region is correct. JP1 -> asia
     const url = `https://${REGION_ROUTING}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?start=0&count=${count}`;
     
-    console.log(`Fetching MatchIDs: ${url}`); // Server-side log
-
-    const res = await fetch(url, {
-        headers: { "X-Riot-Token": RIOT_API_KEY },
-        cache: 'no-store'
-    });
-    
-    if (!res.ok) {
-        const body = await res.text();
-        throw new Error(`MatchIDs API Error (${res.status}): ${body} URL: ${url}`);
+    try {
+        const res = await fetch(url, {
+            headers: { "X-Riot-Token": RIOT_API_KEY },
+            cache: 'no-store'
+        });
+        
+        if (!res.ok) {
+            const body = await res.text();
+            console.error(`MatchIDs API Error (${res.status}) URL: ${url} Body: ${body}`);
+            return { success: false, error: `Riot API Error (${res.status}): ${res.statusText}` };
+        }
+        
+        const data = await res.json();
+        return { success: true, data };
+    } catch (e: any) {
+        console.error("fetchMatchIds exception:", e);
+        return { success: false, error: e.message || "Unknown Network Error" };
     }
-    
-    return await res.json();
 }
 
 // 5. Get Match Details by MatchID
-export async function fetchMatchDetail(matchId: string): Promise<any> {
-    if (!RIOT_API_KEY) throw new Error("RIOT_API_KEY is missing");
+export async function fetchMatchDetail(matchId: string): Promise<{ success: boolean, data?: any, error?: string }> {
+    if (!RIOT_API_KEY) return { success: false, error: "RIOT_API_KEY is missing" };
     
     const url = `https://${REGION_ROUTING}.api.riotgames.com/lol/match/v5/matches/${matchId}`;
     
     try {
         const res = await fetch(url, {
             headers: { "X-Riot-Token": RIOT_API_KEY },
-            cache: 'no-store' // Debugging: Ensure fresh data
+            cache: 'no-store'
         });
         
         if (!res.ok) {
-            const body = await res.text();
-            console.error(`MatchDetail Error (${res.status}) for ${matchId}: ${body}`);
-            // Don't throw here to avoid failing Promise.all completely if one match fails?
-            // Actually, for debugging, let's return null but log heavily.
-            return null;
+            console.error(`MatchDetail Error (${res.status}) for ${matchId}`);
+           return { success: false, error: `Match Detail Error (${res.status})` };
         }
         
-        return await res.json();
-    } catch (e) {
+        const data = await res.json();
+        return { success: true, data };
+    } catch (e: any) {
         console.error("fetchMatchDetail exception:", e);
-        return null;
+        return { success: false, error: e.message };
     }
 }
