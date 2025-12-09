@@ -155,8 +155,8 @@ export async function analyzeMatch(matchId: string, summonerName: string, champi
     } else {
         try {
             const genAI = new GoogleGenerativeAI(apiKey);
-            // Selected from user's available model list: 'gemini-2.0-flash'
-            const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+            // 'gemini-2.0-flash' hit rate limits (429). Switching to stable 'gemini-flash-latest' (v1.5)
+            const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
             const prompt = `
 あなたはLeague of Legendsのプロコーチです。
