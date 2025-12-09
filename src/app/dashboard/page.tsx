@@ -34,10 +34,13 @@ export default function DashboardPage() {
     const router = useRouter();
     const {user, loading: authLoading} = useAuth();
 
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
     // データ取得
     const fetchData = useCallback(async () => {
         if (!activeSummoner) return;
         setIsFetching(true);
+        setErrorMsg(null);
 
         try {
             // 1. ランク情報の取得 (SummonerIDが必要)
@@ -51,16 +54,23 @@ export default function DashboardPage() {
 
             // 2. マッチ履歴の取得 (PUUIDが必要)
             // すでにデータがある場合は再取得しない（簡易キャッシュ）
+            // デバッグのためキャッシュ使用を一時無効化
+            /*
             const stored = localStorage.getItem(`matches_${activeSummoner.summoner_name}`);
             if (stored) {
                 setHistories(JSON.parse(stored));
                 setIsFetching(false);
-                // バックグラウンドで更新してもいいが、API制限節約のため今回はここでおしまい
                 return; 
             }
+            */
 
             if (activeSummoner.puuid) {
                 const matchIds = await fetchMatchIds(activeSummoner.puuid, 5); // 直近5件
+                
+                if(matchIds.length === 0) {
+                    setErrorMsg("Match IDs returned empty. Check if account matches region (Asia).");
+                }
+
                 const matchPromises = matchIds.map(id => fetchMatchDetail(id));
                 const matches = await Promise.all(matchPromises);
                 
@@ -88,10 +98,13 @@ export default function DashboardPage() {
 
                 setHistories(formattedHistories);
                 localStorage.setItem(`matches_${activeSummoner.summoner_name}`, JSON.stringify(formattedHistories));
+            } else {
+                setErrorMsg("No PUUID found for active summoner.");
             }
 
-        } catch (e) {
+        } catch (e: any) {
             console.error("Failed to fetch dashboard data", e);
+            setErrorMsg(e.message || "Unknown Error During Fetch");
         } finally {
             setIsFetching(false);
         }
@@ -184,7 +197,13 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
                 <div className="border-r pr-4 overflow-y-auto h-[75vh]">
                     <h3 className="text-2xl font-semibold mb-4">直近の対戦履歴</h3>
-                    {histories.length === 0 && !isFetching && <p className="text-gray-500">履歴が見つかりません。</p>}
+                    {errorMsg && (
+                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                            <strong className="font-bold">Error: </strong>
+                            <span className="block sm:inline">{errorMsg}</span>
+                        </div>
+                    )}
+                    {histories.length === 0 && !isFetching && !errorMsg && <p className="text-gray-500">履歴が見つかりません。</p>}
                     
                     <HistoryList 
                         histories={histories}

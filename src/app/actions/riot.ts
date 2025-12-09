@@ -114,42 +114,44 @@ export async function fetchRank(summonerId: string): Promise<LeagueEntryDTO[]> {
 
 // 4. Get Match IDs by PUUID
 export async function fetchMatchIds(puuid: string, count: number = 20): Promise<string[]> {
-    if (!RIOT_API_KEY) return [];
+    if (!RIOT_API_KEY) throw new Error("RIOT_API_KEY is missing");
     
     const url = `https://${REGION_ROUTING}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?start=0&count=${count}`;
     
-    try {
-        const res = await fetch(url, {
-            headers: { "X-Riot-Token": RIOT_API_KEY },
-            next: { revalidate: 300 } // 5 mins
-        });
-        
-        if (!res.ok) {
-           console.error(`MatchIDs API Error: ${res.status}`);
-           return [];
-        }
-        
-        return await res.json();
-    } catch (e) {
-        console.error("fetchMatchIds exception:", e);
-        return [];
+    console.log(`Fetching MatchIDs: ${url}`); // Server-side log
+
+    const res = await fetch(url, {
+        headers: { "X-Riot-Token": RIOT_API_KEY },
+        cache: 'no-store'
+    });
+    
+    if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`MatchIDs API Error (${res.status}): ${body} URL: ${url}`);
     }
+    
+    return await res.json();
 }
 
 // 5. Get Match Details by MatchID
 export async function fetchMatchDetail(matchId: string): Promise<any> {
-    if (!RIOT_API_KEY) return null;
+    if (!RIOT_API_KEY) throw new Error("RIOT_API_KEY is missing");
     
     const url = `https://${REGION_ROUTING}.api.riotgames.com/lol/match/v5/matches/${matchId}`;
     
     try {
         const res = await fetch(url, {
             headers: { "X-Riot-Token": RIOT_API_KEY },
-            // Matches are immutable, so cache forever (or very long)
-            next: { revalidate: 86400 * 7 } 
+            cache: 'no-store' // Debugging: Ensure fresh data
         });
         
-        if (!res.ok) return null;
+        if (!res.ok) {
+            const body = await res.text();
+            console.error(`MatchDetail Error (${res.status}) for ${matchId}: ${body}`);
+            // Don't throw here to avoid failing Promise.all completely if one match fails?
+            // Actually, for debugging, let's return null but log heavily.
+            return null;
+        }
         
         return await res.json();
     } catch (e) {
