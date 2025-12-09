@@ -179,6 +179,21 @@ KDA: ${kda}
 
         } catch (e: any) {
             console.error("Gemini Match Analysis API Error:", e);
+            
+            // Debug: If 404, try to list available models to see what IS valid
+            if (e.message.includes("404") || e.message.includes("not found")) {
+                try {
+                    const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+                    const listData = await listRes.json();
+                    if (listData.models) {
+                        const modelNames = listData.models.map((m: any) => m.name).join(", ");
+                        return { error: `Gemini 404 Error. Available models: ${modelNames}` };
+                    }
+                } catch (listErr) {
+                    console.error("Failed to list models:", listErr);
+                }
+            }
+
              return { error: `Gemini Error: ${e.message || "Unknown error"}` };
         }
     }
