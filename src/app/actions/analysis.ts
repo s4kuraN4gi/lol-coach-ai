@@ -176,9 +176,9 @@ KDA: ${kda}
             const result = await model.generateContent(prompt);
             resultAdvice = result.response.text();
 
-        } catch (e: unknown) {
+        } catch (e: any) {
             console.error("Gemini Match Analysis API Error:", e);
-             return { error: 'Failed to generate analysis' };
+             return { error: `Gemini Error: ${e.message || "Unknown error"}` };
         }
     }
 
