@@ -10,6 +10,9 @@ export type SummonerAccount = {
   summoner_name: string
   tag_line: string | null
   region: string
+  puuid: string | null
+  account_id: string | null
+  summoner_id: string | null
   profile_icon_id: number | null
   summoner_level: number | null
   created_at: string
