@@ -1,145 +1,161 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState, useTransition, useEffect, useCallback } from "react";
 import DashboardLayout from "../Components/layout/DashboardLayout";
 import { useSummoner } from "../Providers/SummonerProvider";
+import { 
+    addSummoner, 
+    getSummoners, 
+    removeSummoner, 
+    switchSummoner, 
+    type SummonerAccount 
+} from "../actions/profile";
 import { useRouter } from "next/navigation";
 
 export default function AccountPage() {
   const [inputName, setInputName] = useState("");
-  const [accounts, setAccounts] = useState<SummonerAccount[]>([]);
-  const { selectedSummoner, setSelectedSummoner } = useSummoner();
+  const { activeSummoner, refreshSummoner } = useSummoner();
+  const [myAccounts, setMyAccounts] = useState<SummonerAccount[]>([]);
+  const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
-  const mockList = [
-    { id: "1", name: "s4kuraN4gi" },
-    { id: "2", name: "mimimimimi" },
-  ];
-  type SummonerAccount = {
-    id: string;
-    name: string;
-  };
-  //   初期表示処理
-  useEffect(() => {
-    const user = localStorage.getItem("LoginID");
-    if (!user) return;
-    const key = `accounts_${user}`;
-    const saved = localStorage.getItem(key);
-    if (saved) {
-      try {
-        setAccounts(JSON.parse(saved));
-      } catch {
-        console.warn("データ破損");
-      }
-    }
+  // アカウント一覧の取得
+  const fetchAccounts = useCallback(async () => {
+      const data = await getSummoners();
+      setMyAccounts(data);
   }, []);
 
+  useEffect(() => {
+      fetchAccounts();
+  }, [fetchAccounts, activeSummoner]); // activeが変わったら再取得（最新順など）
 
-  //   追加処理
+  // 追加
   const handleAdd = () => {
     if (!inputName.trim()) return;
 
-    const findSummoner = mockList.find(
-      (item) => item.name.toLowerCase() === inputName.toLowerCase()
-    );
-    // 誤った入力が実行された時
-    if (!findSummoner) {
-      confirm("サモナーが見つかりませんでした。");
-      return;
-    } else if (accounts.some((item) => item.name === findSummoner.name)) {
-      confirm("既に登録済みのサモナーネームです。");
-      setInputName("");
-      return;
-    }
-    // 正しく入力された処理
-    const newAccount = {
-      id: crypto.randomUUID(),
-      name: inputName.trim(),
-    };
-    const updated = [newAccount, ...accounts];
-    setAccounts(updated);
-    const user = localStorage.getItem("LoginID");
-    const key = `accounts_${user}`;
-    localStorage.setItem(key, JSON.stringify(updated));
-
-    setInputName("");
+    startTransition(async () => {
+        const res = await addSummoner(inputName.trim());
+        if(res.error) {
+            alert("エラー: " + res.error);
+            return;
+        }
+        setInputName("");
+        await Promise.all([refreshSummoner(), fetchAccounts()]);
+        alert("追加しました！");
+    });
   };
-  // 削除処理
-  const handleDelete = (id: string) => {
-    if (!confirm("本当に削除しますか？")) return;
-    const updated = accounts.filter((acc) => acc.id !== id);
-    setAccounts(updated);
 
-    const user = localStorage.getItem("LoginID");
-    const key = `accounts_${user}`;
-    localStorage.setItem(key, JSON.stringify(updated));
-  };
-  console.log(selectedSummoner);
+  // 切り替え
+  const handleSwitch = (id: string) => {
+      startTransition(async () => {
+          const res = await switchSummoner(id);
+          if(res.error) {
+              alert("切り替え失敗: " + res.error);
+              return;
+          }
+          await refreshSummoner();
+          // ダッシュボードへ飛ばすか、そのままリストに残るかは選択次第。今回はそのまま。
+          // router.push("/dashboard"); 
+      });
+  }
 
-  //   アカウントの選択
-  const handleChoose = (acc: SummonerAccount) => {
-    setSelectedSummoner(acc);
-    localStorage.setItem("selectedSummoner", JSON.stringify(acc));
-  };
+  // 削除
+  const handleDelete = (id: string, name: string) => {
+      if(!confirm(`${name} を削除しますか？`)) return;
+      
+      startTransition(async () => {
+          const res = await removeSummoner(id);
+          if(res.error) {
+              alert("削除失敗: " + res.error);
+              return;
+          }
+          // もしアクティブなものを消した場合は、refreshでnullになるはず
+          await Promise.all([refreshSummoner(), fetchAccounts()]);
+      });
+  }
 
   return (
     <DashboardLayout>
       <div className="max-w-2xl mx-auto mt-8">
-        <h1 className="text-2xl font-bold mb-6">サモナーアカウント管理</h1>
+        <h1 className="text-2xl font-bold mb-6">アカウント設定</h1>
 
         {/* 追加フォーム */}
-        <div className="p-4 bg-white rounded-lg shadow mb-6">
-          <h2 className="text-lg font-semibold">新しいアカウントを追加</h2>
-
+        <div className="p-6 bg-white rounded-lg shadow mb-6">
+          <h2 className="text-lg font-semibold mb-2">新しいサモナーを追加</h2>
           <div className="flex gap-3">
             <input
               type="text"
-              placeholder="サモナーネーム"
+              placeholder="Riot Summoner Name"
               value={inputName}
               onChange={(e) => setInputName(e.target.value)}
               className="flex-1 border border-gray-300 rounded px-3 py-2"
+              disabled={isPending}
             />
             <button
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+              className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
               onClick={handleAdd}
+              disabled={isPending || !inputName.trim()}
             >
-              追加
+              {isPending ? "処理中..." : "追加"}
             </button>
           </div>
         </div>
+
         {/* 一覧 */}
-        <div className="p-4 bg-white rounded-lg shadow">
-          <h2 className="text-lg font-semibold">登録済みアカウント</h2>
-
-          <ul className="space-y-2">
-            {accounts.map((acc) => (
-              <li
-                key={acc.id}
-                onClick={() => handleChoose(acc)}
-                className={`flex justify-between w-full p-3 rounded-lg border 
-                cursor-pointer hover:bg-blue-100 transition
-                ${selectedSummoner?.id === acc.id ? "bg-blue-200 border-blue-400 font-semibold" : "bg-white border-gray-300"}`}
-                >
-                <span
-                onClick={() => handleChoose(acc)}
-                className="flex-1 cursor-pointer"
-                >
-                {acc.name}
-                </span>
-
-                <button
-                  className=" text-red-500 hover:text-red-700"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete(acc.id);
-                  }}
-                >
-                  削除
-                </button>
-              </li>
-            ))}
-          </ul>
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+            <h2 className="text-lg font-semibold p-4 bg-gray-50 border-b">登録済みサモナー ({myAccounts.length})</h2>
+            <ul>
+                {myAccounts.length === 0 && (
+                    <li className="p-6 text-center text-gray-500">アカウントが登録されていません。</li>
+                )}
+                {myAccounts.map(acc => {
+                    const isActive = activeSummoner?.id === acc.id;
+                    return (
+                        <li key={acc.id} className={`flex items-center justify-between p-4 border-b last:border-b-0 ${isActive ? 'bg-blue-50' : ''}`}>
+                            <div className="flex items-center gap-3">
+                                <div className={`w-3 h-3 rounded-full ${isActive ? 'bg-green-500' : 'bg-gray-300'}`} />
+                                <div>
+                                    <p className="font-bold text-gray-800">{acc.summoner_name}</p>
+                                    <p className="text-xs text-gray-400">{acc.region}</p>
+                                </div>
+                                {isActive && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded ml-2">Active</span>}
+                            </div>
+                            
+                            <div className="flex gap-2">
+                                {!isActive && (
+                                    <button 
+                                        onClick={() => handleSwitch(acc.id)}
+                                        className="text-sm border border-blue-500 text-blue-500 px-3 py-1 rounded hover:bg-blue-50"
+                                        disabled={isPending}
+                                    >
+                                        切り替え
+                                    </button>
+                                )}
+                                <button 
+                                    onClick={() => handleDelete(acc.id, acc.summoner_name)}
+                                    className="text-sm text-red-400 hover:text-red-600 px-2"
+                                    disabled={isPending}
+                                >
+                                    削除
+                                </button>
+                            </div>
+                        </li>
+                    )
+                })}
+            </ul>
         </div>
+        
+        {activeSummoner && (
+             <div className="mt-6 text-right">
+                 <button 
+                    onClick={() => router.push('/dashboard')}
+                    className="text-blue-600 hover:underline"
+                 >
+                     ダッシュボードに戻る →
+                 </button>
+             </div>
+        )}
+
       </div>
     </DashboardLayout>
   );

@@ -1,6 +1,6 @@
 'use client'
 
-import { supabase } from "@/utils/supabaseClient";
+import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
 import { useState } from "react"
 
@@ -11,6 +11,7 @@ export default function SignupPage() {
     const [error, setError] = useState("")
     const [passwordConfirm, setPasswordConfirm] = useState("");
     const router = useRouter();
+    const supabase = createClient();
 
     const handleSignup = async () => {
         setError("");
@@ -35,7 +36,7 @@ export default function SignupPage() {
         }
 
         // ログイン画面へ遷移
-        router.push("/login");
+        router.push("/login"); // 注：Supabaseの設定によってはメール確認が必要な場合があります
             
     }
 

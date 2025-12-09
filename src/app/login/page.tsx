@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Display from "../Display";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/utils/supabaseClient";
+import { createClient } from "@/utils/supabase/client";
 
 
 export default function LoginPage() {
@@ -11,6 +11,7 @@ export default function LoginPage() {
   const [LoginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const supabase = createClient();
   //ログイン画面に遷移した時にサモナーネームの入力値を削除
   useEffect(() => {
     localStorage.removeItem("LoginID");
@@ -26,7 +27,7 @@ export default function LoginPage() {
 
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email: LoginId.trim(),
       password: password,
     });

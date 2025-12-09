@@ -24,20 +24,16 @@ type HistoryItem = {
 
 
 export default function DashboardPage() {
-    const {selectedSummoner, loading:summonerLoading} = useSummoner();
+    const {activeSummoner, loading:summonerLoading} = useSummoner();
     const [histories, setHistories] = useState<HistoryItem[]>([])
     const [selectedHistory, setSelectedHistory] = useState<HistoryItem | null>(null)
     const router = useRouter();
     const {user, loading: authLoading} = useAuth();
 
-    useEffect(() => {
-        if(summonerLoading) return;
-        if(!selectedSummoner){
-            router.push("/account");
-        }
-    },[router, selectedSummoner, summonerLoading]);
+    // Layoutでリダイレクト処理を行っているため、ここではチェックのみでOK
+    // ただし、LayoutのuseEffectより先にレンダリングされる可能性があるため、nullチェックはレンダリングブロックで対応
 
-        //履歴一覧の初期表示
+    //履歴一覧の初期表示
     useEffect(() => {
         const stored = JSON.parse(localStorage.getItem("histories") || "[]")
         setHistories(stored);
@@ -53,17 +49,20 @@ export default function DashboardPage() {
     // ユーザーが認証されていない場合はログイン画面に遷移
     if(!user) return null;
 
+    // Layoutでリダイレクトされるはずだが、チラつき防止
+    if (!activeSummoner) return null;
+
   return (
     <>
       <DashboardLayout>
         <h1 className="text-2xl font-bold mb-6">
-            ようこそ、{selectedSummoner?.name ?? "ゲスト"} さん 
+            ようこそ、{activeSummoner?.summoner_name ?? "ゲスト"} さん 
         </h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* サモナー情報 */}
             <SummonerCard
-                selectedSummoner= {selectedSummoner?.name ?? "未ログイン"}
+                selectedSummoner= {activeSummoner?.summoner_name ?? "未ログイン"}
                 championName="Aatrox"
                 kills={10}
                 deaths={4}

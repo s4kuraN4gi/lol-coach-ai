@@ -22,7 +22,7 @@ type ChatSession = {
 };
 
 export default function ChatPage() {
-  const {selectedSummoner, loading} = useSummoner();
+  const {activeSummoner, loading} = useSummoner();
   // user又はaiがロールのメッセージの状態管理
   const [message, setMessage] = useState<
     { role: "user" | "ai"; text: string }[]
@@ -44,18 +44,19 @@ export default function ChatPage() {
   const router = useRouter();
 
 
-  useEffect(() => {
-    if(loading) return;
-    if(!selectedSummoner) {
-      router.push("/account");
-    }
-  },[selectedSummoner, router, loading]);
+  // Layout側でリダイレクト制御されているため、ここでは削除
+  // useEffect(() => {
+  //   if(loading) return;
+  //   if(!activeSummoner) {
+  //     router.push("/account");
+  //   }
+  // },[activeSummoner, router, loading]);
 
   // 初期表示時
   useEffect(() => {
-    if(!selectedSummoner) return;
+    if(!activeSummoner) return;
 
-    const key = `chatSessions_${selectedSummoner?.name }`;
+    const key = `chatSessions_${activeSummoner.summoner_name}`;
     const saved = localStorage.getItem(key);
     if (saved) {
       try {
@@ -65,7 +66,7 @@ export default function ChatPage() {
         console.warn("履歴の読み込みに失敗しました。");
       }
     }
-  }, [selectedSummoner]);
+  }, [activeSummoner]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth"})
@@ -73,7 +74,7 @@ export default function ChatPage() {
 
   // 送信ボタン押下処理
   const handleSubmit = async (e: React.FormEvent) => {
-    const key = `chatSessions_${selectedSummoner?.name }`;
+    const key = `chatSessions_${activeSummoner?.summoner_name}`;
     // 送信処理を止める
     e.preventDefault();
     if (!input.trim()) return;
@@ -180,7 +181,7 @@ export default function ChatPage() {
   // 履歴全削除ボタン処理
   const handleClearHistory = () => {
     if (confirm("本当に削除しますか？")) {
-      localStorage.removeItem(`chatSessions_${selectedSummoner?.name}`);
+      localStorage.removeItem(`chatSessions_${activeSummoner?.summoner_name}`);
       setSessions([]);
       setSelectedSession(null);
       setMessage([]);
@@ -216,7 +217,7 @@ export default function ChatPage() {
               setSessions(updated);
               setSelectedSession(newSession);
               setMessage([]);
-              const key = `chatSessions_${selectedSummoner}`
+              const key = `chatSessions_${activeSummoner?.summoner_name}`
               localStorage.setItem(key, JSON.stringify(updated));
             }}
             className="mb-4 w-full bg-blue-500 text-white py-2 rounded-r hover:bg-blue-600 transition"
@@ -255,7 +256,7 @@ export default function ChatPage() {
                         const updated = sessions.filter(
                           (chat) => chat.id !== s.id
                         );
-                        const key = `chatSessions_${selectedSummoner}`
+                        const key = `chatSessions_${activeSummoner?.summoner_name}`
                         localStorage.setItem(
                           key,
                           JSON.stringify(updated)

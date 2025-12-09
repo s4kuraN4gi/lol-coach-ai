@@ -15,8 +15,8 @@ export default function DashboardLayout({children}: DashboardLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
 
-const { user, loading: authLoading } = useAuth();
-const { selectedSummoner, loading: summonerLoading } = useSummoner();
+  const { user, loading: authLoading } = useAuth();
+  const { activeSummoner, loading: summonerLoading } = useSummoner();
 
   useEffect(() => {
     if(authLoading) return;
@@ -27,13 +27,13 @@ const { selectedSummoner, loading: summonerLoading } = useSummoner();
   }, [user,router, authLoading]);
 
   useEffect(() => {
-    if(summonerLoading) return;
-    if(pathname === "/account" || pathname === "login") return;
+    if(summonerLoading || authLoading) return; // Wait for both
+    if(pathname === "/account" || pathname === "/login" || pathname === "/header" || pathname === "/signup") return; // Added /signup etc specific ignores if needed, but pathname is simple usually.
 
-    if(!selectedSummoner) {
+    if(!activeSummoner) {
       router.push("/account");
     }
-  }, [selectedSummoner, router, pathname, summonerLoading]);
+  }, [activeSummoner, router, pathname, summonerLoading, authLoading]);
 
   if(authLoading || !user) {
     return <div className="text-center mt-10">読み込み中...</div>

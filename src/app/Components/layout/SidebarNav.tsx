@@ -8,15 +8,26 @@ export default function SidebarNav() {
       await supabase.auth.signOut();
     router.push("/login");
     }
+
+    const navItems = [
+      { name: "ダッシュボード", href: "/dashboard", icon: "📊" },
+      { name: "詳細戦績", href: "/dashboard/stats", icon: "📈" },
+      { name: "動画コーチング", href: "/dashboard/replay", icon: "🎥" },
+      { name: "サモナー解析", href: "/chat", icon: "💬" },
+      { name: "アカウント", href: "/account", icon: "⚙️" },
+    ];
+
   return (
         <aside className="w-64 bg-white shadow-md p-6 border-r border-gray-200 flex flex-col justify-between">
             <div>
               <h2 className="text-2xl font-bold text-blue-600 mb-6">LOL Coach AI</h2>
               <nav className="flex flex-col gap-4 text-gray-700">
-                  <a href="/dashboard" className="hover:text-blue-500 font-medium">ダッシュボード</a>
-                  <a href="/video" className="hover:text-blue-500 font-medium">動画解析</a>
-                  <a href="/chat" className="hover:text-blue-500 font-medium">サモナー解析</a>
-                  <a href="/account" className="hover:text-blue-500 font-medium">アカウント管理</a>
+                  {navItems.map((item) => (
+                      <a key={item.href} href={item.href} className="hover:text-blue-500 font-medium flex items-center gap-2">
+                          <span className="text-lg">{item.icon}</span>
+                          {item.name}
+                      </a>
+                  ))}
               </nav>
             </div>
             <div className="mt-8 border-t border-gray-200 pt-4">
