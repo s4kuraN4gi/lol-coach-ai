@@ -109,7 +109,7 @@ export default function LandingPage() {
                         <div className="h-3 bg-gray-600/50 rounded w-5/6"></div>
                     </div>
                     <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded text-sm text-green-300 text-left">
-                        "素晴らしい視界管理です！次はバロン前のセットアップを意識しましょう"
+                        &quot;素晴らしい視界管理です！次はバロン前のセットアップを意識しましょう&quot;
                     </div>
                 </div>
             </div>

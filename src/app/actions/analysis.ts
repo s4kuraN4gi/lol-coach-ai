@@ -92,9 +92,10 @@ export async function startMockAnalysis(input: string | FormData) {
                 resultAdvice = result.response.text();
             }
 
-        } catch (e: any) {
+        } catch (e: unknown) {
             console.error("Gemini API Error:", e);
-            return { error: `Gemini API Error: ${e.message || 'Unknown error'}` };
+            const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+            return { error: `Gemini API Error: ${errorMessage}` };
         }
     }
 
