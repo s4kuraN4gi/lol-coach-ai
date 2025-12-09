@@ -22,25 +22,29 @@ export async function getActiveSummoner() {
     
     if(!user) return null;
 
-    // プロフィールから active_summoner_id を取得
+    // プロフィールとそれに紐づくサモナー情報を一括取得 (JOIN)
+    // active_summoner_id カラムを使って summoner_accounts を結合
     const { data: profile } = await supabase
         .from('profiles')
-        .select('active_summoner_id')
+        .select(`
+            active_summoner_id,
+            active_summoner:summoner_accounts!active_summoner_id (*)
+        `)
         .eq('id', user.id)
         .single()
 
     let activeAccount: SummonerAccount | null = null;
 
-    if (profile?.active_summoner_id) {
-        // active_summoner_id に紐づくサモナー情報を取得
-        const { data: summoner } = await supabase
-            .from('summoner_accounts')
-            .select('*')
-            .eq('id', profile.active_summoner_id)
-            .single()
-        
-        if (summoner) {
-            activeAccount = summoner as SummonerAccount;
+    if (profile?.active_summoner) {
+        // JOINで取得できた場合 (型アサーションが必要な場合があるが、概ねany/objectで返る)
+        // 配列か単体かはリレーション設定によるが、!active_summoner_idはN:1なので単体のはず、だが一応チェック
+        // Supabase JSの型定義次第だが、ここはランタイムで確認
+        const joined = profile.active_summoner as unknown; 
+        // 配列なら先頭、オブジェクトならそのまま
+        if(Array.isArray(joined)) {
+             if(joined.length > 0) activeAccount = joined[0] as SummonerAccount;
+        } else {
+             activeAccount = joined as SummonerAccount;
         }
     }
 
