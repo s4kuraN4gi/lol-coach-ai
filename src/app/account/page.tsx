@@ -33,6 +33,11 @@ export default function AccountPage() {
   const handleAdd = () => {
     if (!inputName.trim()) return;
 
+    if (!inputName.includes('#')) {
+        alert("Riot IDは 'Name#Tag' の形式で入力してください (例: Hide on bush#KR1)");
+        return;
+    }
+
     startTransition(async () => {
         const res = await addSummoner(inputName.trim());
         if(res.error) {
@@ -85,7 +90,7 @@ export default function AccountPage() {
           <div className="flex gap-3">
             <input
               type="text"
-              placeholder="Riot Summoner Name"
+              placeholder="Riot ID (例: Name#Tag)"
               value={inputName}
               onChange={(e) => setInputName(e.target.value)}
               className="flex-1 border border-gray-300 rounded px-3 py-2"

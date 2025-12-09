@@ -3,10 +3,15 @@
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 
+import { fetchRiotAccount, fetchSummonerByPuuid } from './riot'
+
 export type SummonerAccount = {
   id: string
   summoner_name: string
+  tag_line: string | null
   region: string
+  profile_icon_id: number | null
+  summoner_level: number | null
   created_at: string
 }
 
@@ -79,32 +84,57 @@ export async function getSummoners() {
 }
 
 // 新しいサモナーを追加して、自動的にアクティブにする
-export async function addSummoner(summonerName: string) {
+// input: "GameName#Tag" 形式
+export async function addSummoner(inputName: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  // 1. サモナーアカウント作成
+  // 1. 入力解析 (Name#Tag)
+  const [gameName, tagLine] = inputName.split('#');
+  if (!gameName || !tagLine) {
+      return { error: '正しい形式で入力してください (例: Hide on bush#KR1)' };
+  }
+
+  // 2. Riot APIでアカウント検索 (PUUID取得)
+  const riotAccount = await fetchRiotAccount(gameName, tagLine);
+  if (!riotAccount) {
+      return { error: 'サモナーが見つかりませんでした (Riot IDを確認してください)' };
+  }
+
+  // 3. Summoner V4で詳細取得 (Icon, Level, SummonerID)
+  const summonerDetail = await fetchSummonerByPuuid(riotAccount.puuid);
+  if (!summonerDetail) {
+      // 稀なケースだが、AccountはあるがSummonerが無い（Lv未プレイなど）
+      return { error: 'サモナー情報の取得に失敗しました。LoLを未プレイの可能性があります。' };
+  }
+
+  // 4. DBに保存
   const { data: newAccount, error: insertError } = await supabase
     .from('summoner_accounts')
     .insert({ 
       user_id: user.id,
-      summoner_name: summonerName,
-      region: 'JP1' // とりあえずJP定数
+      summoner_name: riotAccount.gameName,   // 正しい大文字小文字で保存
+      tag_line: riotAccount.tagLine,
+      region: 'JP1', // 現在はJP固定だが、account.tsのREGION_ROUTINGに合わせるべき
+      puuid: riotAccount.puuid,
+      account_id: summonerDetail.accountId,
+      summoner_id: summonerDetail.id,
+      profile_icon_id: summonerDetail.profileIconId,
+      summoner_level: summonerDetail.summonerLevel
     })
     .select()
     .single()
 
   if (insertError) {
     console.error('Add summoner error:', insertError)
-    // ユニーク制約違反の場合のエラーハンドリングなど
     if(insertError.code === '23505') {
-        return { error: 'このサモナー名は既に登録されています。' }
+        return { error: 'このサモナーは既に登録されています。' }
     }
-    return { error: 'サモナーの追加に失敗しました。' }
+    return { error: 'サモナーの追加に失敗しました。DBエラー' }
   }
 
-  // 2. プロフィールの active_summoner_id を更新
+  // 5. プロフィールの active_summoner_id を更新
   const { error: updateError } = await supabase
     .from('profiles')
     .update({ active_summoner_id: newAccount.id })
