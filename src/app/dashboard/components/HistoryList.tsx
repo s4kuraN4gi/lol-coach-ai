@@ -9,11 +9,11 @@ type HistoryItem = {
   result: string;
   kda: string;
   aiAdvice: string;
-  gameDuration?: number;
-  cs?: number;
-  vision?: number;
-  damage?: number;
-  gold?: number;
+  gameDuration: number;
+  cs: number;
+  vision: number;
+  damage: number;
+  gold: number;
 };
 
 type props = {
