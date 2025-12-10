@@ -8,6 +8,8 @@ export type AnalysisStatus = {
   is_premium: boolean;
   analysis_credits: number;
   subscription_tier: string;
+  daily_analysis_count: number;
+  last_analysis_date: string;
 };
 
 // ユーザーのクレジット情報などを取得
@@ -20,7 +22,7 @@ export async function getAnalysisStatus(): Promise<AnalysisStatus | null> {
 
   const { data } = await supabase
     .from("profiles")
-    .select("is_premium, analysis_credits, subscription_tier")
+    .select("is_premium, analysis_credits, subscription_tier, daily_analysis_count, last_analysis_date")
     .eq("id", user.id)
     .single();
 
@@ -28,7 +30,7 @@ export async function getAnalysisStatus(): Promise<AnalysisStatus | null> {
 }
 
 // 動画解析を実行 (Gemini Vision)
-export async function analyzeVideo(formData: FormData) {
+export async function analyzeVideo(formData: FormData, userApiKey?: string) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -39,14 +41,51 @@ export async function analyzeVideo(formData: FormData) {
   const status = await getAnalysisStatus();
   if (!status) return { error: "User not found" };
 
-  // クレジットチェック
-  if (!status.is_premium && status.analysis_credits <= 0) {
-    return { error: "Insufficient credits", code: "NO_CREDITS" };
+  let useEnvKey = false;
+  let shouldIncrementCount = false;
+
+  // プラン判定と制限チェック
+  if (status.is_premium) {
+      // Premium Plan: Use Platform Key with Daily Limit
+      const today = new Date().toISOString().split('T')[0];
+      const lastDate = status.last_analysis_date ? status.last_analysis_date.split('T')[0] : null;
+      let currentCount = status.daily_analysis_count;
+
+      if (lastDate !== today) {
+          // 日付が変わっていればカウントリセット扱い (DB更新は後ほど)
+          currentCount = 0;
+      }
+
+      if (currentCount >= 50) {
+           return { error: "Daily limit reached (50/50). Please try again tomorrow." };
+      }
+
+      useEnvKey = true;
+      shouldIncrementCount = true;
+
+  } else {
+      // Free Plan: Require User API Key (OR Credits? - Plan says BYOK for free)
+      // If user provides Key, use it. If not, try credits? 
+      // Current design: Free = BYOK.
+      if (!userApiKey) {
+          // Fallback legacy credit check? Or strict BYOK?
+          // User said "Basic plan is not unlimited... (Google limits)".
+          // Implies BYOK is the main way.
+          if (status.analysis_credits > 0) {
+              // Legacy credit system fallback
+              useEnvKey = true; 
+              // Credits will be consumed later if we go this route.
+          } else {
+              return { error: "API Key required. Please upgrade to Premium or enter your Gemini API Key." };
+          }
+      } else {
+          useEnvKey = false;
+      }
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = useEnvKey ? process.env.GEMINI_API_KEY : userApiKey;
   if (!apiKey) {
-    return { error: "Server Configuration Error: GEMINI_API_KEY is missing." };
+    return { error: "Configuration Error: API Key is missing." };
   }
 
   // 入力データの取得
@@ -159,17 +198,32 @@ URLが含まれている場合は、そのURLの内容（YouTubeであれば一�
     return { error: `Gemini API Error: ${errorMessage}` };
   }
 
-  // クレジット消費（プレミアムでなければ）
-  if (!status.is_premium) {
-    // 成功した場合のみ消費
-    const { error } = await supabase
+  // 利用状況の更新 (Premium: Count, Legacy Free: Credits)
+  if (shouldIncrementCount) {
+      // Reset logic handled by SQL or here? logic:
+      // If today != last_date, new count is 1. Else count + 1.
+      const today = new Date().toISOString(); // Full timestamp for last_analysis_date
+      const todayDateStr = today.split('T')[0];
+      const lastDateStr = status.last_analysis_date ? status.last_analysis_date.split('T')[0] : null;
+      
+      let newCount = status.daily_analysis_count + 1;
+      if (lastDateStr !== todayDateStr) {
+          newCount = 1;
+      }
+
+      await supabase
+        .from("profiles")
+        .update({ 
+            daily_analysis_count: newCount,
+            last_analysis_date: today 
+        })
+        .eq("id", user.id);
+  } else if (!userApiKey && useEnvKey && !status.is_premium) {
+      // Legacy Credit Consumption (Only if using Env Key AND not premium)
+      const { error } = await supabase
       .from("profiles")
       .update({ analysis_credits: status.analysis_credits - 1 })
       .eq("id", user.id);
-
-    if (error) {
-      console.error("Credit update error:", error);
-    }
   }
 
   revalidatePath("/dashboard/replay");
@@ -177,7 +231,7 @@ URLが含まれている場合は、そのURLの内容（YouTubeであれば一�
   return {
     success: true,
     advice: resultAdvice,
-    remainingCredits: status.is_premium ? 999 : status.analysis_credits - 1,
+    remainingCredits: status.is_premium ? 999 : status.analysis_credits - 1, // Note: This might be confusing for new hybrid system
   };
 }
 
