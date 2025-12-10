@@ -3,7 +3,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 
-import { fetchRiotAccount, fetchSummonerByPuuid } from './riot'
+import { fetchRiotAccount, fetchSummonerByPuuid, fetchThirdPartyCode } from './riot'
 
 export type SummonerAccount = {
   id: string
@@ -90,72 +90,102 @@ export async function getSummoners() {
     return (data as SummonerAccount[]) ?? [];
 }
 
-// 新しいサモナーを追加して、自動的にアクティブにする
-// input: "GameName#Tag" 形式
-export async function addSummoner(inputName: string) {
+// Step 1: Lookup Summoner (No DB, just Riot API)
+export async function lookupSummoner(inputName: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  // 1. 入力解析 (Name#Tag)
   const [gameName, tagLine] = inputName.split('#');
   if (!gameName || !tagLine) {
       return { error: '正しい形式で入力してください (例: Hide on bush#KR1)' };
   }
 
-  // 2. Riot APIでアカウント検索 (PUUID取得)
   const riotAccount = await fetchRiotAccount(gameName, tagLine);
   if (!riotAccount) {
-      return { error: 'サモナーが見つかりませんでした (Riot IDを確認してください)' };
+      return { error: 'サモナーが見つかりませんでした' };
   }
 
-  // 3. Summoner V4で詳細取得 (Icon, Level, SummonerID)
   const summonerDetail = await fetchSummonerByPuuid(riotAccount.puuid);
   if (!summonerDetail) {
-      // 稀なケースだが、AccountはあるがSummonerが無い（Lv未プレイなど）
-      return { error: 'サモナー情報の取得に失敗しました。LoLを未プレイの可能性があります。' };
+      return { error: '詳細情報の取得に失敗しました' };
   }
 
-  // 4. DBに保存
-  const { data: newAccount, error: insertError } = await supabase
+  // Check if already registered by anyone (or just this user? Usually unique constraint on puuid per user or globally?
+  // Schema has unique(puuid)? No, user_id + puuid typically.
+  // Previous code checked insert error 23505.
+  // Let's check generally. If I want to allow multiple users to link same summoner (e.g. duo), I should check user_id.
+  // But usually verification implies ownership which implies 1-to-1 or at least intentional.
+  // Let's check for CURRENT USER for now.
+  const { data: exists } = await supabase
     .from('summoner_accounts')
-    .insert({ 
-      user_id: user.id,
-      summoner_name: riotAccount.gameName,   // 正しい大文字小文字で保存
-      tag_line: riotAccount.tagLine,
-      region: 'JP1', // 現在はJP固定だが、account.tsのREGION_ROUTINGに合わせるべき
-      puuid: riotAccount.puuid,
-      account_id: summonerDetail.accountId,
-      summoner_id: summonerDetail.id,
-      profile_icon_id: summonerDetail.profileIconId,
-      summoner_level: summonerDetail.summonerLevel
-    })
-    .select()
-    .single()
-
-  if (insertError) {
-    console.error('Add summoner error:', insertError)
-    if(insertError.code === '23505') {
-        return { error: 'このサモナーは既に登録されています。' }
-    }
-    return { error: 'サモナーの追加に失敗しました。DBエラー' }
-  }
-
-  // 5. プロフィールの active_summoner_id を更新
-  const { error: updateError } = await supabase
-    .from('profiles')
-    .update({ active_summoner_id: newAccount.id })
-    .eq('id', user.id)
-
-  if (updateError) {
-      console.error('Update active error:', updateError)
-      return { error: 'アクティブサモナーの設定に失敗しました。' }
-  }
-
-  revalidatePath('/dashboard')
-  revalidatePath('/account')
+    .select('id')
+    .eq('puuid', riotAccount.puuid)
+    .single() // If global unique constraint exists, this checks global.
   
-  return { success: true }
+  if (exists) {
+      // If global unique, message: "Already registered".
+      return { error: 'このサモナーは既に登録されています' };
+  }
+
+  // Return necessary data for Step 2
+  return {
+      success: true,
+      data: {
+          gameName: riotAccount.gameName,
+          tagLine: riotAccount.tagLine,
+          puuid: riotAccount.puuid,
+          summonerId: summonerDetail.id,
+          accountId: summonerDetail.accountId,
+          profileIconId: summonerDetail.profileIconId,
+          summonerLevel: summonerDetail.summonerLevel
+      }
+  }
+}
+
+// Step 2: Verify Code and Add to DB
+export async function verifyAndAddSummoner(summonerData: any, expectedCode: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'Not authenticated' }
+
+    // 1. Verify Code
+    const actualCode = await fetchThirdPartyCode(summonerData.summonerId);
+    
+    // Normalize codes (trim, handle null)
+    if (!actualCode || actualCode.trim() !== expectedCode.trim()) {
+        return { error: `認証に失敗しました。\n設定されたコード: ${actualCode || "(未設定)"}\n期待するコード: ${expectedCode}` };
+    }
+
+    // 2. Insert to DB
+    const { data: newAccount, error: insertError } = await supabase
+        .from('summoner_accounts')
+        .insert({ 
+        user_id: user.id,
+        summoner_name: summonerData.gameName,
+        tag_line: summonerData.tagLine,
+        region: 'JP1', 
+        puuid: summonerData.puuid,
+        account_id: summonerData.accountId,
+        summoner_id: summonerData.summonerId,
+        profile_icon_id: summonerData.profileIconId,
+        summoner_level: summonerData.summonerLevel
+        })
+        .select()
+        .single()
+
+    if (insertError) {
+        console.error('Insert error:', insertError)
+        return { error: 'DB保存に失敗しました' }
+    }
+
+    // 3. Set Active
+    await supabase.from('profiles').update({ active_summoner_id: newAccount.id }).eq('id', user.id)
+
+    revalidatePath('/dashboard')
+    revalidatePath('/account')
+    
+    return { success: true }
 }
 
 // サモナーを切り替える

@@ -166,3 +166,28 @@ export async function fetchMatchDetail(matchId: string): Promise<{ success: bool
         return { success: false, error: e.message };
     }
 }
+// 6. Get Third Party Code by SummonerID
+export async function fetchThirdPartyCode(summonerId: string): Promise<string | null> {
+    if (!RIOT_API_KEY) return null;
+    
+    const url = `https://${PLATFORM_ROUTING}.api.riotgames.com/lol/platform/v4/third-party-code/by-summoner/${summonerId}`;
+    
+    try {
+        const res = await fetch(url, {
+            headers: { "X-Riot-Token": RIOT_API_KEY },
+            cache: 'no-store' // Verification code changes, so no cache
+        });
+        
+        if (!res.ok) {
+            console.error(`ThirdPartyCode API Error: ${res.status}`);
+            return null;
+        }
+        
+        // The API returns the code string directly in quotes, e.g. "LCA-1234"
+        const code = await res.json();
+        return code;
+    } catch (e) {
+        console.error("fetchThirdPartyCode exception:", e);
+        return null;
+    }
+}
