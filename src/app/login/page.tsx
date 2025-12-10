@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Display from "../Display";
+
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 
