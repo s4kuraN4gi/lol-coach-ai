@@ -150,7 +150,30 @@ export default function DashboardPage() {
          return <div className="p-10 text-center mt-10 text-slate-400 animate-pulse">読み込み中...</div>
     }
     if(!user) return null;
-    if (!activeSummoner) return null;
+    if (!activeSummoner) {
+        return (
+            <DashboardLayout>
+                <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+                    <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300 mb-6">
+                        WELCOME TO LOL COACH AI
+                    </h2>
+                    <p className="text-slate-400 mb-8 max-w-md">
+                        まずはあなたのRiotアカウントを連携して、<br/>
+                        AIコーチングを始めましょう。
+                    </p>
+                    <div className="p-8 bg-slate-900/50 border border-slate-700 rounded-2xl max-w-md w-full">
+                         <p className="text-sm text-slate-500 mb-4">サイドメニューの「アカウント」から連携できます</p>
+                         <button 
+                            onClick={() => router.push("/account")}
+                            className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-500 transition shadow-lg shadow-blue-900/20"
+                         >
+                            アカウント設定へ移動
+                         </button>
+                    </div>
+                </div>
+            </DashboardLayout>
+        )
+    }
 
   return (
     <>
