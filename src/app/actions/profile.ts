@@ -262,7 +262,7 @@ export async function verifyAndAddSummoner(summonerData: any) {
         .from('summoner_accounts')
         .insert({ 
         user_id: user.id,
-        summoner_name: freshSummoner.name, // Use fresh name
+        summoner_name: summonerData.gameName || freshSummoner.name, // Prefer Riot ID GameName
         tag_line: summonerData.tagLine, // Tagline might not be in v4 summoner, stick to input/account v1 data
         region: 'JP1', 
         puuid: freshSummoner.puuid,
