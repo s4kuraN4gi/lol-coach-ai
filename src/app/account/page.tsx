@@ -33,6 +33,10 @@ export default function AccountPage() {
       }
   }, []);
 
+  useEffect(() => {
+      fetchAccounts();
+  }, [fetchAccounts, activeSummoner]); // activeが変わったら再取得（最新順など）
+
   if (loading) {
      return (
         <DashboardLayout>
@@ -42,10 +46,6 @@ export default function AccountPage() {
         </DashboardLayout>
      )
   }
-
-  useEffect(() => {
-      fetchAccounts();
-  }, [fetchAccounts, activeSummoner]); // activeが変わったら再取得（最新順など）
 
   // 追加
   const handleAdd = () => {
