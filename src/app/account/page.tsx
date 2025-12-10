@@ -44,15 +44,6 @@ export default function AccountPage() {
       fetchAccounts();
   }, [fetchAccounts, activeSummoner]);
 
-  if (loading) {
-     return (
-        <DashboardLayout>
-            <div className="flex items-center justify-center min-h-[60vh]">
-                <LoadingAnimation />
-            </div>
-        </DashboardLayout>
-     )
-  }
 
   // Step 1: Search
   const handleSearch = () => {
