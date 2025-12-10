@@ -90,11 +90,37 @@ export async function getSummoners() {
     return (data as SummonerAccount[]) ?? [];
 }
 
-// Step 1: Lookup Summoner (No DB, just Riot API)
+const DEFAULT_ICONS = [
+  29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, // More typical default icons
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
+];
+
+// Step 1: Lookup Summoner & Generate Icon Challenge
 export async function lookupSummoner(inputName: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
+
+  // 1. Check Security Status
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('verification_failed_count, verification_locked_until')
+    .eq('id', user.id)
+    .single();
+    
+  // Lockout Check
+  if (profile?.verification_locked_until) {
+      const lockDate = new Date(profile.verification_locked_until);
+      if (lockDate > new Date()) {
+          return { error: `アカウント連携機能は制限されています。\n解除日時: ${lockDate.toLocaleString()}` };
+      } else {
+          // Lock expired: Reset
+          await supabase.from('profiles').update({ 
+               verification_failed_count: 0,
+               verification_locked_until: null 
+          }).eq('id', user.id);
+      }
+  }
 
   const [gameName, tagLine] = inputName.split('#');
   if (!gameName || !tagLine) {
@@ -111,24 +137,34 @@ export async function lookupSummoner(inputName: string) {
       return { error: '詳細情報の取得に失敗しました' };
   }
 
-  // Check if already registered by anyone (or just this user? Usually unique constraint on puuid per user or globally?
-  // Schema has unique(puuid)? No, user_id + puuid typically.
-  // Previous code checked insert error 23505.
-  // Let's check generally. If I want to allow multiple users to link same summoner (e.g. duo), I should check user_id.
-  // But usually verification implies ownership which implies 1-to-1 or at least intentional.
-  // Let's check for CURRENT USER for now.
+  // Already Registered Check
   const { data: exists } = await supabase
     .from('summoner_accounts')
     .select('id')
     .eq('puuid', riotAccount.puuid)
-    .single() // If global unique constraint exists, this checks global.
+    .single()
   
   if (exists) {
-      // If global unique, message: "Already registered".
       return { error: 'このサモナーは既に登録されています' };
   }
 
-  // Return necessary data for Step 2
+  // Generate Challenge (Random Icon)
+  // Ensure we don't pick the current icon
+  let targetIconId = DEFAULT_ICONS[Math.floor(Math.random() * DEFAULT_ICONS.length)];
+  while(targetIconId === summonerDetail.profileIconId) {
+      targetIconId = DEFAULT_ICONS[Math.floor(Math.random() * DEFAULT_ICONS.length)];
+  }
+
+  const challenge = {
+      targetIconId,
+      puuid: riotAccount.puuid,
+      expiresAt: Date.now() + 10 * 60 * 1000 // 10 minutes
+  };
+
+  await supabase.from('profiles').update({
+      verification_challenge: challenge
+  }).eq('id', user.id);
+
   return {
       success: true,
       data: {
@@ -138,38 +174,96 @@ export async function lookupSummoner(inputName: string) {
           summonerId: summonerDetail.id,
           accountId: summonerDetail.accountId,
           profileIconId: summonerDetail.profileIconId,
-          summonerLevel: summonerDetail.summonerLevel
+          summonerLevel: summonerDetail.summonerLevel,
+          targetIconId: targetIconId // Client needs to show this
       }
   }
 }
 
-// Step 2: Verify Code and Add to DB
-export async function verifyAndAddSummoner(summonerData: any, expectedCode: string) {
+// Step 2: Verify Icon Change and Add to DB
+// We don't need 'expectedCode' anymore, we check the DB challenge
+export async function verifyAndAddSummoner(summonerData: any) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { error: 'Not authenticated' }
 
-    // 1. Verify Code
-    const actualCode = await fetchThirdPartyCode(summonerData.summonerId);
+    // 1. Fetch Profile & Challenge
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
     
-    // Normalize codes (trim, handle null)
-    if (!actualCode || actualCode.trim() !== expectedCode.trim()) {
-        return { error: `認証に失敗しました。\n設定されたコード: ${actualCode || "(未設定)"}\n期待するコード: ${expectedCode}` };
+    if (!profile) return { error: "Profile not found" };
+
+    // Check Lock
+    if (profile.verification_locked_until && new Date(profile.verification_locked_until) > new Date()) {
+        return { error: "アカウント連携は一時的にロックされています。" };
     }
 
-    // 2. Insert to DB
+    const challenge = profile.verification_challenge as any; // Type Assertion
+
+    if (!challenge || !challenge.targetIconId) {
+        return { error: "認証セッションが無効です。最初からやり直してください。" };
+    }
+
+    // Check Expiration
+    if (Date.now() > challenge.expiresAt) {
+        return { error: "認証の有効期限(10分)が切れました。再試行してください。" };
+    }
+
+    // Check consistency (Did they verify the same summoner?)
+    if (challenge.puuid !== summonerData.puuid) {
+        return { error: "対象のサモナーが一致しません。" };
+    }
+
+    // 2. Fetch Current Riot Data
+    // We need fresh data to check if icon changed
+    const freshSummoner = await fetchSummonerByPuuid(summonerData.puuid);
+    if (!freshSummoner) return { error: "サモナー情報の再取得に失敗しました。" };
+
+    // 3. Verify Icon ID
+    if (freshSummoner.profileIconId !== challenge.targetIconId) {
+        // --- FAILURE HANDLING ---
+        const newCount = (profile.verification_failed_count || 0) + 1;
+        const updates: any = { verification_failed_count: newCount };
+
+        let errorMsg = `アイコンが変更されていません。\n(現在: ${freshSummoner.profileIconId} / 指定: ${challenge.targetIconId})`;
+
+        if (newCount >= 3) {
+            // Lockout Logic: Lock until tomorrow 00:00 (or just +24h)
+            // User requested "Next day reset". 
+            // Simple: 24h from now, or midnight? Midnight is better for "Next day".
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setHours(0, 0, 0, 0);
+            
+            updates.verification_locked_until = tomorrow.toISOString();
+            errorMsg = "認証に3回失敗したため、本日の認証機能をロックしました。\n明日またお試しください。";
+            // Also clear challenge? Yes.
+            updates.verification_challenge = null;
+        } else {
+            errorMsg += `\n残り試行回数: ${3 - newCount}回`;
+        }
+
+        await supabase.from('profiles').update(updates).eq('id', user.id);
+        return { error: errorMsg };
+    }
+
+    // --- SUCCESS ---
+    // 4. Insert to DB
     const { data: newAccount, error: insertError } = await supabase
         .from('summoner_accounts')
         .insert({ 
         user_id: user.id,
-        summoner_name: summonerData.gameName,
-        tag_line: summonerData.tagLine,
+        summoner_name: freshSummoner.name, // Use fresh name
+        tag_line: summonerData.tagLine, // Tagline might not be in v4 summoner, stick to input/account v1 data
         region: 'JP1', 
-        puuid: summonerData.puuid,
-        account_id: summonerData.accountId,
-        summoner_id: summonerData.summonerId,
-        profile_icon_id: summonerData.profileIconId,
-        summoner_level: summonerData.summonerLevel
+        puuid: freshSummoner.puuid,
+        account_id: freshSummoner.accountId,
+        summoner_id: freshSummoner.id,
+        profile_icon_id: freshSummoner.profileIconId,
+        summoner_level: freshSummoner.summonerLevel
         })
         .select()
         .single()
@@ -179,8 +273,12 @@ export async function verifyAndAddSummoner(summonerData: any, expectedCode: stri
         return { error: 'DB保存に失敗しました' }
     }
 
-    // 3. Set Active
-    await supabase.from('profiles').update({ active_summoner_id: newAccount.id }).eq('id', user.id)
+    // 5. Cleanup & Set Active
+    await supabase.from('profiles').update({ 
+        active_summoner_id: newAccount.id,
+        verification_challenge: null,
+        verification_failed_count: 0
+    }).eq('id', user.id)
 
     revalidatePath('/dashboard')
     revalidatePath('/account')
