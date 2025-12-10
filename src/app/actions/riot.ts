@@ -65,7 +65,7 @@ export async function fetchRiotAccount(gameName: string, tagLine: string): Promi
 }
 
 // 2. Get Summoner by PUUID
-export async function fetchSummonerByPuuid(puuid: string): Promise<SummonerDTO | null> {
+export async function fetchSummonerByPuuid(puuid: string, noCache = false): Promise<SummonerDTO | null> {
     if (!RIOT_API_KEY) return null;
     
     const url = `https://${PLATFORM_ROUTING}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${puuid}`;
@@ -73,7 +73,7 @@ export async function fetchSummonerByPuuid(puuid: string): Promise<SummonerDTO |
     try {
         const res = await fetch(url, {
             headers: { "X-Riot-Token": RIOT_API_KEY },
-            next: { revalidate: 3600 }
+            ...(noCache ? { cache: 'no-store' } : { next: { revalidate: 3600 } })
         });
         
         if (!res.ok) {

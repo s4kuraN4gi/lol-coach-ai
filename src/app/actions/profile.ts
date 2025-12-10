@@ -224,8 +224,8 @@ export async function verifyAndAddSummoner(summonerData: any) {
     }
 
     // 2. Fetch Current Riot Data
-    // We need fresh data to check if icon changed
-    const freshSummoner = await fetchSummonerByPuuid(summonerData.puuid);
+    // We need fresh data to check if icon changed (Disable Cache)
+    const freshSummoner = await fetchSummonerByPuuid(summonerData.puuid, true);
     if (!freshSummoner) return { error: "サモナー情報の再取得に失敗しました。" };
 
     // 3. Verify Icon ID
