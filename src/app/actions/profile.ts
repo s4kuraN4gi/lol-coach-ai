@@ -180,7 +180,8 @@ export async function lookupSummoner(inputName: string) {
           profileIconId: summonerDetail.profileIconId,
           summonerLevel: summonerDetail.summonerLevel,
           targetIconId: targetIconId,
-          expiresAt: challenge.expiresAt
+          expiresAt: challenge.expiresAt,
+          failedCount: profile?.verification_failed_count || 0
       }
   }
 }

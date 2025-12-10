@@ -204,6 +204,13 @@ export default function AccountPage() {
                       </div>
 
                       <Timer expiresAt={candidate?.expiresAt} />
+
+                      {(candidate?.failedCount || 0) > 0 && (
+                          <div className="mt-4 text-xs font-bold text-red-400 bg-red-900/20 py-1 px-3 rounded-full inline-flex items-center gap-2">
+                              <span>⚠️</span> 
+                              <span>Failed Attempts: {candidate.failedCount} / 3</span>
+                          </div>
+                      )}
                   </div>
 
                   {/* Actions */}
