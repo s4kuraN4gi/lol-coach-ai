@@ -23,9 +23,14 @@ export default function AccountPage() {
 
   // アカウント一覧の取得
   const fetchAccounts = useCallback(async () => {
-      const data = await getSummoners();
-      setMyAccounts(data);
-      setLoading(false);
+      try {
+          const data = await getSummoners();
+          setMyAccounts(data);
+      } catch (e) {
+          console.error("Failed to fetch accounts", e);
+      } finally {
+          setLoading(false);
+      }
   }, []);
 
   if (loading) {
