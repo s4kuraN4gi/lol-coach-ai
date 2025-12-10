@@ -126,6 +126,8 @@ export default function AccountPage() {
       });
   }
 
+  // ... (handlers)
+
   // 削除
   const handleDelete = (id: string, name: string) => {
       if(!confirm(`${name} を削除しますか？`)) return;
@@ -138,6 +140,16 @@ export default function AccountPage() {
           }
           await Promise.all([refreshSummoner(), fetchAccounts()]);
       });
+  }
+
+  if (loading) {
+     return (
+        <DashboardLayout>
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <LoadingAnimation />
+            </div>
+        </DashboardLayout>
+     )
   }
 
   return (
