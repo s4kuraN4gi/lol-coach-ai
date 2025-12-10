@@ -340,3 +340,50 @@ export async function removeSummoner(summonerId: string) {
   
   return { success: true }
 }
+// タイムアウト時の処理 (失敗カウント加算)
+export async function registerVerificationTimeout() {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'Not authenticated' }
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+    
+    if (!profile) return { error: "Profile not found" };
+
+    const challenge = profile.verification_challenge as any;
+    if (!challenge) return { success: true }; // Already cleared
+
+    // 期限切れか確認 (クライアントとの時差考慮し、少し甘くするか、サーバー時刻絶対か。サーバー時刻絶対でいく)
+    // ただし、この関数が呼ばれるのはクライアントが「切れた」と判断した後なので、多少の誤差は許容する。
+    // まだサーバー側で切れていなくても、ユーザーが「諦めた/切れた」と申告してきたとして処理して良いが、
+    // 悪用防止のため expiresAt をチェックはする。
+    // ...いや、強制的に失敗させたいならさせてもいいか。
+    
+    // --- FAILURE HANDLING ---
+    const newCount = (profile.verification_failed_count || 0) + 1;
+    const updates: any = { verification_failed_count: newCount, verification_challenge: null }; // Clear challenge on timeout
+
+    let msg = "時間切れのため、認証は失敗扱いとなりました。";
+
+    if (newCount >= 3) {
+         const tomorrow = new Date();
+         tomorrow.setDate(tomorrow.getDate() + 1);
+         tomorrow.setHours(0, 0, 0, 0);
+         
+         updates.verification_locked_until = tomorrow.toISOString();
+         msg = "時間切れを含め3回失敗したため、本日の認証機能をロックしました。\n明日またお試しください。";
+    } else {
+         msg += `\n残り試行回数: ${3 - newCount}回`;
+    }
+
+    await supabase.from('profiles').update(updates).eq('id', user.id);
+    
+    revalidatePath('/dashboard')
+    revalidatePath('/account')
+
+    return { success: true, message: msg };
+}
