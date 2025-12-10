@@ -53,7 +53,8 @@ export default function ReplayPage() {
     startTransition(async () => {
       const res = await analyzeVideo(formData);
       if (res.error) {
-        if (res.code === "NO_CREDITS") {
+        // Type guard or explicit check for optional code property
+        if ('code' in res && res.code === "NO_CREDITS") {
           alert("クレジットが不足しています。プレミアムプランへアップグレードしてください！");
         } else {
           alert("エラー: " + res.error);
