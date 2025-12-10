@@ -13,6 +13,7 @@ export default function ReplayPage() {
   const [status, setStatus] = useState<AnalysisStatus | null>(null);
   const [description, setDescription] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [userApiKey, setUserApiKey] = useState(""); // BYOK State
   const [result, setResult] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [loadingInit, setLoadingInit] = useState(true);
@@ -22,6 +23,10 @@ export default function ReplayPage() {
       setStatus(data);
       setLoadingInit(false);
     });
+    
+    // Load saved API Key
+    const savedKey = localStorage.getItem("gemini_user_api_key");
+    if (savedKey) setUserApiKey(savedKey);
   }, []);
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -51,7 +56,9 @@ export default function ReplayPage() {
     }
 
     startTransition(async () => {
-      const res = await analyzeVideo(formData);
+      // PremiumならKey不要(undefined)、Freeなら入力されたKeyを渡す
+      const keyToUse = status?.is_premium ? undefined : userApiKey;
+      const res = await analyzeVideo(formData, keyToUse);
       if (res.error) {
         // Type guard or explicit check for optional code property
         if ('code' in res && res.code === "NO_CREDITS") {
@@ -207,9 +214,49 @@ export default function ReplayPage() {
                   )}
                 </button>
                 {!isPremium && (
-                  <p className="text-xs text-center text-slate-500 font-mono">
-                    Free plan: {credits} credits remaining
-                  </p>
+                  <div className="mt-6 pt-6 border-t border-slate-700/50 animate-fadeIn">
+                    <div className="flex justify-between items-center mb-3">
+                        <label className="text-xs font-bold text-slate-400 flex items-center gap-1">
+                            🔑 YOUR GEMINI API KEY (REQUIRED)
+                        </label>
+                        <a 
+                            href="https://aistudio.google.com/app/apikey" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-400 hover:text-blue-300 underline flex items-center gap-1"
+                        >
+                            Get Key Here ↗
+                        </a>
+                    </div>
+                    
+                    <div className="space-y-3">
+                        <div className="relative">
+                            <input
+                                type="password"
+                                value={userApiKey}
+                                onChange={(e) => setUserApiKey(e.target.value)}
+                                placeholder="Paste your key: AIzaSy..."
+                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-200 placeholder-slate-600 focus:ring-2 focus:ring-blue-500 outline-none pr-20 font-mono"
+                            />
+                            {userApiKey && (
+                                <button
+                                    onClick={() => {
+                                        localStorage.setItem("gemini_user_api_key", userApiKey);
+                                        alert("API Key saved to browser!");
+                                    }}
+                                    className="absolute right-1 top-1 bottom-1 bg-slate-800 text-slate-300 text-xs px-3 rounded hover:bg-slate-700 transition"
+                                >
+                                    SAVE
+                                </button>
+                            )}
+                        </div>
+                        <p className="text-[10px] text-slate-500 leading-relaxed">
+                            * Free users must provide their own API Key. 
+                            * Key is stored locally in your browser. 
+                            * Rate limits apply (Google Free Tier).
+                        </p>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
