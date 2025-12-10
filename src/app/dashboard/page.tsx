@@ -42,69 +42,81 @@ export default function DashboardPage() {
         setIsFetching(true);
         setErrorMsg(null);
 
-        try {
-            // 並列でリクエスト開始
-            const rankPromise = activeSummoner.summoner_id ? fetchRank(activeSummoner.summoner_id) : Promise.resolve(null);
-            const matchPromise = activeSummoner.puuid ? fetchMatchIds(activeSummoner.puuid, 5) : Promise.resolve({ success: false, error: "No PUUID" });
-
-            const [ranks, matchIdsRes] = await Promise.all([rankPromise, matchPromise]);
-
-            // 1. ランク情報の反映
-            if (ranks) {
-                // SOLO/DUOのランクを優先表示、なければFLEX
-                const solo = ranks.find(r => r.queueType === "RANKED_SOLO_5x5");
-                const flex = ranks.find(r => r.queueType === "RANKED_FLEX_SR");
-                setRankData(solo || flex || null);
+        // 1. ランク情報の取得 (独立して実行)
+        const fetchRankJob = async () => {
+            if (activeSummoner.summoner_id) {
+               try {
+                   const ranks = await fetchRank(activeSummoner.summoner_id);
+                   // SOLO/DUOのランクを優先表示、なければFLEX
+                   const solo = ranks.find(r => r.queueType === "RANKED_SOLO_5x5");
+                   const flex = ranks.find(r => r.queueType === "RANKED_FLEX_SR");
+                   setRankData(solo || flex || null);
+               } catch (e) {
+                   console.error("Rank fetch error", e);
+               }
             }
+        };
 
-            // 2. マッチ履歴の反映
-            if(!matchIdsRes.success || !matchIdsRes.data) {
-                if (matchIdsRes.error !== "No PUUID") {
-                    setErrorMsg(matchIdsRes.error || "Failed to fetch Match IDs");
+        // 2. マッチ履歴の取得 (独立して実行)
+        const fetchHistoryJob = async () => {
+            if (activeSummoner.puuid) {
+                try {
+                    const matchIdsRes = await fetchMatchIds(activeSummoner.puuid, 5); // 直近5件
+                    
+                    if(!matchIdsRes.success || !matchIdsRes.data) {
+                        if (matchIdsRes.error !== "No PUUID") {
+                            setErrorMsg(matchIdsRes.error || "Failed to fetch Match IDs");
+                        }
+                    } else {
+                        const matchIds = matchIdsRes.data;
+                        if(matchIds.length === 0) {
+                            setErrorMsg("Match IDs returned empty. Check if account matches region (Asia).");
+                        }
+
+                        // Match Detail取得
+                        // ここはHistory一括表示で良いのでPromise.allのままにする（1つずつ出るとガタつくため）
+                        const matchPromises = matchIds.map(id => fetchMatchDetail(id));
+                        const matchesRes = await Promise.all(matchPromises);
+                        
+                        const formattedHistories: HistoryItem[] = matchesRes
+                            .filter(res => res.success && res.data)
+                            .map(res => res.data) // Extract data
+                            .map((m: any) => {
+                                // 自分のPUUIDに一致する参加者を探す
+                                const participant = m.info.participants.find((p: any) => p.puuid === activeSummoner.puuid);
+                                if (!participant) return null;
+
+                                const date = new Date(m.info.gameCreation).toLocaleDateString();
+                                
+                                return {
+                                    id: m.metadata.matchId,
+                                    date: date,
+                                    selectedSummoner: participant.summonerName,
+                                    champion: participant.championName,
+                                    role: participant.teamPosition || "ARAM", // アリーナ等は空の場合も
+                                    result: participant.win ? "Win" : "Loss",
+                                    kda: `${participant.kills}/${participant.deaths}/${participant.assists}`,
+                                    aiAdvice: "" // まだ解析していないので空
+                                }
+                            })
+                            .filter((item): item is HistoryItem => item !== null);
+
+                        setHistories(formattedHistories);
+                        localStorage.setItem(`matches_${activeSummoner.summoner_name}`, JSON.stringify(formattedHistories));
+                    }
+                } catch (e) {
+                     console.error("Match fetch error", e);
+                     setErrorMsg("Failed to load match history");
                 }
             } else {
-                const matchIds = matchIdsRes.data;
-                if(matchIds.length === 0) {
-                    setErrorMsg("Match IDs returned empty. Check if account matches region (Asia).");
-                }
-
-                // Match Detailも並列取得
-                const matchPromises = matchIds.map(id => fetchMatchDetail(id));
-                const matchesRes = await Promise.all(matchPromises);
-                
-                const formattedHistories: HistoryItem[] = matchesRes
-                    .filter(res => res.success && res.data)
-                    .map(res => res.data) // Extract data
-                    .map((m: any) => {
-                        // 自分のPUUIDに一致する参加者を探す
-                        const participant = m.info.participants.find((p: any) => p.puuid === activeSummoner.puuid);
-                        if (!participant) return null;
-
-                        const date = new Date(m.info.gameCreation).toLocaleDateString();
-                        
-                        return {
-                            id: m.metadata.matchId,
-                            date: date,
-                            selectedSummoner: participant.summonerName,
-                            champion: participant.championName,
-                            role: participant.teamPosition || "ARAM", // アリーナ等は空の場合も
-                            result: participant.win ? "Win" : "Loss",
-                            kda: `${participant.kills}/${participant.deaths}/${participant.assists}`,
-                            aiAdvice: "" // まだ解析していないので空
-                        }
-                    })
-                    .filter((item): item is HistoryItem => item !== null);
-
-                setHistories(formattedHistories);
-                localStorage.setItem(`matches_${activeSummoner.summoner_name}`, JSON.stringify(formattedHistories));
+                setErrorMsg("No PUUID found for active summoner.");
             }
+        };
 
-        } catch (e: any) {
-            console.error("Failed to fetch dashboard data", e);
-            setErrorMsg(e.message || "Unknown Error During Fetch");
-        } finally {
-            setIsFetching(false);
-        }
+        // 並列実行開始（互いを待たない）
+        await Promise.all([fetchRankJob(), fetchHistoryJob()]);
+        
+        setIsFetching(false);
     }, [activeSummoner]);
 
     useEffect(() => {
