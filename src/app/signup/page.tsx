@@ -128,10 +128,13 @@ export default function SignupPage() {
                 <div className="text-center">
                     <div className="text-5xl mb-4">📧</div>
                     <h3 className="text-2xl font-bold text-white mb-2">Check Your Email</h3>
-                    <p className="text-slate-400 mb-6 leading-relaxed">
+                    <p className="text-slate-400 mb-6 leading-relaxed text-sm">
                         確認メールを送信しました。<br/>
-                        メール内のリンクをクリックして<br/>
-                        登録を完了してください。
+                        メール内のリンクをクリックして登録を完了してください。<br/>
+                        <span className="text-slate-500 text-xs mt-2 block">
+                            ※ メールが届かない場合は、既に登録済みの可能性があります。<br/>
+                            その場合はログイン画面へお進みください。
+                        </span>
                     </p>
                     <button
                         onClick={handleCloseModal}
