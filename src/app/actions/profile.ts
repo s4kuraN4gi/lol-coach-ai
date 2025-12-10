@@ -382,8 +382,7 @@ export async function registerVerificationTimeout() {
 
     await supabase.from('profiles').update(updates).eq('id', user.id);
     
-    revalidatePath('/dashboard')
-    revalidatePath('/account')
-
+    // revalidatePath calls removed to prevent client state reset (notification loss)
+    
     return { success: true, message: msg };
 }
