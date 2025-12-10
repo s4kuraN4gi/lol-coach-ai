@@ -2,14 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { GoogleAIFileManager } from "@google/generative-ai/server";
-import { writeFile, unlink } from "fs/promises";
-import { join } from "path";
-import { tmpdir } from "os";
 
-// Vercel Server Function config (attempt to extend timeout for video processing)
-export const maxDuration = 60; 
 
 export type AnalysisStatus = {
   is_premium: boolean;
@@ -63,14 +56,20 @@ export async function analyzeVideo(formData: FormData) {
   let resultAdvice = "";
 
   try {
+    // Dynamic import to avoid build-time resolution issues
+    const { GoogleGenerativeAI } = await import("@google/generative-ai");
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     // 1. 動画ファイルがある場合の処理
     if (videoFile && videoFile.size > 0) {
-      // ファイルサイズチェック (Vercel Server Action limit is usually 4.5MB for body, but let's try)
+      const { GoogleAIFileManager } = await import("@google/generative-ai/server");
+      const { writeFile, unlink } = await import("fs/promises");
+      const { join } = await import("path");
+      const { tmpdir } = await import("os");
+
+      // ファイルサイズチェック
       if (videoFile.size > 4.5 * 1024 * 1024) { 
-           // NOTE: Client side should block this usually, but double check here.
            return { error: "File too large. Please upload video smaller than 4.5MB." };
       }
 
@@ -92,7 +91,6 @@ export async function analyzeVideo(formData: FormData) {
         console.log(`Uploaded file ${uploadResponse.file.displayName} as: ${uploadResponse.file.uri}`);
 
         // (3) ファイル処理待ち (ACTIVEになるまで待機)
-        // Video processing takes time. 
         let file = await fileManager.getFile(uploadResponse.file.name);
         while (file.state === "PROCESSING") {
           console.log("Waiting for video processing...");
@@ -129,12 +127,11 @@ export async function analyzeVideo(formData: FormData) {
 
         resultAdvice = result.response.text();
 
-        // 完了後、Gemini上のファイルを削除しても良いが、これ履歴に残らない？
-        // ひとまず残しておくか、すぐ消すか。無料枠圧迫しないよう消すのがマナー。
+        // 完了後、Gemini上のファイルを削除
         await fileManager.deleteFile(uploadResponse.file.name);
 
       } finally {
-        // 一時ファイルの削除 using fs/promises unlink
+        // 一時ファイルの削除
         await unlink(tempFilePath).catch((err) => console.error("Failed to delete temp file:", err));
       }
 
@@ -224,6 +221,7 @@ export async function analyzeMatch(
     resultAdvice = mocks[Math.floor(Math.random() * mocks.length)];
   } else {
     try {
+      const { GoogleGenerativeAI } = await import("@google/generative-ai");
       const genAI = new GoogleGenerativeAI(apiKey);
       // 'gemini-2.0-flash' hit rate limits (429). Switching to stable 'gemini-flash-latest' (v1.5)
       const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
