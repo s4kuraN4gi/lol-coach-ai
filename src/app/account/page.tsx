@@ -10,7 +10,6 @@ import {
     getSummoners, 
     removeSummoner, 
     switchSummoner, 
-    registerVerificationTimeout,
     type SummonerAccount 
 } from "../actions/profile";
 import { useRouter } from "next/navigation";
@@ -105,17 +104,8 @@ export default function AccountPage() {
   }
 
   const handleTimeout = useCallback(() => {
-      startTransition(async () => {
-          try {
-            const res = await registerVerificationTimeout();
-            if(res.message) alert(res.message);
-            else if(res.error) alert("エラー: " + res.error);
-          } catch(e) {
-            console.error(e);
-          } finally {
-            handleCancel();
-          }
-      })
+      // Temporary disable server action to debug crash
+      handleCancel();
   }, []);
 
   const handleCancel = () => {
