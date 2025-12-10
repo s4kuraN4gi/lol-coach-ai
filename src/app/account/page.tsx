@@ -15,6 +15,7 @@ import {
 import { useRouter } from "next/navigation";
 
 export default function AccountPage() {
+  console.log("Account Page Mounting");
   const [inputName, setInputName] = useState("");
   const { activeSummoner, refreshSummoner } = useSummoner();
   const [myAccounts, setMyAccounts] = useState<SummonerAccount[]>([]);
