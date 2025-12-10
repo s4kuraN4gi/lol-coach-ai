@@ -179,7 +179,7 @@ export default function AccountPage() {
                           {/* Current */}
                           <div className="relative opacity-50 grayscale">
                               <img 
-                                  src={`https://ddragon.leagueoflegends.com/cdn/14.23.1/img/profileicon/${candidate?.profileIconId}.png`} 
+                                  src={`https://ddragon.leagueoflegends.com/cdn/15.24.1/img/profileicon/${candidate?.profileIconId}.png`} 
                                   alt="current"
                                   className="w-20 h-20 rounded-full border-2 border-slate-600"
                               />
@@ -191,7 +191,7 @@ export default function AccountPage() {
                           {/* Target */}
                           <div className="relative">
                               <img 
-                                  src={`https://ddragon.leagueoflegends.com/cdn/14.23.1/img/profileicon/${candidate?.targetIconId}.png`} 
+                                  src={`https://ddragon.leagueoflegends.com/cdn/15.24.1/img/profileicon/${candidate?.targetIconId}.png`} 
                                   alt="target"
                                   className="w-24 h-24 rounded-full border-4 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.5)]"
                               />
