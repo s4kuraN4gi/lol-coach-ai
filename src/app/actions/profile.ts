@@ -276,7 +276,7 @@ export async function verifyAndAddSummoner(summonerData: any) {
 
     if (insertError) {
         console.error('Insert error:', insertError)
-        return { error: 'DB保存に失敗しました' }
+        return { error: `DB保存に失敗しました: ${insertError.message} (${insertError.details || ''})` }
     }
 
     // 5. Cleanup & Set Active
