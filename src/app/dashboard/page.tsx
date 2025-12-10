@@ -53,17 +53,6 @@ export default function DashboardPage() {
             }
 
             // 2. マッチ履歴の取得 (PUUIDが必要)
-            // すでにデータがある場合は再取得しない（簡易キャッシュ）
-            // デバッグのためキャッシュ使用を一時無効化
-            /*
-            const stored = localStorage.getItem(`matches_${activeSummoner.summoner_name}`);
-            if (stored) {
-                setHistories(JSON.parse(stored));
-                setIsFetching(false);
-                return; 
-            }
-            */
-
             if (activeSummoner.puuid) {
                 const matchIdsRes = await fetchMatchIds(activeSummoner.puuid, 5); // 直近5件
                 
@@ -158,7 +147,7 @@ export default function DashboardPage() {
 
 
     if (authLoading || summonerLoading) {
-         return <div className="p-10 text-center mt-10">読み込み中...</div>
+         return <div className="p-10 text-center mt-10 text-slate-400 animate-pulse">読み込み中...</div>
     }
     if(!user) return null;
     if (!activeSummoner) return null;
@@ -166,19 +155,25 @@ export default function DashboardPage() {
   return (
     <>
       <DashboardLayout>
-        <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold">
-                ダッシュボード
+        <div className="flex justify-between items-center mb-8">
+            <h1 className="text-3xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-white">
+                DASHBOARD
             </h1>
             <button 
                 onClick={() => {
                     localStorage.removeItem(`matches_${activeSummoner.summoner_name}`);
                     fetchData();
                 }}
-                className="text-sm bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded transition"
+                className="text-sm bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-4 py-2 rounded-lg transition shadow-lg hover:shadow-blue-500/10 flex items-center gap-2"
                 disabled={isFetching}
             >
-                {isFetching ? "更新中..." : "データを更新"}
+                {isFetching ? (
+                    <>
+                        <span className="w-2 h-2 bg-blue-500 rounded-full animate-ping"></span> 更新中...
+                    </>
+                ) : (
+                    "↻ データを更新"
+                )}
             </button>
         </div>
 
@@ -188,7 +183,7 @@ export default function DashboardPage() {
                 summonerName={activeSummoner.summoner_name}
                 tagLine={activeSummoner.tag_line}
                 level={activeSummoner.summoner_level || 0}
-                iconId={activeSummoner.profile_icon_id || 29} // Default icon
+                iconId={activeSummoner.profile_icon_id || 29}
                 tier={rankData?.tier}
                 rank={rankData?.rank}
                 lp={rankData?.leaguePoints}
@@ -196,20 +191,23 @@ export default function DashboardPage() {
                 losses={rankData?.losses}
             />
 
-            {/* ランク推移グラフ (Mockのまま) */}
+            {/* ランク推移グラフ */}
             <RankGraph />
         </div>
         {/* 履歴 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-                <div className="border-r pr-4 overflow-y-auto h-[75vh]">
-                    <h3 className="text-2xl font-semibold mb-4">直近の対戦履歴</h3>
+                <div className="border-r border-slate-800 pr-6 overflow-y-auto h-[75vh] custom-scrollbar">
+                    <h3 className="text-xl font-bold text-slate-200 mb-6 flex items-center gap-2">
+                        <span className="w-1.5 h-6 bg-yellow-500 rounded-full"></span> 
+                        RECENT MATCHES
+                    </h3>
                     {errorMsg && (
-                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                        <div className="bg-red-900/20 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg mb-4">
                             <strong className="font-bold">Error: </strong>
                             <span className="block sm:inline">{errorMsg}</span>
                         </div>
                     )}
-                    {histories.length === 0 && !isFetching && !errorMsg && <p className="text-gray-500">履歴が見つかりません。</p>}
+                    {histories.length === 0 && !isFetching && !errorMsg && <p className="text-slate-500 italic">履歴が見つかりません。</p>}
                     
                     <HistoryList 
                         histories={histories}
@@ -217,9 +215,9 @@ export default function DashboardPage() {
                         selectedHistory={selectedHistory}
                     />
                 </div>
-                    <div className="pl-4">
+                    <div className="pl-6">
                         {selectedHistory ? (
-                            <>
+                            <div className="glass-panel p-6 rounded-xl animate-fadeIn">
                                 <SummonerCard 
                                     selectedSummoner={selectedHistory.selectedSummoner}
                                     championName={selectedHistory.champion}
@@ -227,43 +225,53 @@ export default function DashboardPage() {
                                     deaths={parseInt(selectedHistory.kda.split("/")[1])}
                                     assists={parseInt(selectedHistory.kda.split("/")[2])}
                                     win={selectedHistory.result === "Win"}
-                                    gameDuration={1800} // APIから取れるが一旦省略
+                                    gameDuration={1800}
                                 />
-                                <div className="mt-4 p-4 bg-gray-50 border rounded-lg text-left">
-                                    <h4 className="font-semibold text-gray-700 mb-2">AI コーチのアドバイス</h4>
+                                <div className="mt-6 p-6 bg-slate-900/50 border border-slate-700/50 rounded-xl text-left relative overflow-hidden">
+                                     {/* AI Glow */}
+                                    <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+
+                                    <h4 className="font-bold text-blue-300 mb-4 flex items-center gap-2 text-lg">
+                                        <span className="text-2xl">🤖</span> AI COACH ANALYSIS
+                                    </h4>
                                     {selectedHistory.aiAdvice
                                      ? selectedHistory.aiAdvice.split("\n").map((line, index) => (
                                         <p
                                             key={index}
-                                            className={`mb-2 whitespace-pre-wrap ${
+                                            className={`mb-3 tracking-wide leading-relaxed ${
                                             line.startsWith("1.") ||
                                             line.startsWith("2.") ||
                                             line.startsWith("3.") 
-                                                ? "font-bold text-gray-800 mt-2"
-                                                : "text-gray-700"
+                                                ? "font-bold text-yellow-200 mt-4 text-base border-l-2 border-yellow-500 pl-3"
+                                                : "text-slate-300 text-sm"
                                             }`}
                                         >
                                             {line}
                                         </p>
                                         ))
                                         : (
-                                            <div>
-                                                <p className="text-gray-500 mb-2">まだ解析を行っていません。</p>
+                                            <div className="text-center py-8">
+                                                <p className="text-slate-500 mb-6 font-mono text-sm">AI analysis not generated yet.</p>
                                                 <button 
                                                     onClick={handleAnalyze}
                                                     disabled={isAnalyzing}
-                                                    className="bg-blue-600 text-white text-sm px-4 py-2 rounded shadow hover:bg-blue-700 disabled:bg-gray-400 transition"
+                                                    className="bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-bold text-sm px-6 py-3 rounded-full shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-105 disabled:opacity-50 disabled:scale-100 transition-all border border-blue-400/20"
                                                 >
-                                                    {isAnalyzing ? "AIが試合を分析中..." : "AI解析を実行 (Premium)"}
+                                                    {isAnalyzing ? (
+                                                        <span className="flex items-center gap-2">
+                                                            <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
+                                                            GENERATING ADVICE...
+                                                        </span>
+                                                    ) : "✨ ANALYZE MATCH WITH AI"}
                                                 </button>
                                             </div>
                                         )}
                                 </div>
-                            </>
+                            </div>
                         ):(
-                            <div className="mt-10 p-6 border-2 border-dashed border-gray-300 rounded-lg text-center">
-                                <p className="text-gray-500 mb-2">👈 左のリストから試合を選択してください</p>
-                                <p className="text-sm text-gray-400">詳細情報とAIアドバイスが表示されます</p>
+                            <div className="mt-20 p-10 border-2 border-dashed border-slate-700 rounded-xl text-center bg-slate-800/30">
+                                <p className="text-slate-400 mb-2 font-medium">👈 SELECT A MATCH FROM THE LIST</p>
+                                <p className="text-sm text-slate-600">to view detailed stats and AI coaching advice</p>
                             </div>
                         )}
                     </div>

@@ -11,41 +11,64 @@ export default function RankGraph() {
         {date: "10/17", rank: 1, winRate: 60},
     ];
   return (
-    <div className="p-6 bg-white rounded-xl shadow-sm border border-gray-200 text-center">
-        <p className="text-gray-500">ランク推移グラフ</p>
+    <div className="glass-panel p-6 rounded-xl relative overflow-hidden">
+        <h3 className="text-slate-200 text-lg font-bold mb-4 flex items-center gap-2">
+            <span className="w-2 h-6 bg-blue-500 rounded-full"></span>
+            ランク推移 & 勝率
+        </h3>
         <ResponsiveContainer width="100%" height={250}>
         <LineChart data={data} margin={{top: 20, right: 30, left: 10, bottom: 0}}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#eee"/>
-        <XAxis dataKey="date"/>
+        <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+        <XAxis 
+            dataKey="date" 
+            stroke="#94a3b8" 
+            tick={{fill: '#94a3b8', fontSize: 12}}
+            tickLine={false}
+            axisLine={false}
+        />
         <YAxis 
             yAxisId="left"
-            label={{value: "ランク(Tier)", angle: -90, position:"insideLeft"}}
-            domain={[4, 1]}
+            stroke="#94a3b8"
+            tick={{fill: '#94a3b8', fontSize: 12}}
+            fontFamily="monospace"
+            domain={[4, 0]} // Mock 4(IV) to 0
             reversed
+            tickFormatter={(value) => `T${value}`}
+            hide
         />
         <YAxis 
             yAxisId="right"
             orientation="right"
-            label={{value: "勝率(%)", angle: -90, position: "insideRight"}}
+            stroke="#94a3b8"
+            tick={{fill: '#94a3b8', fontSize: 12}}
+            domain={[40, 70]}
+            tickLine={false}
+            axisLine={false}
+            unit="%"
         />
-        <Tooltip />
+        <Tooltip 
+            contentStyle={{backgroundColor: '#1e293b', borderColor: '#475569', color: '#f8fafc', borderRadius: '8px'}}
+            itemStyle={{color: '#f8fafc'}}
+        />
         <Line 
         yAxisId="left"
         type="monotone"
         dataKey="rank"
         stroke="#3b82f6"
-        strokeWidth={2}
-        dot={{r:4}}
-        name="ランク"
+        strokeWidth={3}
+        dot={{r:6, fill: "#1e293b", strokeWidth: 2}}
+        activeDot={{r:8, stroke: "#60a5fa"}}
+        name="Rank Tier"
         />
         <Line 
         yAxisId="right"
         type="monotone"
         dataKey="winRate"
-        stroke="#22c55e"
-        strokeWidth={2}
-        dot={{r:4}}
-        name="勝率(%)"
+        stroke="#eab308"
+        strokeWidth={3}
+        dot={{r:0}}
+        activeDot={{r:6}}
+        name="Win Rate"
         />
         </LineChart>
         </ResponsiveContainer>
