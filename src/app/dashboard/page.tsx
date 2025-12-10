@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import SummonerCard from "../Components/SummonerCard";
 import DashboardLayout from "../Components/layout/DashboardLayout";
+import LoadingAnimation from "../Components/LoadingAnimation";
 import HistoryList from "./components/HistoryList";
 import RankGraph from "./components/RankGraph";
 import ProfileCard from "./components/ProfileCard";
@@ -195,7 +196,13 @@ export default function DashboardPage() {
 
 
     if (authLoading || summonerLoading) {
-         return <div className="p-10 text-center mt-10 text-slate-400 animate-pulse">読み込み中...</div>
+         return (
+            <DashboardLayout>
+                <div className="flex items-center justify-center min-h-[60vh]">
+                    <LoadingAnimation />
+                </div>
+            </DashboardLayout>
+         )
     }
     if(!user) return null;
     if (!activeSummoner) {
