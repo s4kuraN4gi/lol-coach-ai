@@ -161,9 +161,14 @@ export async function lookupSummoner(inputName: string) {
       expiresAt: Date.now() + 10 * 60 * 1000 // 10 minutes
   };
 
-  await supabase.from('profiles').update({
+  const { error: updateError } = await supabase.from('profiles').update({
       verification_challenge: challenge
   }).eq('id', user.id);
+
+  if (updateError) {
+      console.error('Profile update error:', updateError);
+      return { error: '認証の準備に失敗しました。管理者に連絡してください (DB Error)' };
+  }
 
   return {
       success: true,
@@ -175,7 +180,8 @@ export async function lookupSummoner(inputName: string) {
           accountId: summonerDetail.accountId,
           profileIconId: summonerDetail.profileIconId,
           summonerLevel: summonerDetail.summonerLevel,
-          targetIconId: targetIconId // Client needs to show this
+          targetIconId: targetIconId,
+          expiresAt: challenge.expiresAt
       }
   }
 }

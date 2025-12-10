@@ -202,11 +202,7 @@ export default function AccountPage() {
                           </div>
                       </div>
 
-                      <div className="bg-slate-900/50 rounded p-3 inline-block">
-                           <p className="text-xs text-slate-500 mb-1">TIME LIMIT</p>
-                           <p className="text-xl font-mono text-red-400 font-bold tracking-widest">10:00</p>
-                           <p className="text-[10px] text-slate-600">Please verify within 10 mins.</p>
-                      </div>
+                      <Timer expiresAt={candidate?.expiresAt} />
                   </div>
 
                   {/* Actions */}
