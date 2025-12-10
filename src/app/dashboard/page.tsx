@@ -21,7 +21,50 @@ type HistoryItem = {
     result: string;
     kda: string;
     aiAdvice: string;
+    // For Radar Chart
+    gameDuration: number;
+    cs: number;       // totalMinionsKilled + neutralMinionsKilled
+    vision: number;   // visionScore
+    damage: number;   // totalDamageDealtToChampions
+    gold: number;     // goldEarned
 }
+
+export default function DashboardPage() {
+    const {activeSummoner, loading:summonerLoading} = useSummoner();
+    // ... (rest of imports)
+
+// ...
+
+    // Inside formattedHistories map:
+                        const formattedHistories: HistoryItem[] = matchesRes
+                            .filter(res => res.success && res.data)
+                            .map(res => res.data) // Extract data
+                            .map((m: any) => {
+                                // 自分のPUUIDに一致する参加者を探す
+                                const participant = m.info.participants.find((p: any) => p.puuid === activeSummoner.puuid);
+                                if (!participant) return null;
+
+                                const date = new Date(m.info.gameCreation).toLocaleDateString();
+                                const duration = m.info.gameDuration || 1800;
+                                
+                                return {
+                                    id: m.metadata.matchId,
+                                    date: date,
+                                    selectedSummoner: participant.summonerName,
+                                    champion: participant.championName,
+                                    role: participant.teamPosition || "ARAM", // アリーナ等は空の場合も
+                                    result: participant.win ? "Win" : "Loss",
+                                    kda: `${participant.kills}/${participant.deaths}/${participant.assists}`,
+                                    aiAdvice: "", // まだ解析していないので空,
+                                    // Stats
+                                    gameDuration: duration,
+                                    cs: (participant.totalMinionsKilled || 0) + (participant.neutralMinionsKilled || 0),
+                                    vision: participant.visionScore || 0,
+                                    damage: participant.totalDamageDealtToChampions || 0,
+                                    gold: participant.goldEarned || 0
+                                }
+                            })
+                            .filter((item): item is HistoryItem => item !== null);
 
 export default function DashboardPage() {
     const {activeSummoner, loading:summonerLoading} = useSummoner();
@@ -250,8 +293,8 @@ export default function DashboardPage() {
                 onQueueChange={setSelectedQueue}
             />
 
-            {/* ランク推移グラフ */}
-            <RankGraph />
+            {/* ランク推移グラフ & プレイスタイル分析 */}
+            <RankGraph histories={histories} />
         </div>
         {/* 履歴 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
