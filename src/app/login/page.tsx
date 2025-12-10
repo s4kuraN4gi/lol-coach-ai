@@ -27,7 +27,7 @@ export default function LoginPage() {
 
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: LoginId.trim(),
       password: password,
     });
@@ -36,6 +36,14 @@ export default function LoginPage() {
       alert("ログイン失敗："+ error.message);
       setLoading(false);
       return;
+    }
+
+    if (data.user && !data.user.email_confirmed_at) {
+        // メール認証未完了の場合
+        alert("メール認証が完了していません。\n届いたメール内のリンクをクリックしてください。");
+        await supabase.auth.signOut(); // セッションを破棄
+        setLoading(false);
+        return;
     }
 
     router.push("/dashboard");
