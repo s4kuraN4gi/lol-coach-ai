@@ -10,6 +10,7 @@ import {
     getSummoners, 
     removeSummoner, 
     switchSummoner, 
+    registerVerificationTimeout,
     type SummonerAccount 
 } from "../actions/profile";
 import { useRouter } from "next/navigation";
@@ -96,8 +97,17 @@ export default function AccountPage() {
   }
 
   const handleTimeout = useCallback(() => {
-      // Temporary disable server action to debug crash
-      handleCancel();
+      startTransition(async () => {
+          try {
+            const res = await registerVerificationTimeout();
+            if(res.message) alert(res.message);
+            else if(res.error) alert("エラー: " + res.error);
+          } catch(e) {
+            console.error(e);
+          } finally {
+            handleCancel();
+          }
+      })
   }, []);
 
   const handleCancel = () => {
@@ -218,7 +228,7 @@ export default function AccountPage() {
                           </div>
                       </div>
 
-                      <Timer expiresAt={candidate?.expiresAt} />
+                      <Timer expiresAt={candidate?.expiresAt} onExpire={handleTimeout} />
 
                       {(candidate?.failedCount || 0) > 0 && (
                           <div className="mt-4 text-xs font-bold text-red-400 bg-red-900/20 py-1 px-3 rounded-full inline-flex items-center gap-2">
@@ -325,20 +335,26 @@ export default function AccountPage() {
   );
 }
 
-function Timer({ expiresAt }: { expiresAt: number }) {
+function Timer({ expiresAt, onExpire }: { expiresAt: number, onExpire?: () => void }) {
     const [timeLeft, setTimeLeft] = useState(0);
+    const hasExpiredRef = React.useRef(false);
 
     useEffect(() => {
         if(!expiresAt) return;
+        hasExpiredRef.current = false;
         
         const update = () => {
             const val = Math.max(0, expiresAt - Date.now());
             setTimeLeft(val);
+            if (val <= 0 && !hasExpiredRef.current) {
+                hasExpiredRef.current = true;
+                if(onExpire) onExpire();
+            }
         };
         update();
         const timer = setInterval(update, 1000);
         return () => clearInterval(timer);
-    }, [expiresAt]); // Removed onExpire dependency
+    }, [expiresAt, onExpire]);
 
     const format = (ms: number) => {
         const totalSec = Math.floor(ms / 1000);
