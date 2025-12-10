@@ -18,24 +18,31 @@ export default function SidebarNav() {
     ];
 
   return (
-        <aside className="w-64 bg-white shadow-md p-6 border-r border-gray-200 flex flex-col justify-between">
+        <aside className="w-64 bg-slate-900/50 backdrop-blur-xl border-r border-slate-800 p-6 flex flex-col justify-between sticky top-0 h-screen z-50">
             <div>
-              <h2 className="text-2xl font-bold text-blue-600 mb-6">LOL Coach AI</h2>
-              <nav className="flex flex-col gap-4 text-gray-700">
+              <h2 className="text-2xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300 mb-8 px-2">
+                  LOL COACH AI
+              </h2>
+              <nav className="flex flex-col gap-2 text-slate-400">
                   {navItems.map((item) => (
-                      <a key={item.href} href={item.href} className="hover:text-blue-500 font-medium flex items-center gap-2">
-                          <span className="text-lg">{item.icon}</span>
-                          {item.name}
+                      <a 
+                        key={item.href} 
+                        href={item.href} 
+                        className="hover:bg-slate-800/80 hover:text-blue-400 font-bold flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group"
+                      >
+                          <span className="text-xl group-hover:scale-110 transition-transform duration-200">{item.icon}</span>
+                          <span className="tracking-wide text-sm">{item.name}</span>
                       </a>
                   ))}
               </nav>
             </div>
-            <div className="mt-8 border-t border-gray-200 pt-4">
+            <div className="mt-8 border-t border-slate-800 pt-6">
               <button 
                 onClick={handleLogout}
-                className="w-full text-left text-red-500 font-semibold hover:text-red-700 transition"
+                className="w-full text-left text-red-400 hover:text-red-300 hover:bg-red-900/20 px-4 py-3 rounded-lg font-bold transition flex items-center gap-3"
               >
-                ログアウト
+                <span>🚪</span>
+                LOGOUT
               </button>
             </div>
         </aside>

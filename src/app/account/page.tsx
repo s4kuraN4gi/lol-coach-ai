@@ -81,67 +81,77 @@ export default function AccountPage() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-2xl mx-auto mt-8">
-        <h1 className="text-2xl font-bold mb-6">アカウント設定</h1>
+      <div className="max-w-2xl mx-auto mt-8 animate-fadeIn">
+        <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-white mb-8 italic tracking-tighter">
+            ACCOUNT SETTINGS
+        </h1>
 
         {/* 追加フォーム */}
-        <div className="p-6 bg-white rounded-lg shadow mb-6">
-          <h2 className="text-lg font-semibold mb-2">新しいサモナーを追加</h2>
+        <div className="glass-panel p-8 rounded-xl mb-8">
+          <h2 className="text-lg font-bold text-slate-200 mb-4 flex items-center gap-2">
+              <span className="w-1.5 h-6 bg-blue-500 rounded-full"></span>
+              NEW SUMMONER
+          </h2>
           <div className="flex gap-3">
             <input
               type="text"
-              placeholder="Riot ID (例: Name#Tag)"
+              placeholder="Riot ID (e.g. Hide on bush#KR1)"
               value={inputName}
               onChange={(e) => setInputName(e.target.value)}
-              className="flex-1 border border-gray-300 rounded px-3 py-2"
+              className="flex-1 bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3 text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 outline-none transition"
               disabled={isPending}
             />
             <button
-              className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+              className="bg-blue-600 text-white font-bold px-6 py-2 rounded-lg hover:bg-blue-500 shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:shadow-none transition transform active:scale-95"
               onClick={handleAdd}
               disabled={isPending || !inputName.trim()}
             >
-              {isPending ? "処理中..." : "追加"}
+              {isPending ? "ADDING..." : "ADD"}
             </button>
           </div>
         </div>
 
         {/* 一覧 */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-            <h2 className="text-lg font-semibold p-4 bg-gray-50 border-b">登録済みサモナー ({myAccounts.length})</h2>
+        <div className="glass-panel rounded-xl overflow-hidden">
+            <h2 className="text-lg font-bold p-6 border-b border-slate-700 text-slate-200 flex items-center justify-between">
+                <span>LINKED ACCOUNTS</span>
+                <span className="text-sm font-normal text-slate-400 bg-slate-800 px-2 py-1 rounded">{myAccounts.length}</span>
+            </h2>
             <ul>
                 {myAccounts.length === 0 && (
-                    <li className="p-6 text-center text-gray-500">アカウントが登録されていません。</li>
+                    <li className="p-8 text-center text-slate-500 italic">No accounts linked yet.</li>
                 )}
                 {myAccounts.map(acc => {
                     const isActive = activeSummoner?.id === acc.id;
                     return (
-                        <li key={acc.id} className={`flex items-center justify-between p-4 border-b last:border-b-0 ${isActive ? 'bg-blue-50' : ''}`}>
-                            <div className="flex items-center gap-3">
-                                <div className={`w-3 h-3 rounded-full ${isActive ? 'bg-green-500' : 'bg-gray-300'}`} />
+                        <li key={acc.id} className={`flex items-center justify-between p-5 border-b border-slate-800 last:border-b-0 transition-colors ${isActive ? 'bg-blue-900/10' : 'hover:bg-slate-800/30'}`}>
+                            <div className="flex items-center gap-4">
+                                <div className={`w-3 h-3 rounded-full shadow-[0_0_10px_currentColor] ${isActive ? 'bg-green-400 text-green-400' : 'bg-slate-600 text-slate-600'}`} />
                                 <div>
-                                    <p className="font-bold text-gray-800">{acc.summoner_name}</p>
-                                    <p className="text-xs text-gray-400">{acc.region}</p>
+                                    <p className={`font-bold text-lg ${isActive ? 'text-white' : 'text-slate-400'}`}>{acc.summoner_name}</p>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-slate-500 font-mono bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">{acc.region}</span>
+                                        {isActive && <span className="text-xs text-blue-300 font-bold border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 rounded-full">ACTIVE</span>}
+                                    </div>
                                 </div>
-                                {isActive && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded ml-2">Active</span>}
                             </div>
                             
-                            <div className="flex gap-2">
+                            <div className="flex gap-3">
                                 {!isActive && (
                                     <button 
                                         onClick={() => handleSwitch(acc.id)}
-                                        className="text-sm border border-blue-500 text-blue-500 px-3 py-1 rounded hover:bg-blue-50"
+                                        className="text-sm border border-slate-600 text-slate-400 font-bold px-4 py-2 rounded-lg hover:bg-slate-800 hover:text-white hover:border-slate-500 transition"
                                         disabled={isPending}
                                     >
-                                        切り替え
+                                        SWITCH
                                     </button>
                                 )}
                                 <button 
                                     onClick={() => handleDelete(acc.id, acc.summoner_name)}
-                                    className="text-sm text-red-400 hover:text-red-600 px-2"
+                                    className="text-sm text-red-400/70 hover:text-red-400 hover:bg-red-900/20 px-3 py-2 rounded-lg transition"
                                     disabled={isPending}
                                 >
-                                    削除
+                                    REMOVE
                                 </button>
                             </div>
                         </li>
@@ -151,12 +161,12 @@ export default function AccountPage() {
         </div>
         
         {activeSummoner && (
-             <div className="mt-6 text-right">
+             <div className="mt-8 text-right">
                  <button 
                     onClick={() => router.push('/dashboard')}
-                    className="text-blue-600 hover:underline"
+                    className="text-blue-400 hover:text-blue-300 font-bold flex items-center justify-end gap-2 ml-auto hover:gap-3 transition-all"
                  >
-                     ダッシュボードに戻る →
+                     GO TO DASHBOARD <span>→</span>
                  </button>
              </div>
         )}
