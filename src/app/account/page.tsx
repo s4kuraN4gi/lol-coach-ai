@@ -199,6 +199,7 @@ export default function AccountPage() {
                                   TARGET
                               </div>
                               <p className="text-xs text-blue-400 mt-2 font-mono font-bold">Change to this!</p>
+                              <p className="text-[10px] text-slate-600 font-mono">ID: {candidate?.targetIconId ?? 'NULL'}</p>
                           </div>
                       </div>
 
