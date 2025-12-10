@@ -26,6 +26,7 @@ export default function AccountPage() {
   // Verification States
   const [step, setStep] = useState<1 | 2>(1);
   const [candidate, setCandidate] = useState<any>(null);
+  const [notification, setNotification] = useState<{type: 'success'|'error', message: string} | null>(null);
 
   const router = useRouter();
 
@@ -48,6 +49,7 @@ export default function AccountPage() {
 
   // Step 1: Search
   const handleSearch = () => {
+    setNotification(null);
     if (!inputName.trim()) return;
     if (!inputName.includes('#')) {
         alert("Riot IDは 'Name#Tag' の形式で入力してください (例: Hide on bush#KR1)");
@@ -100,10 +102,11 @@ export default function AccountPage() {
       startTransition(async () => {
           try {
             const res = await registerVerificationTimeout();
-            if(res.message) alert(res.message);
-            else if(res.error) alert("エラー: " + res.error);
+            if(res.message) setNotification({ type: 'error', message: res.message });
+            else if(res.error) setNotification({ type: 'error', message: "エラー: " + res.error });
           } catch(e) {
             console.error(e);
+            setNotification({ type: 'error', message: "予期せぬエラーが発生しました" });
           } finally {
             handleCancel();
           }
@@ -159,6 +162,17 @@ export default function AccountPage() {
         <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-white mb-8 italic tracking-tighter">
             ACCOUNT SETTINGS
         </h1>
+
+        {notification && (
+            <div className={`mb-8 p-4 rounded-xl border flex items-start gap-4 shadow-lg animate-fadeIn ${notification.type === 'error' ? 'bg-red-900/40 border-red-500/50 text-red-100' : 'bg-green-900/40 border-green-500/50 text-green-100'}`}>
+                <span className="text-2xl mt-0.5">{notification.type === 'error' ? '⚠️' : '✅'}</span>
+                <div className="flex-1">
+                    <p className="font-bold mb-1">{notification.type === 'error' ? 'Notice' : 'Success'}</p>
+                    <p className="whitespace-pre-wrap text-sm opacity-90">{notification.message}</p>
+                </div>
+                <button onClick={() => setNotification(null)} className="text-white/50 hover:text-white transition">✕</button>
+            </div>
+        )}
 
         {/* 追加フォーム (Wizard) */}
         <div className="glass-panel p-8 rounded-xl mb-8 transition-all duration-500">
