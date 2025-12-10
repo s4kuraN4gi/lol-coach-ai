@@ -91,6 +91,21 @@ export default function ReplayPage() {
     });
   };
 
+  const handleDowngrade = () => {
+    if (!confirm("自動更新を停止（解約予約）しますか？\n契約期間終了までプレミアム機能は利用可能です。")) return;
+
+    startTransition(async () => {
+      const res = await downgradeToFree();
+      if (res.success) {
+        alert("自動更新を停止しました。");
+        const newStatus = await getAnalysisStatus();
+        setStatus(newStatus);
+      } else {
+        alert("エラー: " + res.error);
+      }
+    });
+  };
+
   if (loadingInit)
     return (
       <DashboardLayout>
