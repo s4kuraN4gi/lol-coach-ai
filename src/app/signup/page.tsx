@@ -35,7 +35,12 @@ export default function SignupPage() {
         });
         
         if (signUpError) {
-            setError("登録失敗：" + signUpError.message);
+            // "User already registered" のエラーメッセージを日本語化
+            if (signUpError.message.includes("User already registered")) {
+                setError("このメールアドレスは既に登録されています。ログインしてください。");
+            } else {
+                setError("登録失敗：" + signUpError.message);
+            }
             return;
         }
 
