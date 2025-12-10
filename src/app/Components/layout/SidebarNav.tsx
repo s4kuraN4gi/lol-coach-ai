@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { signOut } from "../../actions/auth";
 
 export default function SidebarNav() {
@@ -26,14 +27,14 @@ export default function SidebarNav() {
               </h2>
               <nav className="flex flex-col gap-2 text-slate-400">
                   {navItems.map((item) => (
-                      <a 
+                      <Link 
                         key={item.href} 
                         href={item.href} 
                         className="hover:bg-slate-800/80 hover:text-blue-400 font-bold flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group"
                       >
                           <span className="text-xl group-hover:scale-110 transition-transform duration-200">{item.icon}</span>
                           <span className="tracking-wide text-sm">{item.name}</span>
-                      </a>
+                      </Link>
                   ))}
               </nav>
             </div>
