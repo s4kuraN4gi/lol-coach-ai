@@ -27,10 +27,18 @@ export default function DashboardPage() {
     const {activeSummoner, loading:summonerLoading} = useSummoner();
     const [histories, setHistories] = useState<HistoryItem[]>([])
     const [selectedHistory, setSelectedHistory] = useState<HistoryItem | null>(null)
-    const [rankData, setRankData] = useState<LeagueEntryDTO | null>(null);
+    const [allRanks, setAllRanks] = useState<LeagueEntryDTO[]>([]);
+    const [selectedQueue, setSelectedQueue] = useState<"SOLO" | "FLEX">("SOLO");
     const [isFetching, setIsFetching] = useState(false);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     
+    // 選択中のキューに応じたランクデータを算出
+    const rankData = allRanks.find(r => 
+        selectedQueue === "SOLO" 
+            ? r.queueType === "RANKED_SOLO_5x5" 
+            : r.queueType === "RANKED_FLEX_SR"
+    ) || null;
+
     const router = useRouter();
     const {user, loading: authLoading} = useAuth();
 
@@ -47,10 +55,7 @@ export default function DashboardPage() {
             if (activeSummoner.summoner_id) {
                try {
                    const ranks = await fetchRank(activeSummoner.summoner_id);
-                   // SOLO/DUOのランクを優先表示、なければFLEX
-                   const solo = ranks.find(r => r.queueType === "RANKED_SOLO_5x5");
-                   const flex = ranks.find(r => r.queueType === "RANKED_FLEX_SR");
-                   setRankData(solo || flex || null);
+                   setAllRanks(ranks);
                } catch (e) {
                    console.error("Rank fetch error", e);
                }
@@ -226,6 +231,8 @@ export default function DashboardPage() {
                 lp={rankData?.leaguePoints}
                 wins={rankData?.wins}
                 losses={rankData?.losses}
+                currentQueue={selectedQueue}
+                onQueueChange={setSelectedQueue}
             />
 
             {/* ランク推移グラフ */}
