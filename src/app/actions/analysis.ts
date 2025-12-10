@@ -29,6 +29,23 @@ export async function getAnalysisStatus(): Promise<AnalysisStatus | null> {
 
   if (!data) return null;
 
+  // Self-Healing for Legacy Premium Users (Schema Update前にUpgradeしたユーザー対応)
+  if (data.is_premium && !data.subscription_end_date) {
+      const now = new Date();
+      const nextMonth = new Date(now);
+      nextMonth.setMonth(nextMonth.getMonth() + 1);
+      
+      // Update DB to have valid subscription data
+      await supabase.from("profiles").update({ 
+          subscription_end_date: nextMonth.toISOString(),
+          auto_renew: true 
+      }).eq("id", user.id);
+
+      // Update local data object
+      data.subscription_end_date = nextMonth.toISOString();
+      data.auto_renew = true;
+  }
+
   // Lazy Expiry Check (有効期限切れチェック)
   if (data.is_premium && data.subscription_end_date) {
       const now = new Date();

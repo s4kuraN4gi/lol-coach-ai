@@ -343,9 +343,9 @@ export default function ReplayPage() {
                     <button
                         onClick={handleDowngrade}
                         disabled={isPending}
-                        className="text-xs text-indigo-300 hover:text-white underline decoration-indigo-300/50 hover:decoration-white transition"
+                        className="w-full mt-2 bg-red-500/10 text-red-400 border border-red-500/30 text-xs font-bold py-2 rounded hover:bg-red-500/20 transition flex justify-center items-center gap-2"
                     >
-                        Cancel Auto-Renew
+                        <span>✖</span> Cancel Auto-Renew
                     </button>
                   ) : (
                       <p className="text-xs text-amber-300 font-bold">
