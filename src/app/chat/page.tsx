@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import DashboardLayout from "../Components/layout/DashboardLayout";
+import LoadingAnimation from "../Components/LoadingAnimation";
 import { useSummoner } from "../Providers/SummonerProvider";
 import { useRouter } from "next/navigation";
 
@@ -42,6 +43,16 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const router = useRouter();
+
+  if (loading) {
+     return (
+        <DashboardLayout>
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <LoadingAnimation />
+            </div>
+        </DashboardLayout>
+     )
+  }
 
 
   // Layout側でリダイレクト制御されているため、ここでは削除

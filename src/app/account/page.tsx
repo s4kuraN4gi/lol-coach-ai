@@ -2,6 +2,7 @@
 
 import React, { useState, useTransition, useEffect, useCallback } from "react";
 import DashboardLayout from "../Components/layout/DashboardLayout";
+import LoadingAnimation from "../Components/LoadingAnimation";
 import { useSummoner } from "../Providers/SummonerProvider";
 import { 
     addSummoner, 
@@ -17,13 +18,25 @@ export default function AccountPage() {
   const { activeSummoner, refreshSummoner } = useSummoner();
   const [myAccounts, setMyAccounts] = useState<SummonerAccount[]>([]);
   const [isPending, startTransition] = useTransition();
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   // アカウント一覧の取得
   const fetchAccounts = useCallback(async () => {
       const data = await getSummoners();
       setMyAccounts(data);
+      setLoading(false);
   }, []);
+
+  if (loading) {
+     return (
+        <DashboardLayout>
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <LoadingAnimation />
+            </div>
+        </DashboardLayout>
+     )
+  }
 
   useEffect(() => {
       fetchAccounts();

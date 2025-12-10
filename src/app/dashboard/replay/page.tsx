@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useTransition, ChangeEvent } from "react";
 import DashboardLayout from "../../Components/layout/DashboardLayout";
+import LoadingAnimation from "../../Components/LoadingAnimation";
 import {
   getAnalysisStatus,
   analyzeVideo,
@@ -109,7 +110,9 @@ export default function ReplayPage() {
   if (loadingInit)
     return (
       <DashboardLayout>
-        <div className="p-8 text-center text-slate-400">Loading Analysis...</div>
+        <div className="flex items-center justify-center min-h-[60vh]">
+            <LoadingAnimation />
+        </div>
       </DashboardLayout>
     );
 
