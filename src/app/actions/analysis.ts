@@ -4,12 +4,14 @@ import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 
 
-export type AnalysisStatus = {
+
   is_premium: boolean;
   analysis_credits: number;
   subscription_tier: string;
   daily_analysis_count: number;
   last_analysis_date: string;
+  subscription_end_date?: string | null;
+  auto_renew?: boolean;
 };
 
 // ユーザーのクレジット情報などを取得
@@ -22,11 +24,79 @@ export async function getAnalysisStatus(): Promise<AnalysisStatus | null> {
 
   const { data } = await supabase
     .from("profiles")
-    .select("is_premium, analysis_credits, subscription_tier, daily_analysis_count, last_analysis_date")
+    .select("is_premium, analysis_credits, subscription_tier, daily_analysis_count, last_analysis_date, subscription_end_date, auto_renew")
     .eq("id", user.id)
     .single();
 
+  if (!data) return null;
+
+  // Lazy Expiry Check (有効期限切れチェック)
+  if (data.is_premium && data.subscription_end_date) {
+      const now = new Date();
+      const end = new Date(data.subscription_end_date);
+      if (end < now) {
+          // 有効期限切れ: ステータスを更新してリターン
+          await supabase.from("profiles").update({ is_premium: false, auto_renew: false }).eq("id", user.id);
+          data.is_premium = false;
+          data.auto_renew = false;
+      }
+  }
+
   return data as AnalysisStatus;
+}
+
+// ... (analyzeVideo and analyzeMatch remain unchanged) ...
+
+// プレミアムへアップグレード（モック）
+export async function upgradeToPremium() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const now = new Date();
+  const nextMonth = new Date(now);
+  nextMonth.setMonth(nextMonth.getMonth() + 1); // 1ヶ月後
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      is_premium: true,
+      subscription_tier: "premium",
+      analysis_credits: 999,
+      subscription_end_date: nextMonth.toISOString(),
+      auto_renew: true,
+    })
+    .eq("id", user.id);
+
+  if (error) return { error: "Failed to upgrade" };
+
+  revalidatePath("/dashboard/replay");
+  return { success: true };
+}
+
+// プレミアムプランの自動更新停止（解約予約）
+export async function downgradeToFree() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  // 即時解約ではなく、自動更新をOFFにするだけ
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      auto_renew: false,
+      // is_premium は変更しない（有効期限まではPremium）
+    })
+    .eq("id", user.id);
+
+  if (error) return { error: "Failed to cancel subscription" };
+
+  revalidatePath("/dashboard/replay");
+  return { success: true };
 }
 
 // 動画解析を実行 (Gemini Vision)
@@ -343,25 +413,4 @@ KDA: ${kda}
   return { success: true, advice: resultAdvice };
 }
 
-// プレミアムへアップグレード（モック）
-export async function upgradeToPremium() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
 
-  const { error } = await supabase
-    .from("profiles")
-    .update({
-      is_premium: true,
-      subscription_tier: "premium",
-      analysis_credits: 999,
-    })
-    .eq("id", user.id);
-
-  if (error) return { error: "Failed to upgrade" };
-
-  revalidatePath("/dashboard/replay");
-  return { success: true };
-}

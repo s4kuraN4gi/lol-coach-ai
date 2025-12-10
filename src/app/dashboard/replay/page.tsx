@@ -6,6 +6,7 @@ import {
   getAnalysisStatus,
   analyzeVideo,
   upgradeToPremium,
+  downgradeToFree,
   type AnalysisStatus,
 } from "../../actions/analysis";
 
@@ -314,8 +315,28 @@ export default function ReplayPage() {
                   UPGRADE NOW
                 </button>
               ) : (
-                <div className="text-center font-bold bg-white/20 py-2 rounded border border-white/30 backdrop-blur">
-                  ACTIVE MEMBER
+                <div className="text-center">
+                  <div className="font-bold bg-white/20 py-2 rounded border border-white/30 backdrop-blur mb-2">
+                    ACTIVE MEMBER 💎
+                  </div>
+                  {status?.subscription_end_date && (
+                      <p className="text-xs text-indigo-200 mb-2">
+                          Active until: {new Date(status.subscription_end_date).toLocaleDateString()}
+                      </p>
+                  )}
+                  {status?.auto_renew !== false ? (
+                    <button
+                        onClick={handleDowngrade}
+                        disabled={isPending}
+                        className="text-xs text-indigo-300 hover:text-white underline decoration-indigo-300/50 hover:decoration-white transition"
+                    >
+                        Cancel Auto-Renew
+                    </button>
+                  ) : (
+                      <p className="text-xs text-amber-300 font-bold">
+                          Auto-Renew OFF
+                      </p>
+                  )}
                 </div>
               )}
             </div>
