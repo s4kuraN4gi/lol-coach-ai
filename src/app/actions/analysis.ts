@@ -3,8 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 
-
-
+export type AnalysisStatus = {
   is_premium: boolean;
   analysis_credits: number;
   subscription_tier: string;
