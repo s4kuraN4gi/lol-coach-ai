@@ -10,6 +10,7 @@ export default function SignupPage() {
     const [password, setPassword] = useState("");
     const [error, setError] = useState("")
     const [passwordConfirm, setPasswordConfirm] = useState("");
+    const [showSuccess, setShowSuccess] = useState(false);
     const router = useRouter();
     const supabase = createClient();
 
@@ -28,6 +29,9 @@ export default function SignupPage() {
         const { error: signUpError } = await supabase.auth.signUp({
             email: LoginID,
             password: password,
+            options: {
+                emailRedirectTo: `${window.location.origin}/auth/callback`,
+            },
         });
         
         if (signUpError) {
@@ -35,9 +39,13 @@ export default function SignupPage() {
             return;
         }
 
-        // ログイン画面へ遷移
-        router.push("/login"); // 注：Supabaseの設定によってはメール確認が必要な場合があります
-            
+        // 成功モーダルを表示
+        setShowSuccess(true);
+    }
+
+    const handleCloseModal = () => {
+        setShowSuccess(false);
+        router.push("/login"); // モーダルを閉じたらログイン画面へ
     }
 
   return (
@@ -107,6 +115,29 @@ export default function SignupPage() {
             </p>
         </div>
     </main>
+
+    {/* Success Modal */}
+    {showSuccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fadeIn">
+            <div className="bg-slate-900 border border-slate-700 p-8 rounded-2xl max-w-sm w-full mx-4 shadow-2xl relative animate-scaleIn">
+                <div className="text-center">
+                    <div className="text-5xl mb-4">📧</div>
+                    <h3 className="text-2xl font-bold text-white mb-2">Check Your Email</h3>
+                    <p className="text-slate-400 mb-6 leading-relaxed">
+                        確認メールを送信しました。<br/>
+                        メール内のリンクをクリックして<br/>
+                        登録を完了してください。
+                    </p>
+                    <button
+                        onClick={handleCloseModal}
+                        className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-500 transition"
+                    >
+                        ログイン画面へ
+                    </button>
+                </div>
+            </div>
+        </div>
+    )}
     </>
   )
 }
