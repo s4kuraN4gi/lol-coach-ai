@@ -151,7 +151,7 @@ export default function ReplayPage() {
                 {/* File Input */}
                 <div>
                     <label className="block text-sm font-bold text-slate-400 mb-2">Video File (MP4/MOV, Max 4.5MB)</label>
-                    <div className={`border-2 border-dashed rounded-xl p-8 text-center transition-all ${selectedFile ? 'border-blue-500 bg-blue-500/10' : 'border-slate-700 bg-slate-900/50 hover:border-slate-500'}`}>
+                    <div className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all ${selectedFile ? 'border-blue-500 bg-blue-500/10' : 'border-slate-700 bg-slate-900/50 hover:border-slate-500'}`}>
                         <input
                             type="file"
                             accept="video/mp4,video/quicktime"
