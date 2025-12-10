@@ -357,11 +357,11 @@ export async function registerVerificationTimeout() {
     const challenge = profile.verification_challenge as any;
     if (!challenge) return { success: true }; // Already cleared
 
-    // 期限切れか確認 (クライアントとの時差考慮し、少し甘くするか、サーバー時刻絶対か。サーバー時刻絶対でいく)
-    // ただし、この関数が呼ばれるのはクライアントが「切れた」と判断した後なので、多少の誤差は許容する。
-    // まだサーバー側で切れていなくても、ユーザーが「諦めた/切れた」と申告してきたとして処理して良いが、
-    // 悪用防止のため expiresAt をチェックはする。
-    // ...いや、強制的に失敗させたいならさせてもいいか。
+    // 期限切れか確認 (クライアント・サーバー間の時計ズレを考慮し、1分の猶予を持たせる)
+    // クライアントが「切れた」と言ってきた場合、サーバー時刻がまだでも1分以内なら許容する
+    if (Date.now() < challenge.expiresAt - 60 * 1000) {
+        return { error: "まだ期限切れではありません" }; 
+    }
     
     // --- FAILURE HANDLING ---
     const newCount = (profile.verification_failed_count || 0) + 1;

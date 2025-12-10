@@ -106,9 +106,15 @@ export default function AccountPage() {
 
   const handleTimeout = useCallback(() => {
       startTransition(async () => {
-          const res = await registerVerificationTimeout();
-          if(res.message) alert(res.message);
-          handleCancel();
+          try {
+            const res = await registerVerificationTimeout();
+            if(res.message) alert(res.message);
+            else if(res.error) alert("エラー: " + res.error);
+          } catch(e) {
+            console.error(e);
+          } finally {
+            handleCancel();
+          }
       })
   }, []);
 
