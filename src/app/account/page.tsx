@@ -85,6 +85,12 @@ export default function AccountPage() {
           const res = await verifyAndAddSummoner(candidate);
           if(res.error) {
               alert(res.error);
+              // Fatal errors -> Close verification screen
+              if (res.error.includes("有効期限") || 
+                  res.error.includes("無効です") || 
+                  res.error.includes("ロックしました")) {
+                  handleCancel();
+              }
               return;
           }
           alert("認証成功！アカウントを追加しました。");
