@@ -23,7 +23,11 @@ export default function LoadingAnimation() {
     }, []);
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-[50vh] w-full">
+        <div className="flex flex-col items-center justify-center min-h-[60vh] w-full">
+            <h2 className="text-4xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300 mb-12 animate-pulse">
+                LOL COACH AI
+            </h2>
+            
             <div className="relative w-24 h-24 mb-8">
                 {/* Outer Ring */}
                 <div className="absolute inset-0 border-4 border-slate-800 rounded-full"></div>
