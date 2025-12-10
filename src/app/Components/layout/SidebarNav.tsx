@@ -1,12 +1,13 @@
-import { supabase } from "@/utils/supabaseClient";
+"use client";
+
 import { useRouter } from "next/navigation";
+import { signOut } from "../../actions/auth";
 
 export default function SidebarNav() {
     const router = useRouter();
 
     const handleLogout = async () => {
-      await supabase.auth.signOut();
-    router.push("/login");
+      await signOut();
     }
 
     const navItems = [
