@@ -29,6 +29,7 @@ export default function DashboardPage() {
     const [selectedHistory, setSelectedHistory] = useState<HistoryItem | null>(null)
     const [allRanks, setAllRanks] = useState<LeagueEntryDTO[]>([]);
     const [selectedQueue, setSelectedQueue] = useState<"SOLO" | "FLEX">("SOLO");
+    const [historyFilter, setHistoryFilter] = useState<"ALL" | "SOLO" | "FLEX" | "NORMAL" | "ARAM">("ALL");
     const [isFetching, setIsFetching] = useState(false);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     
@@ -66,7 +67,18 @@ export default function DashboardPage() {
         const fetchHistoryJob = async () => {
             if (activeSummoner.puuid) {
                 try {
-                    const matchIdsRes = await fetchMatchIds(activeSummoner.puuid, 5); // 直近5件
+                    let queueId: number | undefined;
+                    let type: string | undefined;
+
+                    switch (historyFilter) {
+                        case "SOLO": queueId = 420; break;
+                        case "FLEX": queueId = 440; break;
+                        case "ARAM": queueId = 450; break;
+                        case "NORMAL": type = "normal"; break;
+                        default: break; // ALL
+                    }
+
+                    const matchIdsRes = await fetchMatchIds(activeSummoner.puuid, 5, queueId, type); // 直近5件
                     
                     if(!matchIdsRes.success || !matchIdsRes.data) {
                         if (matchIdsRes.error !== "No PUUID") {
@@ -75,39 +87,42 @@ export default function DashboardPage() {
                     } else {
                         const matchIds = matchIdsRes.data;
                         if(matchIds.length === 0) {
-                            setErrorMsg("Match IDs returned empty. Check if account matches region (Asia).");
+                            setErrorMsg("履歴が見つかりませんでした (Region: Asia/JP)");
+                            setHistories([]); // 検索結果0件としてクリア
+                        } else {
+                            // Match Detail取得
+                            const matchPromises = matchIds.map(id => fetchMatchDetail(id));
+                            const matchesRes = await Promise.all(matchPromises);
+                            
+                            const formattedHistories: HistoryItem[] = matchesRes
+                                .filter(res => res.success && res.data)
+                                .map(res => res.data) // Extract data
+                                .map((m: any) => {
+                                    // 自分のPUUIDに一致する参加者を探す
+                                    const participant = m.info.participants.find((p: any) => p.puuid === activeSummoner.puuid);
+                                    if (!participant) return null;
+
+                                    const date = new Date(m.info.gameCreation).toLocaleDateString();
+                                    
+                                    return {
+                                        id: m.metadata.matchId,
+                                        date: date,
+                                        selectedSummoner: participant.summonerName,
+                                        champion: participant.championName,
+                                        role: participant.teamPosition || "ARAM", // アリーナ等は空の場合も
+                                        result: participant.win ? "Win" : "Loss",
+                                        kda: `${participant.kills}/${participant.deaths}/${participant.assists}`,
+                                        aiAdvice: "" // まだ解析していないので空
+                                    }
+                                })
+                                .filter((item): item is HistoryItem => item !== null);
+
+                            setHistories(formattedHistories);
+                            // フィルタリング時はローカルストレージを上書きしない方が良いかもしれないが、
+                            // UX的には「最後に見たリスト」を保存したいので上書きでOK。
+                            // ただしキーを分ける実装まではしない（簡易化のため）
+                            localStorage.setItem(`matches_${activeSummoner.summoner_name}`, JSON.stringify(formattedHistories));
                         }
-
-                        // Match Detail取得
-                        // ここはHistory一括表示で良いのでPromise.allのままにする（1つずつ出るとガタつくため）
-                        const matchPromises = matchIds.map(id => fetchMatchDetail(id));
-                        const matchesRes = await Promise.all(matchPromises);
-                        
-                        const formattedHistories: HistoryItem[] = matchesRes
-                            .filter(res => res.success && res.data)
-                            .map(res => res.data) // Extract data
-                            .map((m: any) => {
-                                // 自分のPUUIDに一致する参加者を探す
-                                const participant = m.info.participants.find((p: any) => p.puuid === activeSummoner.puuid);
-                                if (!participant) return null;
-
-                                const date = new Date(m.info.gameCreation).toLocaleDateString();
-                                
-                                return {
-                                    id: m.metadata.matchId,
-                                    date: date,
-                                    selectedSummoner: participant.summonerName,
-                                    champion: participant.championName,
-                                    role: participant.teamPosition || "ARAM", // アリーナ等は空の場合も
-                                    result: participant.win ? "Win" : "Loss",
-                                    kda: `${participant.kills}/${participant.deaths}/${participant.assists}`,
-                                    aiAdvice: "" // まだ解析していないので空
-                                }
-                            })
-                            .filter((item): item is HistoryItem => item !== null);
-
-                        setHistories(formattedHistories);
-                        localStorage.setItem(`matches_${activeSummoner.summoner_name}`, JSON.stringify(formattedHistories));
                     }
                 } catch (e) {
                      console.error("Match fetch error", e);
@@ -122,7 +137,7 @@ export default function DashboardPage() {
         await Promise.all([fetchRankJob(), fetchHistoryJob()]);
         
         setIsFetching(false);
-    }, [activeSummoner]);
+    }, [activeSummoner, historyFilter]);
 
     useEffect(() => {
         fetchData();
@@ -241,10 +256,28 @@ export default function DashboardPage() {
         {/* 履歴 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
                 <div className="border-r border-slate-800 pr-6 overflow-y-auto h-[75vh] custom-scrollbar">
-                    <h3 className="text-xl font-bold text-slate-200 mb-6 flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+                    <h3 className="text-xl font-bold text-slate-200 flex items-center gap-2 mb-2 sm:mb-0">
                         <span className="w-1.5 h-6 bg-yellow-500 rounded-full"></span> 
                         RECENT MATCHES
                     </h3>
+                    
+                    <div className="flex bg-slate-900/80 rounded-lg p-1 border border-slate-700 overflow-x-auto max-w-full">
+                        {(["ALL", "SOLO", "FLEX", "NORMAL", "ARAM"] as const).map((mode) => (
+                             <button 
+                                key={mode}
+                                onClick={() => setHistoryFilter(mode)}
+                                className={`px-3 py-1 text-xs font-bold rounded-md whitespace-nowrap transition ${
+                                    historyFilter === mode 
+                                    ? "bg-blue-600 text-white shadow-md" 
+                                    : "text-slate-400 hover:text-slate-200"
+                                }`}
+                            >
+                                {mode}
+                            </button>
+                        ))}
+                    </div>
+                </div>
                     {errorMsg && (
                         <div className="bg-red-900/20 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg mb-4">
                             <strong className="font-bold">Error: </strong>
