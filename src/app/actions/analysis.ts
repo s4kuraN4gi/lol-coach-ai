@@ -98,7 +98,7 @@ export async function analyzeVideo(formData: FormData, userApiKey?: string) {
     // Dynamic import to avoid build-time resolution issues
     const { GoogleGenerativeAI } = await import("@google/generative-ai");
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
     // 1. 動画ファイルがある場合の処理
     if (videoFile && videoFile.size > 0) {
@@ -231,7 +231,7 @@ URLが含まれている場合は、そのURLの内容（YouTubeであれば一�
   return {
     success: true,
     advice: resultAdvice,
-    remainingCredits: status.is_premium ? 999 : status.analysis_credits - 1, // Note: This might be confusing for new hybrid system
+    remainingCredits: status.is_premium ? 999 : status.analysis_credits - 1,
   };
 }
 
@@ -277,8 +277,8 @@ export async function analyzeMatch(
     try {
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
       const genAI = new GoogleGenerativeAI(apiKey);
-      // 'gemini-1.5-flash-latest' hit rate limits (429). Switching to stable 'gemini-1.5-flash-latest' (v1.5)
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+      // 'gemini-flash-latest' (v1.5)
+      const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
       const prompt = `
 あなたはLeague of Legendsのプロコーチです。
