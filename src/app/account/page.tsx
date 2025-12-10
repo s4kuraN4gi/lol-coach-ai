@@ -301,3 +301,37 @@ export default function AccountPage() {
     </DashboardLayout>
   );
 }
+
+function Timer({ expiresAt }: { expiresAt: number }) {
+    const [timeLeft, setTimeLeft] = useState(0);
+
+    useEffect(() => {
+        if(!expiresAt) return;
+        
+        const update = () => {
+            const val = Math.max(0, expiresAt - Date.now());
+            setTimeLeft(val);
+        };
+        update();
+        const timer = setInterval(update, 1000);
+        return () => clearInterval(timer);
+    }, [expiresAt]);
+
+    const format = (ms: number) => {
+        const totalSec = Math.floor(ms / 1000);
+        const m = Math.floor(totalSec / 60);
+        const s = totalSec % 60;
+        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    };
+
+    return (
+        <div className="bg-slate-900/50 rounded p-3 inline-block">
+            <p className="text-xs text-slate-500 mb-1">TIME LIMIT</p>
+            <p className={`text-xl font-mono font-bold tracking-widest ${timeLeft < 60000 ? 'text-red-500 animate-pulse' : 'text-slate-200'}`}>
+                {format(timeLeft)}
+            </p>
+            <p className="text-[10px] text-slate-600">Please verify within 10 mins.</p>
+        </div>
+    );
+}
+
