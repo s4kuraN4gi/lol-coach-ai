@@ -23,8 +23,7 @@ export default function AccountPage() {
   
   // Verification States
   const [step, setStep] = useState<1 | 2>(1);
-  const [candidate, setCandidate] = useState<any>(null); // To store lookup result
-  const [verificationCode, setVerificationCode] = useState("");
+  const [candidate, setCandidate] = useState<any>(null);
 
   const router = useRouter();
 
@@ -63,6 +62,9 @@ export default function AccountPage() {
     }
 
     startTransition(async () => {
+        // Clear previous state
+        setCandidate(null);
+        
         const res = await lookupSummoner(inputName.trim());
         if(res.error) {
             alert("エラー: " + res.error);
@@ -70,18 +72,17 @@ export default function AccountPage() {
         }
         // Success
         setCandidate(res.data);
-        const code = `LCA-${Math.floor(1000 + Math.random() * 9000)}`;
-        setVerificationCode(code);
         setStep(2);
     });
   };
 
-  // Step 2: Verify
+  // Step 2: Verify Icon
   const handleVerify = () => {
-      if(!candidate || !verificationCode) return;
+      if(!candidate) return;
 
       startTransition(async () => {
-          const res = await verifyAndAddSummoner(candidate, verificationCode);
+          // No code needed, just verify the icon change
+          const res = await verifyAndAddSummoner(candidate);
           if(res.error) {
               alert(res.error);
               return;
@@ -90,7 +91,6 @@ export default function AccountPage() {
           // Reset
           setInputName("");
           setCandidate(null);
-          setVerificationCode("");
           setStep(1);
           
           await Promise.all([refreshSummoner(), fetchAccounts()]);
@@ -99,7 +99,6 @@ export default function AccountPage() {
 
   const handleCancel = () => {
       setCandidate(null);
-      setVerificationCode("");
       setStep(1);
   }
 
@@ -169,48 +168,44 @@ export default function AccountPage() {
               </div>
           ) : (
               <div className="space-y-6 animate-fade-in-up">
-                  {/* Found Profile */}
-                  <div className="flex items-center gap-4 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
-                      <div className="relative">
-                          <img 
-                              src={`https://ddragon.leagueoflegends.com/cdn/14.12.1/img/profileicon/${candidate?.profileIconId}.png`} 
-                              alt="icon"
-                              className="w-16 h-16 rounded-full border-2 border-slate-600"
-                          />
-                          <span className="absolute -bottom-1 -right-1 bg-slate-900 text-xs px-1.5 py-0.5 rounded border border-slate-700 font-mono">
-                              Lv.{candidate?.summonerLevel}
-                          </span>
-                      </div>
-                      <div>
-                          <p className="text-xl font-bold text-white">{candidate?.gameName} <span className="text-slate-500 text-sm">#{candidate?.tagLine}</span></p>
-                          <p className="text-xs text-green-400 font-mono">● Found</p>
-                      </div>
-                  </div>
-
                   {/* Instructions */}
-                  <div className="bg-blue-900/20 border border-blue-500/30 p-5 rounded-lg space-y-4">
-                      <div className="flex items-start gap-3">
-                          <span className="bg-blue-500 text-white text-xs font-bold px-2 py-0.5 rounded-full mt-0.5">STEP 1</span>
-                          <p className="text-sm text-slate-300">
-                              LoLクライアントを開き、<span className="text-white font-bold">「設定 (歯車) ＞ プロフィール ＞ 認証コード」</span>を開いてください。
-                          </p>
-                      </div>
-                      <div className="flex items-start gap-3">
-                          <span className="bg-blue-500 text-white text-xs font-bold px-2 py-0.5 rounded-full mt-0.5">STEP 2</span>
-                          <div className="flex-1">
-                              <p className="text-sm text-slate-300 mb-2">
-                                  以下のコードを入力して保存してください。
-                              </p>
-                              <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded p-3 relative group cursor-pointer"
-                                   onClick={() => {
-                                       navigator.clipboard.writeText(verificationCode);
-                                       alert("Copied!");
-                                   }}
-                              >
-                                  <code className="text-xl font-mono text-cyan-400 font-bold tracking-widest">{verificationCode}</code>
-                                  <span className="text-xs text-slate-500 ml-auto group-hover:text-white transition">📋 COPY</span>
-                              </div>
+                  <div className="bg-blue-900/20 border border-blue-500/30 p-5 rounded-lg text-center space-y-4">
+                      <h3 className="text-slate-200 font-bold mb-2">本人確認 (アイコン認証)</h3>
+                      <p className="text-sm text-slate-400">
+                          LoLクライアントで、プロフィールアイコンを<strong className="text-white">右側の指定アイコン</strong>に変更してください。
+                      </p>
+                      
+                      <div className="flex items-center justify-center gap-8 py-4">
+                          {/* Current */}
+                          <div className="relative opacity-50 grayscale">
+                              <img 
+                                  src={`https://ddragon.leagueoflegends.com/cdn/14.12.1/img/profileicon/${candidate?.profileIconId}.png`} 
+                                  alt="current"
+                                  className="w-20 h-20 rounded-full border-2 border-slate-600"
+                              />
+                              <p className="text-xs text-slate-500 mt-2 font-mono">Current</p>
                           </div>
+
+                          <div className="text-2xl text-blue-500 animate-pulse">➡️</div>
+
+                          {/* Target */}
+                          <div className="relative">
+                              <img 
+                                  src={`https://ddragon.leagueoflegends.com/cdn/14.12.1/img/profileicon/${candidate?.targetIconId}.png`} 
+                                  alt="target"
+                                  className="w-24 h-24 rounded-full border-4 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.5)]"
+                              />
+                              <div className="absolute -top-2 -right-2 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow border border-blue-400">
+                                  TARGET
+                              </div>
+                              <p className="text-xs text-blue-400 mt-2 font-mono font-bold">Change to this!</p>
+                          </div>
+                      </div>
+
+                      <div className="bg-slate-900/50 rounded p-3 inline-block">
+                           <p className="text-xs text-slate-500 mb-1">TIME LIMIT</p>
+                           <p className="text-xl font-mono text-red-400 font-bold tracking-widest">10:00</p>
+                           <p className="text-[10px] text-slate-600">Please verify within 10 mins.</p>
                       </div>
                   </div>
 
@@ -231,11 +226,11 @@ export default function AccountPage() {
                           {isPending ? (
                               <>
                                   <div className="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full" />
-                                  VERIFYING...
+                                  CHECKING...
                               </>
                           ) : (
                               <>
-                                  <span>✅</span> VERIFY & LINK
+                                  <span>✅</span> I CHANGED IT!
                               </>
                           )}
                         </button>
@@ -243,6 +238,7 @@ export default function AccountPage() {
               </div>
           )}
         </div>
+
 
 
         {/* 一覧 */}
