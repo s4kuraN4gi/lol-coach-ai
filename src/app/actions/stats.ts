@@ -68,6 +68,7 @@ export async function fetchDashboardStats(puuid: string, summonerId: string): Pr
         if (!idsRes.success || !idsRes.data) throw new Error("Failed to fetch match IDs");
 
         const matchIds = idsRes.data;
+        console.log(`[Stats] Found ${matchIds.length} matches for ${puuid}`);
 
         // 3. Batch Fetch Details to respect Rate Limits (20 req / 1 sec)
         // We split into chunks of 10 and wait a bit.

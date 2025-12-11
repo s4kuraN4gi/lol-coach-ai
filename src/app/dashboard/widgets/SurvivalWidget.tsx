@@ -1,7 +1,14 @@
 import { UniqueStats } from "@/app/actions/stats";
 
 export default function SurvivalWidget({ stats }: { stats: UniqueStats | null }) {
-    if (!stats) return null;
+    if (!stats) {
+         return (
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 h-full flex flex-col justify-center items-center text-center">
+                <div className="text-sm font-bold text-slate-400 mb-1">SURVIVAL INSTINCT</div>
+                <div className="text-xs text-slate-600">Calculating death rate...</div>
+            </div>
+        );
+    }
 
     const rate = stats.survival.soloDeathRate;
 

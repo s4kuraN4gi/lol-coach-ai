@@ -62,7 +62,9 @@ export default function DashboardPage() {
         }
 
         try {
+            console.log("Fetching stats for", puuid);
             const data = await fetchDashboardStats(puuid, summoner_id);
+            console.log("Fetched Stats Result:", JSON.stringify(data, null, 2));
             setStats(data);
         } catch (error) {
 
