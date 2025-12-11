@@ -61,6 +61,22 @@ export async function getAnalysisStatus(): Promise<AnalysisStatus | null> {
   return data as AnalysisStatus;
 }
 
+// 既存の解析結果を取得
+export async function getMatchAnalysis(matchId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data } = await supabase
+    .from("match_analyses")
+    .select("analysis_text")
+    .eq("match_id", matchId)
+    .eq("user_id", user.id)
+    .single();
+
+  return data ? data.analysis_text : null;
+}
+
 // ... (analyzeVideo and analyzeMatch remain unchanged) ...
 
 // プレミアムへアップグレード（モック）
