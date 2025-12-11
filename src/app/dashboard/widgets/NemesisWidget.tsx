@@ -6,7 +6,7 @@ export default function NemesisWidget({ stats }: { stats: UniqueStats | null }) 
     if (!stats) return <DashboardCard>Collecting match data...</DashboardCard>;
 
     return (
-        <DashboardCard className="relative overflow-hidden group hover:border-red-500/30 transition-all duration-500">
+        <DashboardCard className="relative  group hover:border-red-500/30 transition-all duration-500">
              <div className="flex items-center mb-3">
                 <div className="p-2 bg-red-500/10 rounded-lg mr-3 shadow-[0_0_15px_rgba(239,68,68,0.1)]">
                     <span className="text-xl">😈</span>
@@ -33,7 +33,7 @@ export default function NemesisWidget({ stats }: { stats: UniqueStats | null }) 
                     <div className="space-y-2">
                         {stats.nemesis.map(c => (
                             <div key={c.name} className="flex items-center gap-2 bg-slate-800/30 p-1.5 rounded border border-red-500/10 hover:bg-red-900/10 transition-colors">
-                                <div className="w-8 h-8 rounded-md overflow-hidden ring-1 ring-red-500/30">
+                                <div className="w-8 h-8 rounded-md  ring-1 ring-red-500/30">
                                      <img src={`https://ddragon.leagueoflegends.com/cdn/14.23.1/img/champion/${c.name}.png`} alt={c.name} className="w-full h-full object-cover" />
                                 </div>
                                 <div className="min-w-0">
@@ -54,7 +54,7 @@ export default function NemesisWidget({ stats }: { stats: UniqueStats | null }) 
                      <div className="space-y-2">
                         {stats.prey.map(c => (
                             <div key={c.name} className="flex items-center gap-2 bg-slate-800/30 p-1.5 rounded border border-emerald-500/10 hover:bg-emerald-900/10 transition-colors">
-                                <div className="w-8 h-8 rounded-md overflow-hidden ring-1 ring-emerald-500/30">
+                                <div className="w-8 h-8 rounded-md  ring-1 ring-emerald-500/30">
                                      <img src={`https://ddragon.leagueoflegends.com/cdn/14.23.1/img/champion/${c.name}.png`} alt={c.name} className="w-full h-full object-cover" />
                                 </div>
                                 <div className="min-w-0">

@@ -27,7 +27,7 @@ export default function WinConditionWidget({ stats }: { stats: any }) {
     };
 
     return (
-        <DashboardCard className="relative overflow-hidden group hover:border-yellow-500/30 transition-all duration-500">
+        <DashboardCard className="relative  group hover:border-yellow-500/30 transition-all duration-500">
              <div className="flex items-center mb-3">
                 <div className="p-2 bg-yellow-500/10 rounded-lg mr-3 shadow-[0_0_15px_rgba(234,179,8,0.1)]">
                     <span className="text-xl">🏆</span>

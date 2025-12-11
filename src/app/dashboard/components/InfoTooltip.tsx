@@ -25,7 +25,7 @@ export default function InfoTooltip({ content }: InfoTooltipProps) {
 
             {/* Tooltip Popup */}
             {isVisible && (
-                <div className="absolute z-50 w-64 p-3 bg-slate-800 border border-slate-700 rounded-lg shadow-xl text-left top-6 -left-28 md:left-0">
+                <div className="absolute z-[100] w-64 p-3 bg-slate-800 border border-slate-700 rounded-lg shadow-xl text-left bottom-full mb-2 left-1/2 -translate-x-1/2">
                     <div className="space-y-3">
                         <div>
                             <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">What (定義)</p>

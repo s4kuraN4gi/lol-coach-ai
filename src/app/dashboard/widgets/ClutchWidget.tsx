@@ -20,7 +20,7 @@ export default function ClutchWidget({ stats }: { stats: UniqueStats | null }) {
     };
 
     return (
-        <DashboardCard className="relative overflow-hidden group hover:border-blue-500/30 transition-all duration-500">
+        <DashboardCard className="relative  group hover:border-blue-500/30 transition-all duration-500">
              <div className="flex items-center mb-3">
                 <div className="p-2 bg-blue-500/10 rounded-lg mr-3 shadow-[0_0_15px_rgba(59,130,246,0.1)]">
                     <span className="text-xl">⚖️</span>
@@ -45,7 +45,7 @@ export default function ClutchWidget({ stats }: { stats: UniqueStats | null }) {
                          <span className="flex items-center gap-2"><span className="text-sm">🤝</span> Close Games (&lt;5k Gold)</span>
                          <span className={getColor(clutch.closeWr)}>{clutch.closeWr}% WR ({clutch.closeGames})</span>
                      </div>
-                     <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                     <div className="h-2 bg-slate-800 rounded-full ">
                          <div className={`h-full rounded-full ${getBarColor(clutch.closeWr)}`} style={{ width: `${clutch.closeWr}%` }}></div>
                      </div>
                  </div>
@@ -56,7 +56,7 @@ export default function ClutchWidget({ stats }: { stats: UniqueStats | null }) {
                          <span className="flex items-center gap-2"><span className="text-sm">💥</span> Stomp Games (&gt;10k Gold)</span>
                          <span className={getColor(clutch.stompWr)}>{clutch.stompWr}% WR ({clutch.stompGames})</span>
                      </div>
-                     <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                     <div className="h-2 bg-slate-800 rounded-full ">
                          <div className={`h-full rounded-full ${getBarColor(clutch.stompWr)}`} style={{ width: `${clutch.stompWr}%` }}></div>
                      </div>
                  </div>
