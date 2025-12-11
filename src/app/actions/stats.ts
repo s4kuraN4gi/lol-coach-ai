@@ -48,7 +48,7 @@ export type DashboardStatsDTO = {
 // Rate limit safe fetcher
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-export async function fetchDashboardStats(puuid: string, summonerId: string): Promise<DashboardStatsDTO> {
+export async function fetchDashboardStats(puuid: string, summonerId?: string | null): Promise<DashboardStatsDTO> {
     const logs: string[] = [];
     const log = (msg: string) => { console.log(msg); logs.push(msg); };
 
@@ -64,8 +64,22 @@ export async function fetchDashboardStats(puuid: string, summonerId: string): Pr
     try {
         const supabase = await createClient();
 
+        // 0. Self-Heal: Recover SummonerID if missing
+        let validSummonerId = summonerId;
+        if (!validSummonerId) {
+             const { fetchSummonerByPuuid } = await import('./riot');
+             log(`[Stats] SummonerID missing. Recovering from Riot...`);
+             const summonerData = await fetchSummonerByPuuid(puuid);
+             if (summonerData) {
+                 validSummonerId = summonerData.id;
+                 log(`[Stats] Recovered SummonerID: ${validSummonerId}`);
+             } else {
+                 throw new Error("Failed to recover SummonerID from PUUID");
+             }
+        }
+
         // 1. Fetch Rank
-        const ranks = await fetchRank(summonerId);
+        const ranks = await fetchRank(validSummonerId);
 
         stats.ranks = ranks;
         log(`[Stats] Ranks fetched: ${ranks.length}`);

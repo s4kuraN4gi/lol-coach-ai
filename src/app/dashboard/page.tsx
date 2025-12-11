@@ -58,11 +58,11 @@ export default function DashboardPage() {
 
         const { puuid, summoner_id } = activeSummoner;
         
-        // Debugging incomplete summoner object
-        if (!summoner_id || !puuid) {
+        // Only checking PUUID now (Server will recover SummonerID)
+        if (!puuid) {
             console.warn("[Dashboard] Active Summoner Incomplete:", activeSummoner);
             setError("アカウント情報が不完全です（PUUID欠落）。アカウントを再連携してください。");
-            setDebugLogs(prev => [...prev, "[Client] Error: Missing PUUID or SummonerID"]);
+            setDebugLogs(prev => [...prev, "[Client] Error: Missing PUUID"]);
             setIsFetching(false);
             return;
         }
