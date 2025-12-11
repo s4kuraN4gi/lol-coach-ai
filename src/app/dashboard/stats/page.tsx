@@ -3,6 +3,16 @@ import { fetchMatchIds, fetchMatchDetail, fetchRank } from "@/app/actions/riot";
 import DashboardLayout from "@/app/Components/layout/DashboardLayout";
 import Link from "next/link";
 
+type HistoryItem = {
+    matchId: string;
+    champion: string;
+    win: boolean;
+    kda: string;
+    date: string;
+    mode: string;
+    duration: number;
+}
+
 export default async function StatsPage() {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -34,7 +44,7 @@ export default async function StatsPage() {
     // Fetch Matches (Server-Side)
     // Fetch count=10 for history page
     const matchIdsRes = await fetchMatchIds(profile.puuid, 10);
-    let history = [];
+    let history: HistoryItem[] = [];
     let stats = { wins: 0, losses: 0, kills: 0, deaths: 0, assists: 0 };
 
     if (matchIdsRes.success && matchIdsRes.data) {
