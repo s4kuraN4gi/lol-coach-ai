@@ -4,6 +4,8 @@ import { getActiveSummoner } from "@/app/actions/profile";
 import DashboardLayout from "@/app/Components/layout/DashboardLayout";
 import Link from "next/link";
 
+export const dynamic = 'force-dynamic';
+
 type HistoryItem = {
     matchId: string;
     champion: string;
@@ -46,7 +48,7 @@ export default async function StatsPage() {
         }
 
         // Fetch Matches
-        const matchIdsRes = await fetchMatchIds(activeAccount.puuid, 10);
+        const matchIdsRes = await fetchMatchIds(activeAccount.puuid, 5);
         
         let history: HistoryItem[] = [];
         let stats = { wins: 0, losses: 0, kills: 0, deaths: 0, assists: 0 };
