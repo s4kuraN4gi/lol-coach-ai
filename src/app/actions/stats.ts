@@ -64,8 +64,10 @@ export async function fetchDashboardStats(puuid: string, summonerId: string): Pr
         stats.ranks = ranks;
 
 
-        // 2. Fetch Matches (20 for analytics)
-        const idsRes = await fetchMatchIds(puuid, 20); // Fetch 20
+
+        // 2. Fetch Matches (10 for speed optimization)
+        // Fetches 10 matches to avoid Rate Limit throttling (allows 1 batch of 10)
+        const idsRes = await fetchMatchIds(puuid, 10); 
         if (!idsRes.success || !idsRes.data) throw new Error("Failed to fetch match IDs");
 
         const matchIds = idsRes.data;
@@ -89,9 +91,10 @@ export async function fetchDashboardStats(puuid: string, summonerId: string): Pr
         // 4. Fetch Missing from Riot
         const newMatches: any[] = [];
         if (missingIds.length > 0) {
-            const chunkSize = 5; // Chunk size 5 is safer for burst
+            const chunkSize = 10; // Max size for 1 second bucket (Safety buffer)
             
             for (let i = 0; i < missingIds.length; i += chunkSize) {
+
                 const chunk = missingIds.slice(i, i + chunkSize);
                 const promises = chunk.map(id => fetchMatchDetail(id));
                 const results = await Promise.all(promises);
