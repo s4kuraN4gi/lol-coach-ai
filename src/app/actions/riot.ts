@@ -97,7 +97,7 @@ export async function fetchRank(summonerId: string): Promise<LeagueEntryDTO[]> {
     try {
         const res = await fetch(url, {
             headers: { "X-Riot-Token": RIOT_API_KEY },
-            next: { revalidate: 600 } // Cache for 10 mins
+            cache: 'no-store'
         });
         
         if (!res.ok) {

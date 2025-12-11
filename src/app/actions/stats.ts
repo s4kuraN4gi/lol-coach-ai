@@ -126,8 +126,22 @@ export async function fetchDashboardStats(puuid: string, summonerId?: string | n
             if (cacheError) {
                 log(`[Stats] Cache Lookup Failed: ${cacheError.message}`);
             } else if (cachedMatches) {
-                cachedMatches.forEach((row: any) => cachedMap.set(row.match_id, row.data));
-                log(`[Stats] Cache Hit: ${cachedMap.size}`);
+                cachedMatches.forEach((row: any) => {
+                    // Cache Validation: Check if CS metrics exist (Fix for missing CS widget data)
+                    // We check if challenges exist and have specific new keys
+                    // Note: participants is array, we verify structure
+                    const p = row.data.info?.participants?.[0];
+                    const hasCsData = p?.challenges && (
+                        'laneMinionsFirst10Minutes' in p.challenges || 
+                        'jungleCsBefore10Minutes' in p.challenges
+                    );
+                    
+                    if (hasCsData) {
+                        cachedMap.set(row.match_id, row.data);
+                    } 
+                    // If not valid, we skip setting it in cachedMap, so it will be in missingIds
+                });
+                log(`[Stats] Cache Hit (Valid): ${cachedMap.size} / ${cachedMatches.length}`);
             }
         } catch (dbErr: any) {
             log(`[Stats] Unexpected DB Error: ${dbErr.message}`);
