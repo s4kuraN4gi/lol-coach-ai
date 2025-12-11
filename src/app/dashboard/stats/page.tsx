@@ -42,41 +42,63 @@ export default async function StatsPage() {
         );
     }
 
-    // Fetch Matches (Server-Side)
-    // Fetch count=10 for history page
-    const matchIdsRes = await fetchMatchIds(activeAccount.puuid, 10);
     let history: HistoryItem[] = [];
     let stats = { wins: 0, losses: 0, kills: 0, deaths: 0, assists: 0 };
+    let errorMsg = null;
 
-    if (matchIdsRes.success && matchIdsRes.data) {
-        const matchPromises = matchIdsRes.data.map(id => fetchMatchDetail(id));
-        const matchesRes = await Promise.all(matchPromises);
-        
-        history = matchesRes
-            .filter(res => res.success && res.data)
-            .map(res => res.data)
-            .map((m: any) => {
-                const p = m.info.participants.find((p: any) => p.puuid === activeAccount.puuid);
-                if (!p) return null;
-                
-                // Aggregate Stats
-                stats.wins += p.win ? 1 : 0;
-                stats.losses += p.win ? 0 : 1;
-                stats.kills += p.kills;
-                stats.deaths += p.deaths;
-                stats.assists += p.assists;
+    try {
+        // Fetch Matches (Server-Side)
+        // Fetch count=10 for history page
+        const matchIdsRes = await fetchMatchIds(activeAccount.puuid, 10);
 
-                return {
-                    matchId: m.metadata.matchId,
-                    champion: p.championName,
-                    win: p.win,
-                    kda: `${p.kills}/${p.deaths}/${p.assists}`,
-                    date: new Date(m.info.gameCreation).toLocaleDateString(),
-                    mode: m.info.gameMode,
-                    duration: m.info.gameDuration
-                };
-            })
-            .filter(h => h !== null);
+        if (matchIdsRes.success && matchIdsRes.data) {
+            const matchPromises = matchIdsRes.data.map(id => fetchMatchDetail(id));
+            const matchesRes = await Promise.all(matchPromises);
+            
+            history = matchesRes
+                .filter(res => res.success && res.data)
+                .map(res => res.data)
+                .map((m: any) => {
+                    const p = m.info.participants.find((p: any) => p.puuid === activeAccount.puuid);
+                    if (!p) return null;
+                    
+                    // Aggregate Stats
+                    stats.wins += p.win ? 1 : 0;
+                    stats.losses += p.win ? 0 : 1;
+                    stats.kills += p.kills;
+                    stats.deaths += p.deaths;
+                    stats.assists += p.assists;
+
+                    return {
+                        matchId: m.metadata.matchId,
+                        champion: p.championName,
+                        win: p.win,
+                        kda: `${p.kills}/${p.deaths}/${p.assists}`,
+                        date: new Date(m.info.gameCreation).toLocaleDateString(),
+                        mode: m.info.gameMode,
+                        duration: m.info.gameDuration
+                    };
+                })
+                .filter(h => h !== null);
+        } else if (matchIdsRes.error) {
+             throw new Error(matchIdsRes.error);
+        }
+    } catch (e: any) {
+        console.error("Stats Page Load Error:", e);
+        errorMsg = e.message || "Failed to load match history.";
+    }
+
+    if (errorMsg) {
+         return (
+            <DashboardLayout>
+                <div className="p-8 text-center text-red-400">
+                    <h2 className="text-xl font-bold mb-2">Error Loading Stats</h2>
+                    <p className="font-mono bg-slate-900 border border-slate-800 p-4 rounded inline-block text-left text-sm">
+                        {errorMsg}
+                    </p>
+                </div>
+            </DashboardLayout>
+         );
     }
 
     const totalGames = stats.wins + stats.losses;
