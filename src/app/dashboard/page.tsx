@@ -218,15 +218,11 @@ export default function DashboardPage() {
         </div>
 
         {/* Row 3: Unique Analysis (A, B, C, D) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-             <div className="space-y-4">
-                 <WinConditionWidget stats={stats?.uniqueStats || null} />
-                 <SurvivalWidget stats={stats?.uniqueStats || null} />
-             </div>
-             <div className="space-y-4">
-                 <NemesisWidget stats={stats?.uniqueStats || null} />
-                 <ClutchWidget stats={stats?.uniqueStats || null} />
-             </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+             <WinConditionWidget stats={stats?.uniqueStats || null} />
+             <SurvivalWidget stats={stats?.uniqueStats || null} />
+             <NemesisWidget stats={stats?.uniqueStats || null} />
+             <ClutchWidget stats={stats?.uniqueStats || null} />
         </div>
       </DashboardLayout>
     </>

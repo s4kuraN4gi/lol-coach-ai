@@ -14,7 +14,7 @@ export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }
     const topChamp = stats[0];
 
     return (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 relative overflow-hidden group">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 relative overflow-hidden group">
              {/* Background Splash for Top Champ */}
              <div className="absolute inset-0 opacity-10 grayscale group-hover:grayscale-0 transition duration-700">
                   <img 

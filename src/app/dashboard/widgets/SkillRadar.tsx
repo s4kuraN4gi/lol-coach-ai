@@ -45,7 +45,7 @@ export default function SkillRadar({ stats }: { stats: RadarStats | null }) {
     }).join(" ");
 
     return (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 relative overflow-hidden flex flex-col items-center">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 relative overflow-hidden flex flex-col items-center">
             {/* Header */}
             <div className="w-full flex justify-between items-start mb-2 z-10">
                 <div className="text-slate-400 text-xs font-bold tracking-wider">SKILL RADAR</div>
