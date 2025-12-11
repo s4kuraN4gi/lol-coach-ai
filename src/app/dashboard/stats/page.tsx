@@ -1,4 +1,3 @@
-```typescript
 "use client";
 
 import { useState, useEffect } from "react";
@@ -86,7 +85,7 @@ export default function StatsPage() {
         }
 
         loadData();
-    }, [activeSummoner, summonerLoading]);
+    }, [activeSummoner, activeSummoner?.puuid, summonerLoading]);
 
     // Derived Stats
     const totalGames = stats.wins + stats.losses;
@@ -120,7 +119,7 @@ export default function StatsPage() {
         );
     }
 
-    // 3. Error State (Partial)
+    // 3. Error State
     if (error) {
         return (
             <DashboardLayout>
@@ -219,4 +218,3 @@ export default function StatsPage() {
         </DashboardLayout>
     )
 }
-```
