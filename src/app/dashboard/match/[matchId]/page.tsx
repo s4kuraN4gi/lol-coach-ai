@@ -29,7 +29,21 @@ export default async function MatchDetailsPage({ params }: { params: { matchId: 
     ]);
 
     if (!matchRes.success || !matchRes.data) {
-        return notFound(); // Or a custom error UI
+         console.error(`Match Detail Load Failed for ID: ${matchId}`, matchRes.error);
+         return (
+            <DashboardLayout>
+                <div className="p-10 text-center text-red-400">
+                    <h2 className="text-2xl font-bold mb-4">Failed to Load Match</h2>
+                    <p className="font-mono bg-slate-900 p-4 rounded inline-block text-left">
+                        <span className="text-slate-500">ID:</span> {matchId}<br/>
+                        <span className="text-slate-500">Error:</span> {matchRes.error || "Unknown Error"}
+                    </p>
+                    <div className="mt-6">
+                        <Link href="/dashboard" className="text-blue-400 hover:underline">Return to Dashboard</Link>
+                    </div>
+                </div>
+            </DashboardLayout>
+         );
     }
 
     const match = matchRes.data;
