@@ -86,9 +86,8 @@ export async function fetchDashboardStats(puuid: string, summonerId?: string | n
         log(`[Stats] Ranks fetched: ${ranks.length}`);
 
 
-        // 2. Fetch Matches (10 for speed optimization)
-        // Fetches 10 matches to avoid Rate Limit throttling (allows 1 batch of 10)
-        const idsRes = await fetchMatchIds(puuid, 10); 
+        // 2. Fetch Matches (Expanded to 50 for broader history)
+        const idsRes = await fetchMatchIds(puuid, 50); 
         if (!idsRes.success || !idsRes.data) throw new Error(`Failed to fetch match IDs: ${idsRes.error}`);
 
         const matchIds = idsRes.data;
@@ -116,15 +115,18 @@ export async function fetchDashboardStats(puuid: string, summonerId?: string | n
         const missingIds = matchIds.filter(id => !cachedMap.has(id));
         log(`[Stats] Missing IDs: ${missingIds.length}`);
 
-        // 4. Fetch Missing from Riot
+        // 4. Fetch Missing from Riot (Limit to 10 new per request for speed)
+        const matchesToFetch = missingIds.slice(0, 10);
+        log(`[Stats] Fetching ${matchesToFetch.length} new matches from Riot...`);
+
         const newMatches: any[] = [];
-        if (missingIds.length > 0) {
+        if (matchesToFetch.length > 0) {
             // Chunking for Rate Limit Safety
             // 5 requests per batch (safe for dev credentials)
             const chunkSize = 5; 
             const chunkedIds = [];
-            for (let i = 0; i < missingIds.length; i += chunkSize) {
-                chunkedIds.push(missingIds.slice(i, i + chunkSize));
+            for (let i = 0; i < matchesToFetch.length; i += chunkSize) {
+                chunkedIds.push(matchesToFetch.slice(i, i + chunkSize));
             }
 
             for (const chunk of chunkedIds) {
