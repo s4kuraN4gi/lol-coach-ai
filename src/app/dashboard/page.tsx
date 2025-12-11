@@ -23,6 +23,7 @@ export default function DashboardPage() {
     const [stats, setStats] = useState<DashboardStatsDTO | null>(null);
     const [isFetching, setIsFetching] = useState(false);
     const [currentQueue, setCurrentQueue] = useState<"SOLO" | "FLEX">("SOLO");
+    const [error, setError] = useState<string | null>(null);
     
     // Note: ProfileCard logic was moved into ProfileCard component previously or page did logic?
     // Looking at previous file view, ProfileCard took raw props like `rank`, `tier` etc.
@@ -51,6 +52,7 @@ export default function DashboardPage() {
     const fetchData = useCallback(async () => {
         if (!activeSummoner) return;
         setIsFetching(true);
+        setError(null);
         console.log("Start Dashboard Refresh...");
 
 
@@ -67,11 +69,15 @@ export default function DashboardPage() {
             const data = await fetchDashboardStats(puuid, summoner_id);
             console.log("Fetched Stats Result:", JSON.stringify(data, null, 2));
             setStats(data);
+            
+            if (data.recentMatches.length === 0) {
+                setError("直近の対戦データが見つかりませんでした。(JPサーバーでプレイしていますか？)");
+            }
+
         } catch (error) {
-
             console.error("Failed to fetch dashboard stats", error);
+            setError("データの取得に失敗しました。時間をおいて再試行してください。");
         }
-
         
         setIsFetching(false);
     }, [activeSummoner]);
@@ -90,33 +96,55 @@ export default function DashboardPage() {
     if (authLoading || summonerLoading || (!stats && isFetching)) {
          return (
             <DashboardLayout>
-                <div className="flex items-center justify-center min-h-[60vh]">
-                    <LoadingAnimation />
+                <div className="flex items-center justify-center h-[60vh]">
+                   <div className="text-center">
+                       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+                       <p className="text-slate-400 animate-pulse">Analyzing Battle Data...</p>
+                   </div>
                 </div>
             </DashboardLayout>
          )
     }
+
+    if (stats && stats.recentMatches.length === 0) {
+        return (
+            <DashboardLayout>
+                <div className="flex flex-col items-center justify-center p-12 text-center h-[60vh]">
+                    <div className="bg-slate-800/50 p-8 rounded-2xl border border-slate-700 max-w-lg">
+                        <div className="text-4xl mb-4">📭</div>
+                        <h2 className="text-xl font-bold text-white mb-2">対戦データが見つかりませんでした</h2>
+                        <p className="text-slate-400 mb-6">
+                            連携されたアカウントの直近の対戦履歴（過去10戦）が存在しないか、取得できませんでした。
+                        </p>
+                        <div className="text-left text-sm text-slate-500 space-y-2 mb-6 bg-slate-900 p-4 rounded">
+                            <p>考えられる原因：</p>
+                            <ul className="list-disc list-inside ml-2 space-y-1">
+                                <li>Riot APIキーが無効/期限切れ</li>
+                                <li>JPサーバー以外のアカウント</li>
+                                <li>長期間対戦を行っていない</li>
+                            </ul>
+                        </div>
+                         <button 
+                            onClick={fetchData} 
+                            className="bg-primary-500 hover:bg-primary-600 px-6 py-2 rounded-lg text-white font-bold transition-colors"
+                        >
+                            再試行
+                        </button>
+                    </div>
+                </div>
+            </DashboardLayout>
+        );
+    }
+
     if(!user) return null;
     if (!activeSummoner) {
         return (
             <DashboardLayout>
-                <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-                    <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300 mb-6">
-                        WELCOME TO LOL COACH AI
-                    </h2>
-                    <p className="text-slate-400 mb-8 max-w-md">
-                        まずはあなたのRiotアカウントを連携して、<br/>
-                        AIコーチングを始めましょう。
-                    </p>
-                    <div className="p-8 bg-slate-900/50 border border-slate-700 rounded-2xl max-w-md w-full">
-                         <p className="text-sm text-slate-500 mb-4">サイドメニューの「アカウント」から連携できます</p>
-                         <button 
-                            onClick={() => router.push("/account")}
-                            className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-500 transition shadow-lg shadow-blue-900/20"
-                         >
-                            アカウント設定へ移動
-                         </button>
-                    </div>
+                <div className="text-center py-20">
+                    <h2 className="text-xl font-bold mb-4">サモナーアカウントが連携されていません</h2>
+                    <button onClick={() => router.push('/account')} className="bg-primary-500 hover:bg-primary-600 px-6 py-2 rounded-lg">
+                        アカウント連携へ
+                    </button>
                 </div>
             </DashboardLayout>
         )
@@ -125,10 +153,6 @@ export default function DashboardPage() {
   return (
     <>
       <DashboardLayout>
-        <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-white">
-                DASHBOARD <span className="text-sm font-normal text-slate-500 not-italic ml-2 tracking-normal">Your Growth Center</span>
-            </h1>
             <button 
                 onClick={() => {
                     fetchData();
