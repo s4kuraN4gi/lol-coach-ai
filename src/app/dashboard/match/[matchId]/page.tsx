@@ -182,20 +182,20 @@ export default function MatchDetailsPage() {
                         </div>
 
                         {/* RIGHT: Team Overview */}
-                        <div className="xl:col-span-2 space-y-4">
-                            <TeamOverviewCard 
-                                teamId={100} 
-                                teamName="BLUE TEAM" 
-                                participants={team100} 
-                                win={team100Win} 
-                            />
-                            <TeamOverviewCard 
-                                teamId={200} 
-                                teamName="RED TEAM" 
-                                participants={team200} 
-                                win={team200Win} 
-                            />
-                        </div>
+                    <div className="xl:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                        <TeamOverviewCard 
+                            teamId={100} 
+                            teamName="BLUE TEAM" 
+                            participants={team100} 
+                            win={team100Win} 
+                        />
+                        <TeamOverviewCard 
+                            teamId={200} 
+                            teamName="RED TEAM" 
+                            participants={team200} 
+                            win={team200Win} 
+                        />
+                    </div>
                     </div>
 
                 </div>
