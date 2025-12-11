@@ -4,10 +4,23 @@ import InfoTooltip from "../components/InfoTooltip";
 export default function WinConditionWidget({ stats }: { stats: any }) {
     if (!stats) return <DashboardCard>Collecting match data...</DashboardCard>;
 
+    const conditions = stats.winConditions || [];
+
+    const getData = (labelContains: string) => {
+        const item = conditions.find((c: any) => c.label.includes(labelContains));
+        if (!item) return { wins: 0, total: 0, winRate: 0 };
+        
+        // stats.ts returns { count, winRate }. We calculate wins.
+        const wins = Math.round((item.count * item.winRate) / 100);
+        return { wins, total: item.count, winRate: item.winRate };
+    };
+
+    const firstBlood = getData("First Blood");
+    const firstTower = getData("First Tower");
+    const soloKill = getData("Solo Kill");
+
     // Helper for coloring
-    const getWinRateColor = (wins: number, total: number) => {
-        if (total === 0) return "text-slate-500";
-        const wr = (wins / total) * 100;
+    const getWinRateColor = (wr: number) => {
         if (wr >= 60) return "text-yellow-400 font-bold"; 
         if (wr >= 50) return "text-emerald-400"; 
         return "text-rose-400"; 
@@ -40,9 +53,9 @@ export default function WinConditionWidget({ stats }: { stats: any }) {
                         <span className="text-xs text-slate-300">First Blood</span>
                     </div>
                     <div className="text-right">
-                        <div className="text-xs font-mono text-slate-400">{stats.firstBlood.wins} / {stats.firstBlood.total}</div>
-                        <div className={`text-sm font-bold ${getWinRateColor(stats.firstBlood.wins, stats.firstBlood.total)}`}>
-                            {stats.firstBlood.total > 0 ? Math.round((stats.firstBlood.wins / stats.firstBlood.total) * 100) : 0}%
+                        <div className="text-xs font-mono text-slate-400">{firstBlood.wins} / {firstBlood.total} Games</div>
+                        <div className={`text-sm font-bold ${getWinRateColor(firstBlood.winRate)}`}>
+                            {firstBlood.winRate}% WR
                         </div>
                     </div>
                 </div>
@@ -54,9 +67,9 @@ export default function WinConditionWidget({ stats }: { stats: any }) {
                         <span className="text-xs text-slate-300">First Tower</span>
                     </div>
                     <div className="text-right">
-                        <div className="text-xs font-mono text-slate-400">{stats.firstTower.wins} / {stats.firstTower.total}</div>
-                        <div className={`text-sm font-bold ${getWinRateColor(stats.firstTower.wins, stats.firstTower.total)}`}>
-                            {stats.firstTower.total > 0 ? Math.round((stats.firstTower.wins / stats.firstTower.total) * 100) : 0}%
+                        <div className="text-xs font-mono text-slate-400">{firstTower.wins} / {firstTower.total} Games</div>
+                        <div className={`text-sm font-bold ${getWinRateColor(firstTower.winRate)}`}>
+                            {firstTower.winRate}% WR
                         </div>
                     </div>
                 </div>
@@ -68,9 +81,9 @@ export default function WinConditionWidget({ stats }: { stats: any }) {
                          <span className="text-xs text-slate-300">Solo Kills</span>
                     </div>
                     <div className="text-right">
-                        <div className="text-xs font-mono text-slate-400">{stats.soloKill.wins} / {stats.soloKill.total}</div>
-                        <div className={`text-sm font-bold ${getWinRateColor(stats.soloKill.wins, stats.soloKill.total)}`}>
-                            {stats.soloKill.total > 0 ? Math.round((stats.soloKill.wins / stats.soloKill.total) * 100) : 0}%
+                        <div className="text-xs font-mono text-slate-400">{soloKill.wins} / {soloKill.total} Games</div>
+                        <div className={`text-sm font-bold ${getWinRateColor(soloKill.winRate)}`}>
+                            {soloKill.winRate}% WR
                         </div>
                     </div>
                 </div>
