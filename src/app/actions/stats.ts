@@ -1,7 +1,8 @@
 'use server'
 
 import { createClient } from "@/utils/supabase/server";
-import { fetchMatchIds, fetchMatchDetail, fetchRank, type LeagueEntryDTO } from "./riot";
+import { fetchMatchIds, fetchMatchDetail, fetchRank, fetchSummonerByPuuid, type LeagueEntryDTO } from "./riot";
+import { pruneMatchData } from "@/utils/optimizer";
 
 export type ChampionStat = {
     name: string;
@@ -118,29 +119,34 @@ export async function fetchDashboardStats(puuid: string, summonerId?: string | n
         // 4. Fetch Missing from Riot
         const newMatches: any[] = [];
         if (missingIds.length > 0) {
-            const chunkSize = 10; // Max size for 1 second bucket (Safety buffer)
-            
+            // Chunking for Rate Limit Safety
+            // 5 requests per batch (safe for dev credentials)
+            const chunkSize = 5; 
+            const chunkedIds = [];
             for (let i = 0; i < missingIds.length; i += chunkSize) {
+                chunkedIds.push(missingIds.slice(i, i + chunkSize));
+            }
 
-                const chunk = missingIds.slice(i, i + chunkSize);
-                log(`[Stats] Fetching chunk ${i} - ${i+chunkSize}`);
-                const promises = chunk.map(id => fetchMatchDetail(id));
+            for (const chunk of chunkedIds) {
+                const promises = chunk.map(mid => fetchMatchDetail(mid));
                 const results = await Promise.all(promises);
-                
-                results.forEach((r, idx) => {
-                    if (r.success && r.data) {
-                        newMatches.push(r.data);
+
+                results.forEach((detail, idx) => {
+                    if (detail.success && detail.data) {
+                        // Optimize Data Storage
+                        const optimized = pruneMatchData(detail.data);
+                        newMatches.push(optimized);
                         // Add to map for immediate use
-                        cachedMap.set(r.data.metadata.matchId, r.data);
+                        cachedMap.set(optimized.metadata.matchId, optimized);
                     } else {
-                        log(`[Stats] Failed to fetch match ${chunk[idx]}: ${r.error}`);
+                        log(`Failed to fetch match ${chunk[idx]}: ${detail.error}`);
                     }
                 });
                 
-                if (i + chunkSize < missingIds.length) {
-                    await delay(1200); // Wait 1.2s between chunks
-                }
+                // Wait between chunks to respect rate limit (approx 20 requests/1sec -> 5 req is fine, but safety buffer)
+                if (chunkedIds.length > 1) await delay(200);
             }
+        }
             
             // 5. Save to Cache
             if (newMatches.length > 0) {
