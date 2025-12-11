@@ -168,7 +168,6 @@ export async function fetchDashboardStats(puuid: string, summonerId?: string | n
                     log(`[Stats] Cache Insert Exception: ${dbErr.message}`);
                 }
             }
-        }
 
         // 6. Aggregate Data from ALL matches (Cached + New)
 
