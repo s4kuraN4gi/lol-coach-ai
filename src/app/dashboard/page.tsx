@@ -57,10 +57,13 @@ export default function DashboardPage() {
         console.log("Start Dashboard Refresh...");
 
 
-        const { puuid, summoner_id } = activeSummoner;
 
+        const { puuid, summoner_id } = activeSummoner;
+        
+        // Debugging incomplete summoner object
         if (!summoner_id || !puuid) {
-            console.error("Summoner ID or PUUID missing");
+            console.warn("[Dashboard] Active Summoner Incomplete:", activeSummoner);
+            setError("アカウント情報が不完全です（PUUID欠落）。アカウントを再連携してください。");
             setIsFetching(false);
             return;
         }
