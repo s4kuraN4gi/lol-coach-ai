@@ -3,25 +3,45 @@
 import { useState, useEffect, useCallback } from "react";
 import DashboardLayout from "../Components/layout/DashboardLayout";
 import LoadingAnimation from "../Components/LoadingAnimation";
-import RankGraph from "./components/RankGraph";
 import ProfileCard from "./components/ProfileCard";
+import LPWidget from "./widgets/LPWidget";
+import ChampionPerformance from "./widgets/ChampionPerformance";
+import SkillRadar from "./widgets/SkillRadar"; 
+import WinConditionWidget from "./widgets/WinConditionWidget";
+import NemesisWidget from "./widgets/NemesisWidget";
+import SurvivalWidget from "./widgets/SurvivalWidget";
+import ClutchWidget from "./widgets/ClutchWidget";
 import { useRouter } from "next/navigation";
+
+
 import { useSummoner } from "../Providers/SummonerProvider";
 import { useAuth } from "../Providers/AuthProvider";
-import { fetchRank, type LeagueEntryDTO } from "../actions/riot";
+import { fetchDashboardStats, type DashboardStatsDTO } from "../actions/stats";
 
 export default function DashboardPage() {
     const {activeSummoner, loading:summonerLoading} = useSummoner();
-    const [allRanks, setAllRanks] = useState<LeagueEntryDTO[]>([]);
-    const [selectedQueue, setSelectedQueue] = useState<"SOLO" | "FLEX">("SOLO");
+    const [stats, setStats] = useState<DashboardStatsDTO | null>(null);
     const [isFetching, setIsFetching] = useState(false);
     
-    // 選択中のキューに応じたランクデータを算出
-    const rankData = allRanks.find(r => 
-        selectedQueue === "SOLO" 
-            ? r.queueType === "RANKED_SOLO_5x5" 
-            : r.queueType === "RANKED_FLEX_SR"
-    ) || null;
+    // Note: ProfileCard logic was moved into ProfileCard component previously or page did logic?
+    // Looking at previous file view, ProfileCard took raw props like `rank`, `tier` etc.
+    // DashboardStatsDTO contains `rank`.
+    // We need to verify ProfileCard props.
+    // ProfileCard takes: summonerName, tagLine, level, iconId, tier, rank, lp, wins, losses, currentQueue, onQueueChange.
+    // DashboardStatsDTO.rank is a LeagueEntryDTO.
+
+    // Queue selection for ProfileCard (SOLO/FLEX) logic is mostly inside fetchDashboardStats which prioritizes SOLO.
+    // However, ProfileCard allows switching queue? 
+    // `fetchDashboardStats` returns a SINGLE rank (prioritized).
+    // If we want to support switching, `fetchDashboardStats` should return ALL ranks or the Page should handle switching.
+    // The previous implementation fetched ALL ranks.
+    // `fetchDashboardStats` currently returns `rank: LeagueEntryDTO | null`.
+    // Just one rank.
+    // Let's modify `fetchDashboardStats` or just stick to SOLO priority for specific widgets, but ProfileCard needs flexibility?
+    // Actually, user wants LP Progression Widget. That widget usually tracks the Main Queue (Solo).
+    // Let's stick to prioritizing Solo for the Dashboard Overview.
+    // If refined, `stats.ts` should return `ranks: LeagueEntryDTO[]` and we filter in client.
+    // But for now let's use what `stats.ts` provides (the best rank).
 
     const router = useRouter();
     const {user, loading: authLoading} = useAuth();
@@ -31,15 +51,24 @@ export default function DashboardPage() {
         if (!activeSummoner) return;
         setIsFetching(true);
 
-        // 1. ランク情報の取得
-        if (activeSummoner.summoner_id) {
-            try {
-                const ranks = await fetchRank(activeSummoner.summoner_id);
-                setAllRanks(ranks);
-            } catch (e) {
-                console.error("Rank fetch error", e);
-            }
+
+
+        const { puuid, summoner_id } = activeSummoner;
+
+        if (!summoner_id || !puuid) {
+            console.error("Summoner ID or PUUID missing");
+            setIsFetching(false);
+            return;
         }
+
+        try {
+            const data = await fetchDashboardStats(puuid, summoner_id);
+            setStats(data);
+        } catch (error) {
+
+            console.error("Failed to fetch dashboard stats", error);
+        }
+
         
         setIsFetching(false);
     }, [activeSummoner]);
@@ -48,7 +77,7 @@ export default function DashboardPage() {
         fetchData();
     }, [fetchData]);
 
-    if (authLoading || summonerLoading) {
+    if (authLoading || summonerLoading || (!stats && isFetching)) {
          return (
             <DashboardLayout>
                 <div className="flex items-center justify-center min-h-[60vh]">
@@ -88,7 +117,7 @@ export default function DashboardPage() {
       <DashboardLayout>
         <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-white">
-                DASHBOARD
+                DASHBOARD <span className="text-sm font-normal text-slate-500 not-italic ml-2 tracking-normal">Your Growth Center</span>
             </h1>
             <button 
                 onClick={() => {
@@ -107,45 +136,40 @@ export default function DashboardPage() {
             </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* サモナー情報 (ProfileCard) */}
+        {/* Row 1: Profile & LP Widget */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <ProfileCard 
                 summonerName={activeSummoner.summoner_name}
                 tagLine={activeSummoner.tag_line}
                 level={activeSummoner.summoner_level || 0}
                 iconId={activeSummoner.profile_icon_id || 29}
-                tier={rankData?.tier}
-                rank={rankData?.rank}
-                lp={rankData?.leaguePoints}
-                wins={rankData?.wins}
-                losses={rankData?.losses}
-                currentQueue={selectedQueue}
-                onQueueChange={setSelectedQueue}
+                tier={stats?.rank?.tier}
+                rank={stats?.rank?.rank}
+                lp={stats?.rank?.leaguePoints}
+                wins={stats?.rank?.wins}
+                losses={stats?.rank?.losses}
+                currentQueue={"SOLO"} // Stats returns prioritized rank
+                onQueueChange={() => {}} // Disabled for now as stats only returns one rank
             />
 
-            {/* ランク推移グラフ & プレイスタイル分析 */}
-            {/* RankGraph needs histories to plot? Checking RankGraph props... 
-                It takes `histories` prop. We removed it.
-                We might need to fetch simplified history just for the graph, or remove the graph temporarily
-                until we have new dashboard widgets?
-                The user kept "RankGraph" in my prompt? "Keep ProfileCard and RankGraph".
-                But RankGraph likely depends on `histories` for "LP Gain/Loss" simulation or similar if real data isn't tracked.
-                Let's check RankGraph source.
-            */}
-            {/* I will temporarily comment out RankGraph if it breaks, or pass empty array?
-                Wait, if I pass empty array, it might be empty.
-                The proposal phase will redefine this space.
-                Let's keep it but pass [] for now if I can't fetch easily, or fetch pure ID list?
-                Actually, `histories` was used for "Win/Loss" trend I assume.
-                Let's look at RankGraph briefly before finalizing this file.
-            */}
-        </div>
-        
-        {/* Placeholder for future widgets */}
-        <div className="mt-8 p-8 border-2 border-dashed border-slate-800 rounded-xl text-center">
-            <p className="text-slate-500">More analytics coming soon based on your feedback!</p>
+            <LPWidget rank={stats?.rank || null} recentMatches={stats?.recentMatches || []} />
         </div>
 
+        {/* Row 2: Champion Performance & Future Widgets */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ChampionPerformance stats={stats?.championStats || []} />
+            
+            {/* Placeholder for Skill Radar / Unique Stats */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 flex flex-col items-center justify-center text-center relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5"></div>
+                <div className="text-5xl mb-4 opacity-50">🚧</div>
+                <h3 className="text-xl font-bold text-slate-300 mb-2">More Analytics Coming Soon</h3>
+                <p className="text-slate-500 max-w-sm">
+                    Skill Radar, Personal Win Conditions, and Nemesis Analysis are being implemented.
+                </p>
+            </div>
+        </div>
+        
       </DashboardLayout>
     </>
   );
