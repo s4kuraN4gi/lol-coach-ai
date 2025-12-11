@@ -29,7 +29,7 @@ export type UniqueStats = {
     winConditions: { label: string, winRate: number, count: number }[];
     nemesis: { name: string, wins: number, games: number, winRate: number }[];
     prey: { name: string, wins: number, games: number, winRate: number }[];
-    survival: { soloDeathRate: number };
+    survival: { soloDeathRate: number, csAt10: number };
     clutch: { closeWr: number, stompWr: number, closeGames: number, stompGames: number };
 }
 
@@ -84,6 +84,11 @@ export async function fetchDashboardStats(puuid: string, summonerId?: string | n
 
         stats.ranks = ranks;
         log(`[Stats] Ranks fetched: ${ranks.length}`);
+        if(ranks.length > 0) {
+            log(`[Stats] Queues: ${ranks.map(r => r.queueType).join(', ')}`);
+        } else {
+             log(`[Stats] No ranks found for ID: ${validSummonerId}`);
+        }
 
 
         // 2. Fetch Matches (Expanded to 50 for broader history)
@@ -195,6 +200,7 @@ export async function fetchDashboardStats(puuid: string, summonerId?: string | n
         };
         const opponentMap = new Map<string, { wins: number, total: number }>();
         let soloDeathCount = 0;
+        let totalCsAt10 = 0;
         
         let closeWins = 0, closeTotal = 0;
         let stompWins = 0, stompTotal = 0;
@@ -258,6 +264,10 @@ export async function fetchDashboardStats(puuid: string, summonerId?: string | n
 
             // C. Survival (Approximate Isolation Death via Solo Kills Taken)
             if (p.challenges?.soloKillsTaken > 0) soloDeathCount++;
+
+            const lMin = p.challenges?.laneMinionsFirst10Minutes || 0;
+            const jMin = p.challenges?.jungleCsBefore10Minutes || 0;
+            totalCsAt10 += (lMin + jMin);
             
             // D. Clutch (Gold Diff)
             const myTeamGold = m.info.participants.filter((pt: any) => pt.teamId === p.teamId).reduce((acc: number, curr: any) => acc + (curr.goldEarned || 0), 0);
@@ -324,7 +334,8 @@ export async function fetchDashboardStats(puuid: string, summonerId?: string | n
                 prey: nemesisList.filter(n => n.winRate >= 50).sort((a, b) => b.winRate - a.winRate).slice(0, 3), // Highest WR
                 
                 survival: {
-                    soloDeathRate: Math.round((soloDeathCount / gameCount) * 100)
+                    soloDeathRate: Math.round((soloDeathCount / gameCount) * 100),
+                    csAt10: gameCount > 0 ? parseFloat((totalCsAt10 / gameCount).toFixed(1)) : 0
                 },
                 
                 clutch: {

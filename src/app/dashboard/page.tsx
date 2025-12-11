@@ -74,6 +74,17 @@ export default function DashboardPage() {
             const data = await fetchDashboardStats(puuid, summoner_id);
             console.log("Fetched Stats Result:", JSON.stringify(data, null, 2));
             setStats(data);
+
+            // Auto-select Queue based on available ranks
+            const hasSolo = data.ranks.some((r: any) => r.queueType === "RANKED_SOLO_5x5");
+            const hasFlex = data.ranks.some((r: any) => r.queueType === "RANKED_FLEX_SR");
+            
+            if (!hasSolo && hasFlex) {
+                 setCurrentQueue("FLEX");
+                 console.log("[Dashboard] Auto-switched to FLEX (No Solo Rank found)");
+            } else if (hasSolo) {
+                 setCurrentQueue("SOLO");
+            }
             
             setDebugLogs(prev => [
                 ...prev, 
