@@ -30,13 +30,11 @@ type TeamOverviewCardProps = {
 }
 
 export default function TeamOverviewCard({ teamId, teamName, participants, win }: TeamOverviewCardProps) {
-    const [isExpanded, setIsExpanded] = useState(true);
 
     return (
         <div className={`rounded-xl border ${win ? 'border-blue-500/30 bg-blue-900/10' : 'border-red-500/30 bg-red-900/10'} overflow-hidden`}>
             <div 
-                className={`px-4 py-2 text-xs font-bold tracking-wider ${win ? 'bg-blue-500/20 text-blue-300' : 'bg-red-500/20 text-red-300'} flex justify-between items-center cursor-pointer hover:brightness-110 transition`}
-                onClick={() => setIsExpanded(!isExpanded)}
+                className={`px-4 py-2 text-xs font-bold tracking-wider ${win ? 'bg-blue-500/20 text-blue-300' : 'bg-red-500/20 text-red-300'} flex justify-between items-center `}
             >
                 <div className="flex items-center gap-2">
                     <span>{teamName}</span>
@@ -46,16 +44,9 @@ export default function TeamOverviewCard({ teamId, teamName, participants, win }
                         {participants.reduce((acc, p) => acc + p.kills, 0)} / {participants.reduce((acc, p) => acc + p.deaths, 0)} / {participants.reduce((acc, p) => acc + p.assists, 0)}
                     </span>
                 </div>
-                <button className="w-5 h-5 flex items-center justify-center rounded bg-black/20 hover:bg-black/40 transition">
-                     {isExpanded ? (
-                        <svg width="10" height="6" viewBox="0 0 10 6" fill="currentColor"><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                     ) : (
-                        <svg width="6" height="10" viewBox="0 0 6 10" fill="currentColor"><path d="M1 9L5 5L1 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                     )}
-                </button>
             </div>
             
-            <div className={`divide-y divide-slate-800 transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+            <div className="divide-y divide-slate-800">
                 {participants.map((p) => (
                     <div key={p.puuid} className="p-3 flex items-center gap-3 hover:bg-white/5 transition group">
                         {/* Champion Icon */}

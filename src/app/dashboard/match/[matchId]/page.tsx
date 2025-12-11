@@ -22,6 +22,7 @@ export default function MatchDetailsPage() {
     const [matchData, setMatchData] = useState<any>(null);
     const [timelineData, setTimelineData] = useState<any>(null);
     const [analysisData, setAnalysisData] = useState<any>(null);
+    const [isTeamsExpanded, setIsTeamsExpanded] = useState(true);
 
     useEffect(() => {
         if (!matchId) return;
@@ -155,51 +156,69 @@ export default function MatchDetailsPage() {
 
                     {/* Timeline Component (Full Width) */}
                     {timelineData ? (
-                         <div className="glass-panel p-1 rounded-xl overflow-hidden shadow-2xl shadow-blue-900/10 ring-1 ring-white/5">
+                        <div className="transform transition-all duration-500 hover:scale-[1.01]">
                             <Timeline match={matchData} timeline={timelineData} />
-                         </div>
+                        </div>
                     ) : (
-                        <div className="p-8 text-center text-slate-500 bg-slate-900/50 rounded-xl border border-slate-800 border-dashed">
-                            Timeline data not available for this match.
+                        <div className="h-48 bg-slate-900 rounded-xl animate-pulse flex items-center justify-center text-slate-700">
+                            Loading Timeline...
                         </div>
                     )}
 
-                    {/* Main Grid: AI (Left) - Teams (Right) */}
-                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                        
-                        {/* LEFT: AI Analysis */}
-                        <div className="xl:col-span-1 space-y-6">
-                            {participant && (
-                                <MatchAnalysisPanel 
-                                    matchId={matchId}
-                                    initialAnalysis={analysisData}
-                                    summonerName={summonerName}
-                                    championName={championName}
-                                    kda={kda}
-                                    win={win}
-                                />
-                            )}
+                    {/* Teams Overview Section (Collapsible) */}
+                    {matchData && (
+                        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden transition-all duration-300">
+                             <div 
+                                className="px-4 py-3 bg-slate-800/50 flex justify-between items-center cursor-pointer hover:bg-slate-800 transition"
+                                onClick={() => setIsTeamsExpanded(!isTeamsExpanded)}
+                             >
+                                <h3 className="font-bold text-white flex items-center gap-2">
+                                    <span>👥</span> Teams Overview
+                                </h3>
+                                <button className="w-6 h-6 flex items-center justify-center rounded bg-black/20 text-slate-400 hover:text-white transition">
+                                     {isTeamsExpanded ? (
+                                        <svg width="10" height="6" viewBox="0 0 10 6" fill="currentColor"><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                     ) : (
+                                        <svg width="6" height="10" viewBox="0 0 6 10" fill="currentColor"><path d="M1 9L5 5L1 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                     )}
+                                </button>
+                             </div>
+                             
+                             <div className={`transition-all duration-500 ease-in-out ${isTeamsExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+                                <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 items-start border-t border-slate-800">
+                                    <TeamOverviewCard 
+                                        teamId={100} 
+                                        teamName="BLUE TEAM" 
+                                        participants={team100} 
+                                        win={team100Win} 
+                                    />
+                                    <TeamOverviewCard 
+                                        teamId={200} 
+                                        teamName="RED TEAM" 
+                                        participants={team200} 
+                                        win={team200Win} 
+                                    />
+                                </div>
+                             </div>
                         </div>
+                    )}
 
-                        {/* RIGHT: Team Overview */}
-                    <div className="xl:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-                        <TeamOverviewCard 
-                            teamId={100} 
-                            teamName="BLUE TEAM" 
-                            participants={team100} 
-                            win={team100Win} 
-                        />
-                        <TeamOverviewCard 
-                            teamId={200} 
-                            teamName="RED TEAM" 
-                            participants={team200} 
-                            win={team200Win} 
-                        />
+                    {/* AI Analysis Panel (Bottom) */}
+                    <div className="w-full">
+                        {participant && (
+                            <MatchAnalysisPanel 
+                                matchId={matchId} 
+                                initialAnalysis={analysisData}
+                                summonerName={summonerName}
+                                championName={participant.championName}
+                                win={participant.win}
+                                kda={`${participant.kills}/${participant.deaths}/${participant.assists}`}
+                            />
+                        )}
                     </div>
-                    </div>
-
                 </div>
             </div>
         </DashboardLayout>
     );
 }
+
