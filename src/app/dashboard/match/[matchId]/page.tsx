@@ -8,6 +8,7 @@ import DashboardLayout from "@/app/Components/layout/DashboardLayout";
 import Link from "next/link";
 import Timeline from "./components/Timeline";
 import MatchAnalysisPanel from "./components/MatchAnalysisPanel";
+import TeamOverviewCard from "./components/TeamOverviewCard"; // Import New Component
 import LoadingAnimation from "@/app/Components/LoadingAnimation";
 import { useSummoner } from "@/app/Providers/SummonerProvider";
 
@@ -46,7 +47,7 @@ export default function MatchDetailsPage() {
                     setTimelineData(timelineRes.data);
                 }
                 
-                setAnalysisData(analysisRes); // analysisRes returns specific structure or null
+                setAnalysisData(analysisRes);
 
             } catch (e: any) {
                 console.error("Match Detail Load Error:", e);
@@ -100,6 +101,12 @@ export default function MatchDetailsPage() {
     const kda = participant ? `${participant.kills}/${participant.deaths}/${participant.assists}` : "0/0/0";
     const win = participant?.win || false;
 
+    // Split Teams
+    const team100 = matchData?.info.participants.filter((p: any) => p.teamId === 100) || [];
+    const team200 = matchData?.info.participants.filter((p: any) => p.teamId === 200) || [];
+    const team100Win = team100[0]?.win;
+    const team200Win = team200[0]?.win;
+
     return (
         <DashboardLayout>
             <div className="max-w-7xl mx-auto p-4 md:p-8 animate-fadeIn">
@@ -112,7 +119,6 @@ export default function MatchDetailsPage() {
                     <span className="text-slate-200 font-mono">{matchId}</span>
                 </div>
 
-                {/* Main Content Area */}
                 <div className="space-y-6">
                     {/* Header Info */}
                     <div className="flex items-center justify-between">
@@ -147,7 +153,7 @@ export default function MatchDetailsPage() {
                         </div>
                     </div>
 
-                    {/* Timeline Component */}
+                    {/* Timeline Component (Full Width) */}
                     {timelineData ? (
                          <div className="glass-panel p-1 rounded-xl overflow-hidden shadow-2xl shadow-blue-900/10 ring-1 ring-white/5">
                             <Timeline match={matchData} timeline={timelineData} />
@@ -158,17 +164,40 @@ export default function MatchDetailsPage() {
                         </div>
                     )}
 
-                    {/* AI Analysis Panel */}
-                    {participant && (
-                        <MatchAnalysisPanel 
-                            matchId={matchId}
-                            initialAnalysis={analysisData}
-                            summonerName={summonerName}
-                            championName={championName}
-                            kda={kda}
-                            win={win}
-                        />
-                    )}
+                    {/* Main Grid: AI (Left) - Teams (Right) */}
+                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                        
+                        {/* LEFT: AI Analysis */}
+                        <div className="xl:col-span-1 space-y-6">
+                            {participant && (
+                                <MatchAnalysisPanel 
+                                    matchId={matchId}
+                                    initialAnalysis={analysisData}
+                                    summonerName={summonerName}
+                                    championName={championName}
+                                    kda={kda}
+                                    win={win}
+                                />
+                            )}
+                        </div>
+
+                        {/* RIGHT: Team Overview */}
+                        <div className="xl:col-span-2 space-y-4">
+                            <TeamOverviewCard 
+                                teamId={100} 
+                                teamName="BLUE TEAM" 
+                                participants={team100} 
+                                win={team100Win} 
+                            />
+                            <TeamOverviewCard 
+                                teamId={200} 
+                                teamName="RED TEAM" 
+                                participants={team200} 
+                                win={team200Win} 
+                            />
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </DashboardLayout>

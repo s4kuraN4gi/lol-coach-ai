@@ -27,6 +27,7 @@ type TimelineEvent = {
     towerType?: string;
     monsterType?: string;
     monsterSubType?: string;
+    killerTeamId?: number; // Sometimes present in elite monster kills
 }
 
 type ParticipantFrame = {
@@ -73,8 +74,6 @@ export default function Timeline({ match, timeline }: { match: any, timeline: Ti
     };
 
     // Calculate Gold Diff per frame
-    // We need to know which participants belong to Team 100 (Blue) vs 200 (Red)
-    // match.info.participants has teamId
     const team100Ids = match.info.participants.filter((p: any) => p.teamId === 100).map((p: any) => p.participantId);
     
     const goldDiffData = useMemo(() => {
@@ -100,11 +99,32 @@ export default function Timeline({ match, timeline }: { match: any, timeline: Ti
     }, [timeline, team100Ids]);
 
     // Max diff for scaling
-    const maxDiff = Math.max(...goldDiffData.map(d => Math.abs(d.diff)), 1000); // Min 1000 to avoid flatline
+    const maxDiff = Math.max(...goldDiffData.map(d => Math.abs(d.diff)), 2000); 
+
+    // Extract Objectives
+    const objectives = useMemo(() => {
+        return timeline.info.frames.flatMap((frame, i) => 
+            frame.events
+                .filter(e => e.type === "ELITE_MONSTER_KILL" || e.type === "BUILDING_KILL")
+                .map(e => ({
+                    ...e,
+                    frameIndex: i
+                }))
+        );
+    }, [timeline]);
+
+    const getObjectiveIcon = (e: TimelineEvent) => {
+        if (e.type === "BUILDING_KILL") return "🏯";
+        if (e.monsterType === "BARON_NASHOR") return "👾";
+        if (e.monsterType === "RIFTHERALD") return "🐞";
+        if (e.monsterType === "DRAGON") return "🐉";
+        if (e.monsterType === "HORDE") return "🐌"; // Voidgrubs (check actual API name, usually HORDE or similar in new patches, simplified to grub icon for now)
+        return "⚔️";
+    };
 
     return (
-        <div className="w-full bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
-            {/* Control Bar (Optional) */}
+        <div className="w-full bg-slate-900 border border-slate-800 rounded-lg overflow-hidden relative group/timeline">
+            {/* Control Bar */}
             <div className="bg-slate-800/50 p-4 flex justify-between items-center border-b border-slate-700">
                  <h2 className="text-white font-bold flex items-center gap-2">
                     <span>🎞️</span> MATCH TIMELINE
@@ -115,7 +135,7 @@ export default function Timeline({ match, timeline }: { match: any, timeline: Ti
             </div>
 
             {/* Visualizer Area */}
-            <div className="relative h-64 w-full bg-slate-950 overflow-x-auto overflow-y-hidden custom-scrollbar">
+            <div className="relative h-64 w-full bg-slate-950 overflow-hidden">
                 {/* SVG Container */}
                 <svg 
                     width="100%" 
@@ -132,13 +152,9 @@ export default function Timeline({ match, timeline }: { match: any, timeline: Ti
                         d={`
                             M 0 50
                             ${goldDiffData.map((d, i) => {
-                                // Y scale: 0 = +Max, 50 = 0, 100 = -Max
-                                // Normalized (-1 to 1) -> (0 to 100)
-                                // value = d.diff
-                                // percent = value / maxDiff 
-                                // y = 50 - (percent * 50)
                                 const percent = d.diff / maxDiff;
-                                const y = 50 - (percent * 45); // Use 45 to keep padding
+                                const clampedPercent = Math.max(-1, Math.min(1, percent));
+                                const y = 50 - (clampedPercent * 45); 
                                 return `L ${i} ${y}`;
                             }).join(' ')}
                             L ${goldDiffData.length} 50
@@ -150,7 +166,6 @@ export default function Timeline({ match, timeline }: { match: any, timeline: Ti
                         strokeWidth="0.2"
                     />
 
-                    {/* Gradient Definition */}
                     <defs>
                         <linearGradient id="goldGradient" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="0%" stopColor="#3b82f6" /> {/* Blue Lead */}
@@ -161,48 +176,81 @@ export default function Timeline({ match, timeline }: { match: any, timeline: Ti
                     </defs>
                 </svg>
 
-                {/* Event Markers Overlay */}
-                {/* Just sample markers for now */}
-                {timeline.info.frames.map((frame, i) => {
-                    // Extract kills
-                    const kills = frame.events.filter(e => e.type === "CHAMPION_KILL");
-                    if(kills.length === 0) return null;
+                {/* Objective Markers Overlay */}
+                {objectives.map((obj, i) => {
+                    // Try to determine team color
+                    let teamId = obj.killerTeamId;
+                    if (!teamId && obj.killerId) {
+                         const killer = match.info.participants.find((p: any) => p.participantId === obj.killerId);
+                         teamId = killer?.teamId;
+                    }
+                    if (!teamId && obj.teamId) teamId = obj.teamId; // For buildings
 
-                    // Group by frame index (X position)
+                    const isBlue = teamId === 100;
+                    const colorClass = isBlue ? "text-blue-400" : "text-red-400";
+                    const isBuilding = obj.type === "BUILDING_KILL";
+                    
+                    // Stagger height slightly to avoid complete overlap if close
+                    const topOffset = isBuilding ? "10%" : "80%"; 
+
                     return (
                         <div 
                             key={i} 
-                            className="absolute top-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none"
-                            style={{ left: `${(i / goldDiffData.length) * 100}%` }}
+                            className={`absolute flex flex-col items-center transform -translate-x-1/2 cursor-help z-10 hover:z-20 group/marker transition-all duration-300 hover:scale-150 ${colorClass}`}
+                            style={{ 
+                                left: `${(obj.frameIndex / goldDiffData.length) * 100}%`,
+                                top: topOffset
+                            }}
                         >
-                            <div className="w-0.5 h-full bg-white/10 absolute top-0 bottom-0" />
-                            <div className="text-[8px] mb-1">⚔️</div>
+                            <div className="text-[12px] drop-shadow-md filter">{getObjectiveIcon(obj)}</div>
+                            
+                            {/* Tooltip */}
+                            <div className="absolute bottom-full mb-2 bg-black/90 text-white text-[10px] p-2 rounded whitespace-nowrap opacity-0 group-hover/marker:opacity-100 pointer-events-none border border-slate-700 z-50">
+                                {formatTime(obj.timestamp)} - {obj.monsterType || obj.towerType || "Object"}
+                                <div className={`text-[9px] ${isBlue ? 'text-blue-300' : 'text-red-300'}`}>
+                                    {isBlue ? "Blue Team" : "Red Team"}
+                                </div>
+                            </div>
                         </div>
                     )
                 })}
 
-                {/* AI Markers (Demo) */}
-                {/* Will be real later */}
+                {/* Mouse Hover Line */}
                 <div 
-                    className="absolute top-4 left-[30%] cursor-pointer group"
-                    onClick={() => alert("AI Analysis: Blue Team caught out in jungle!")}
+                    className="absolute inset-0 opacity-0 group-hover/timeline:opacity-100 transition-opacity duration-200"
+                    onMouseMove={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        const percent = x / rect.width;
+                        const frameIndex = Math.min(goldDiffData.length - 1, Math.floor(percent * goldDiffData.length));
+                        setHoveredFrame(frameIndex);
+                    }}
+                    onMouseLeave={() => setHoveredFrame(null)}
                 >
-                    <div className="text-xl animate-pulse group-hover:scale-125 transition">✨</div>
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] p-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none">
-                        Turning Point
-                    </div>
+                     {hoveredFrame !== null && (
+                        <div 
+                            className="absolute top-0 bottom-0 w-px bg-white/20 pointer-events-none"
+                            style={{ left: `${(hoveredFrame / goldDiffData.length) * 100}%` }}
+                        />
+                     )}
                 </div>
 
             </div>
 
             {/* Hover Info Panel */}
-            <div className="p-4 border-t border-slate-800 bg-slate-900/50 min-h-[100px] flex items-center justify-center text-slate-500 italic">
+            <div className="p-3 border-t border-slate-800 bg-slate-900/90 flex items-center justify-between text-xs text-slate-300 font-mono">
                 {hoveredFrame !== null ? (
-                    <div>Time: {formatTime(timeline.info.frames[hoveredFrame].timestamp)} - Gold Diff: {goldDiffData[hoveredFrame].diff}</div>
+                    <>
+                        <div>⏱ {formatTime(goldDiffData[hoveredFrame].timestamp)}</div>
+                        <div className={goldDiffData[hoveredFrame].diff > 0 ? "text-blue-400" : "text-red-400"}>
+                            Gold Diff: {goldDiffData[hoveredFrame].diff > 0 ? "+" : ""}{goldDiffData[hoveredFrame].diff}
+                        </div>
+                    </>
                 ) : (
-                    "Click or Hover timeline to see details"
+                    <div className="text-slate-500 w-full text-center">Hover chart to view gold difference</div>
                 )}
             </div>
         </div>
     );
 }
+
