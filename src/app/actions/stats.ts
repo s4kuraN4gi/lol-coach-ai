@@ -227,7 +227,7 @@ export async function fetchDashboardStats(puuid: string, summonerId: string): Pr
             
             // B. Nemesis
             const enemy = m.info.participants.find((ep: any) => ep.teamId !== p.teamId && ep.teamPosition === p.teamPosition);
-            if (enemy && p.teamPosition !== 'UTILITY' && p.teamPosition !== 'JUNGLE') { // Optimization: positions usually match in lanes
+            if (enemy && p.teamPosition !== 'UTILITY' && p.teamPosition !== 'JUNGLE') { 
                 const ename = enemy.championName;
                 const ecurr = opponentMap.get(ename) || { wins: 0, total: 0 };
                 ecurr.total++;
@@ -239,15 +239,14 @@ export async function fetchDashboardStats(puuid: string, summonerId: string): Pr
             if (p.challenges?.soloKillsTaken > 0) soloDeathCount++;
             
             // D. Clutch (Gold Diff)
-            // Calculate team gold
-            const myTeamGold = m.info.participants.filter((pt: any) => pt.teamId === p.teamId).reduce((acc: number, curr: any) => acc + curr.goldEarned, 0);
-            const enemyTeamGold = m.info.participants.filter((pt: any) => pt.teamId !== p.teamId).reduce((acc: number, curr: any) => acc + curr.goldEarned, 0);
+            const myTeamGold = m.info.participants.filter((pt: any) => pt.teamId === p.teamId).reduce((acc: number, curr: any) => acc + (curr.goldEarned || 0), 0);
+            const enemyTeamGold = m.info.participants.filter((pt: any) => pt.teamId !== p.teamId).reduce((acc: number, curr: any) => acc + (curr.goldEarned || 0), 0);
             const goldDiff = Math.abs(myTeamGold - enemyTeamGold);
             
-            if (goldDiff < 5000) { // < 5k Gold Diff is fairly close
+            if (goldDiff < 5000) { 
                  closeTotal++;
                  if (p.win) closeWins++;
-            } else if (goldDiff > 10000) { // > 10k is Stomp
+            } else if (goldDiff > 10000) { 
                  stompTotal++;
                  if (p.win) stompWins++;
             }
