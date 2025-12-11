@@ -53,10 +53,8 @@ export default function DashboardPage() {
         if (!activeSummoner) return;
         setIsFetching(true);
         setError(null);
-        setDebugLogs([]);
+        setDebugLogs(["[Client] Starting Refresh...", `[Client] PUUID: ${activeSummoner.puuid?.slice(0,10)}...`]);
         console.log("Start Dashboard Refresh...");
-
-
 
         const { puuid, summoner_id } = activeSummoner;
         
@@ -64,24 +62,33 @@ export default function DashboardPage() {
         if (!summoner_id || !puuid) {
             console.warn("[Dashboard] Active Summoner Incomplete:", activeSummoner);
             setError("アカウント情報が不完全です（PUUID欠落）。アカウントを再連携してください。");
+            setDebugLogs(prev => [...prev, "[Client] Error: Missing PUUID or SummonerID"]);
             setIsFetching(false);
             return;
         }
 
         try {
             console.log("Fetching stats for", puuid);
+            setDebugLogs(prev => [...prev, "[Client] Requesting Server Action..."]);
+            
             const data = await fetchDashboardStats(puuid, summoner_id);
             console.log("Fetched Stats Result:", JSON.stringify(data, null, 2));
             setStats(data);
-            if (data.debugLog) setDebugLogs(data.debugLog);
+            
+            setDebugLogs(prev => [
+                ...prev, 
+                `[Client] Response Received. matches=${data.recentMatches.length}`,
+                ...(data.debugLog || ["[Client] Warn: stats.debugLog is missing/empty"])
+            ]);
             
             if (data.recentMatches.length === 0) {
                 setError("直近の対戦データが見つかりませんでした。(JPサーバーでプレイしていますか？)");
             }
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to fetch dashboard stats", error);
             setError("データの取得に失敗しました。時間をおいて再試行してください。");
+            setDebugLogs(prev => [...prev, `[Client] Exception: ${error.message || error}`]);
         }
         
         setIsFetching(false);
