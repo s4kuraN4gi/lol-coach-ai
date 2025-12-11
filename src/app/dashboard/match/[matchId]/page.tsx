@@ -1,42 +1,85 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import { fetchMatchDetail, fetchMatchTimeline } from "@/app/actions/riot";
 import { getMatchAnalysis } from "@/app/actions/analysis";
 import DashboardLayout from "@/app/Components/layout/DashboardLayout";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import Timeline from "./components/Timeline";
 import MatchAnalysisPanel from "./components/MatchAnalysisPanel";
-import { createClient } from "@/utils/supabase/server";
+import LoadingAnimation from "@/app/Components/LoadingAnimation";
+import { useSummoner } from "@/app/Providers/SummonerProvider";
 
-// This is a Server Component
-export default async function MatchDetailsPage({ params }: { params: { matchId: string } }) {
-    const { matchId } = params;
-    const supabase = await createClient();
+export default function MatchDetailsPage() {
+    const params = useParams();
+    const matchId = params?.matchId as string;
+    const { activeSummoner, loading: summonerLoading } = useSummoner();
     
-    // Get Current User & Profile
-    const { data: { user } } = await supabase.auth.getUser();
-    let userPuuid: string | null = null;
-    
-    if (user) {
-        const { data: profile } = await supabase.from('profiles').select('puuid').eq('id', user.id).single();
-        userPuuid = profile?.puuid || null;
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [matchData, setMatchData] = useState<any>(null);
+    const [timelineData, setTimelineData] = useState<any>(null);
+    const [analysisData, setAnalysisData] = useState<any>(null);
+
+    useEffect(() => {
+        if (!matchId) return;
+        
+        async function loadMatchData() {
+            setLoading(true);
+            setError(null);
+
+            try {
+                const [matchRes, timelineRes, analysisRes] = await Promise.all([
+                    fetchMatchDetail(matchId),
+                    fetchMatchTimeline(matchId),
+                    getMatchAnalysis(matchId)
+                ]);
+
+                if (!matchRes.success || !matchRes.data) {
+                    throw new Error(matchRes.error || "Failed to load match details.");
+                }
+
+                setMatchData(matchRes.data);
+                
+                if (timelineRes.success) {
+                    setTimelineData(timelineRes.data);
+                }
+                
+                setAnalysisData(analysisRes); // analysisRes returns specific structure or null
+
+            } catch (e: any) {
+                console.error("Match Detail Load Error:", e);
+                setError(e.message || "An unexpected error occurred.");
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        loadMatchData();
+    }, [matchId]);
+
+    // 1. Loading State
+    if (loading || summonerLoading) {
+         return (
+            <DashboardLayout>
+                <div className="flex flex-col items-center justify-center min-h-[60vh]">
+                    <LoadingAnimation />
+                    <p className="mt-4 text-slate-400 animate-pulse">Analyzing Match Data...</p>
+                </div>
+            </DashboardLayout>
+         );
     }
 
-    // Fetch data in parallel
-    const [matchRes, timelineRes, initialAnalysis] = await Promise.all([
-        fetchMatchDetail(matchId),
-        fetchMatchTimeline(matchId),
-        getMatchAnalysis(matchId)
-    ]);
-
-    if (!matchRes.success || !matchRes.data) {
-         console.error(`Match Detail Load Failed for ID: ${matchId}`, matchRes.error);
+    // 2. Error State
+    if (error) {
          return (
             <DashboardLayout>
                 <div className="p-10 text-center text-red-400">
                     <h2 className="text-2xl font-bold mb-4">Failed to Load Match</h2>
-                    <p className="font-mono bg-slate-900 p-4 rounded inline-block text-left">
+                    <p className="font-mono bg-slate-900 border border-slate-800 p-4 rounded inline-block text-left text-sm max-w-2xl whitespace-pre-wrap">
                         <span className="text-slate-500">ID:</span> {matchId}<br/>
-                        <span className="text-slate-500">Error:</span> {matchRes.error || "Unknown Error"}
+                        <span className="text-slate-500">Error:</span> {error}
                     </p>
                     <div className="mt-6">
                         <Link href="/dashboard" className="text-blue-400 hover:underline">Return to Dashboard</Link>
@@ -46,12 +89,10 @@ export default async function MatchDetailsPage({ params }: { params: { matchId: 
          );
     }
 
-    const match = matchRes.data;
-    const timeline = timelineRes.data;
-
     // Identify User Participant
-    const participant = userPuuid 
-        ? match.info.participants.find((p: any) => p.puuid === userPuuid)
+    const userPuuid = activeSummoner?.puuid;
+    const participant = userPuuid && matchData
+        ? matchData.info.participants.find((p: any) => p.puuid === userPuuid)
         : null;
 
     const summonerName = participant?.summonerName || "Unknown";
@@ -64,8 +105,8 @@ export default async function MatchDetailsPage({ params }: { params: { matchId: 
             <div className="max-w-7xl mx-auto p-4 md:p-8 animate-fadeIn">
                 {/* Header / Nav */}
                 <div className="flex items-center gap-4 mb-8 text-sm text-slate-400">
-                    <Link href="/dashboard" className="hover:text-blue-400 transition flex items-center gap-1">
-                        ← Back to Dashboard
+                    <Link href="/dashboard/stats" className="hover:text-blue-400 transition flex items-center gap-1">
+                        ← Back to Stats
                     </Link>
                     <span className="text-slate-600">/</span>
                     <span className="text-slate-200 font-mono">{matchId}</span>
@@ -76,33 +117,40 @@ export default async function MatchDetailsPage({ params }: { params: { matchId: 
                     {/* Header Info */}
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                             <div className="bg-slate-800 p-2 rounded-lg">
+                             <div className="bg-slate-800 p-2 rounded-lg relative overflow-hidden group">
                                  <img 
                                     src={`https://ddragon.leagueoflegends.com/cdn/14.24.1/img/champion/${championName}.png`} 
                                     alt={championName}
-                                    className="w-12 h-12 rounded"
+                                    className="w-16 h-16 rounded object-cover transform scale-110 group-hover:scale-100 transition duration-500"
                                     onError={(e) => e.currentTarget.style.display = 'none'} 
                                  />
+                                 <div className={`absolute inset-0 border-2 rounded-lg ${win ? 'border-blue-500/50' : 'border-red-500/50'}`}></div>
                              </div>
                              <div>
-                                <h1 className="text-2xl font-bold italic tracking-tighter text-white">
-                                    MATCH ANALYSIS <span className="text-blue-500">AI</span>
+                                <h1 className="text-3xl font-black italic tracking-tighter text-white flex items-center gap-2">
+                                    MATCH REPORT <span className="text-blue-500 text-sm font-normal py-0.5 px-2 bg-blue-500/10 rounded-full border border-blue-500/30">AI BETA</span>
                                 </h1>
-                                <div className="text-sm text-slate-400 font-mono">
-                                    {participant ? (participant.win ? "VICTORY" : "DEFEAT") : "SPECTATOR"} • {kda} KDA
+                                <div className="flex items-center gap-3 text-sm font-mono mt-1">
+                                    <span className={`font-bold ${win ? 'text-blue-400' : 'text-red-400'}`}>
+                                        {win ? "VICTORY" : "DEFEAT"}
+                                    </span>
+                                    <span className="text-slate-600">•</span>
+                                    <span className="text-slate-300">{kda} KDA</span>
+                                    <span className="text-slate-600">•</span>
+                                    <span className="text-slate-400">{matchData.info.gameMode}</span>
                                 </div>
                              </div>
                         </div>
 
-                        <div className="text-xs font-mono text-slate-500 border border-slate-700 px-2 py-1 rounded">
-                            PATCH {match.info.gameVersion.split('.').slice(0, 2).join('.')}
+                        <div className="text-xs font-mono text-slate-500 border border-slate-800 bg-slate-900/50 px-3 py-1.5 rounded-full">
+                            VER {matchData.info.gameVersion.split('.').slice(0, 2).join('.')}
                         </div>
                     </div>
 
                     {/* Timeline Component */}
-                    {timeline ? (
-                         <div className="glass-panel p-1 rounded-xl overflow-hidden shadow-2xl shadow-blue-900/10">
-                            <Timeline match={match} timeline={timeline} />
+                    {timelineData ? (
+                         <div className="glass-panel p-1 rounded-xl overflow-hidden shadow-2xl shadow-blue-900/10 ring-1 ring-white/5">
+                            <Timeline match={matchData} timeline={timelineData} />
                          </div>
                     ) : (
                         <div className="p-8 text-center text-slate-500 bg-slate-900/50 rounded-xl border border-slate-800 border-dashed">
@@ -114,7 +162,7 @@ export default async function MatchDetailsPage({ params }: { params: { matchId: 
                     {participant && (
                         <MatchAnalysisPanel 
                             matchId={matchId}
-                            initialAnalysis={initialAnalysis}
+                            initialAnalysis={analysisData}
                             summonerName={summonerName}
                             championName={championName}
                             kda={kda}
