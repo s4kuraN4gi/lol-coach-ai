@@ -172,26 +172,53 @@ export default function Timeline({ match, timeline }: { match: any, timeline: Ti
     }, [timeline, team100Ids]);
 
     // Max diff for scaling (Gold)
-    const maxDiff = Math.max(...goldDiffData.map(d => Math.abs(d.diff)), 2000); 
+    const maxDiff = Math.max(...goldDiffData.map(d => Math.abs(d.diff)), 2000);
 
-    // Calculate Vision Data (Cumulative Wards Placed)
-    const visionData = useMemo(() => {
-        let blueTotal = 0;
-        let redTotal = 0;
+    // Calculate Active Vision (Sliding Window of ~3 mins for Wards)
+    const activeVisionData = useMemo(() => {
+        const WARD_LIFESPAN = 180000; // 3 mins in ms
+        
+        // Extract all ward events first for O(1) access? No, filter is fast enough for ~1000 events.
+        const wardEvents = timeline.info.frames.flatMap(f => f.events.filter(e => e.type === "WARD_PLACED"));
+
         return timeline.info.frames.map(frame => {
-            frame.events.forEach(e => {
-                if (e.type === "WARD_PLACED") {
-                    const p = match.info.participants.find((p: any) => p.participantId === e.creatorId);
-                    if (p?.teamId === 100) blueTotal++;
-                    else if (p?.teamId === 200) redTotal++;
-                }
+            const now = frame.timestamp;
+            const start = now - WARD_LIFESPAN;
+            
+            // Count wards placed in the last 3 minutes
+            // Note: This is an estimation. Real logic requires tracking individual ward deaths.
+            // But "Recent Placement Frequency" is a good proxy for "Active Vision Control".
+            const activeWards = wardEvents.filter(e => e.timestamp > start && e.timestamp <= now);
+            
+            let blue = 0;
+            let red = 0;
+            
+            activeWards.forEach(e => {
+                 const p = match.info.participants.find((p: any) => p.participantId === e.creatorId);
+                 if (p?.teamId === 100) blue++;
+                 else if (p?.teamId === 200) red++;
             });
-            return { timestamp: frame.timestamp, blue: blueTotal, red: redTotal };
+            
+            // Cap at reasonable max (e.g., 25 wards implies ~100% map control)
+            // Using 4% per ward
+            return { 
+                blue: Math.min(100, blue * 4), 
+                red: Math.min(100, red * 4) 
+            };
         });
     }, [timeline, match]);
 
-    // Max Vision for Scaling
-    const maxVision = Math.max(...visionData.map(d => Math.max(d.blue, d.red)), 10);
+    // Max Vision for Scaling (Cumulative logic replaced or kept? The graph uses cumulative. Let's keep graph as cumulative?
+    // User asked for "Percentage" at bottom corners. Graph can stay cumulative or switch to rate?
+    // Let's keep Graph as "Cumulative Placed" (Activity) but show "Coverage %" (Status) in corners.
+    // Actually, GraphMode "vision" is currently Cumulative. Ideally it should match.
+    // Let's NOT change the graph data logic to avoid confusion, or should we?
+    // "Active Wards" graph is actually more useful than "Cumulative".
+    // Let's update `visionData` to use this new `activeVisionData` for the graph too! 
+    // It makes more sense.
+    
+    const visionGraphData = activeVisionData; 
+    const maxVisionGraph = 100; // Since it's percentage now
 
     // Extract Objectives
     const objectives = useMemo(() => {
@@ -238,6 +265,27 @@ export default function Timeline({ match, timeline }: { match: any, timeline: Ti
             {/* Visualizer Area */}
             {/* Added py-6 to prevent vertical marker cutoff, removed overflow-hidden */}
             <div className="relative h-72 w-full bg-slate-950 py-6">
+                
+                {/* Vision Percentage Overlays (Bottom Left/Right) */}
+                {/* Show current hovered frame data, else 0 or last frame? Show 0 if not hovered to be clean. */}
+                <div className={`absolute bottom-2 left-4 z-30 transition-opacity duration-300 ${hoveredFrame !== null ? 'opacity-100' : 'opacity-50'}`}>
+                    <div className="flex flex-col items-start">
+                        <span className="text-[10px] text-slate-500 font-bold tracking-widest uppercase">Blue Vision</span>
+                        <div className="text-2xl font-black text-blue-500 drop-shadow-lg tabular-nums">
+                            {hoveredFrame !== null ? visionGraphData[hoveredFrame].blue : 0}%
+                        </div>
+                    </div>
+                </div>
+                <div className={`absolute bottom-2 right-4 z-30 transition-opacity duration-300 ${hoveredFrame !== null ? 'opacity-100' : 'opacity-50'}`}>
+                     <div className="flex flex-col items-end">
+                        <span className="text-[10px] text-slate-500 font-bold tracking-widest uppercase">Red Vision</span>
+                        <div className="text-2xl font-black text-red-500 drop-shadow-lg tabular-nums">
+                            {hoveredFrame !== null ? visionGraphData[hoveredFrame].red : 0}%
+                        </div>
+                    </div>
+                </div>
+
+
                 {/* SVG Container */}
                 <svg 
                     width="100%" 
@@ -272,36 +320,36 @@ export default function Timeline({ match, timeline }: { match: any, timeline: Ti
                         </>
                     ) : (
                         <>
-                            {/* Vision Graph (Cumulative) */}
+                            {/* Vision Graph (Active Coverage %) */}
                             {/* Blue Team Line */}
                             <path 
                                 d={`
                                     M 0 100
-                                    ${visionData.map((d, i) => {
-                                        const percent = d.blue / maxVision; // 0 to 1
+                                    ${visionGraphData.map((d, i) => {
+                                        const percent = d.blue / 100; // 0 to 1
                                         const y = 100 - (percent * 90); // Scale 0-90% height
                                         return `L ${i} ${y}`;
                                     }).join(' ')}
                                 `}
                                 fill="none"
                                 stroke="#3b82f6"
-                                strokeWidth="0.8"
-                                className="drop-shadow"
+                                strokeWidth="2"
+                                className="drop-shadow filter"
                             />
                             {/* Red Team Line */}
                             <path 
                                 d={`
                                     M 0 100
-                                    ${visionData.map((d, i) => {
-                                        const percent = d.red / maxVision; // 0 to 1
+                                    ${visionGraphData.map((d, i) => {
+                                        const percent = d.red / 100; // 0 to 1
                                         const y = 100 - (percent * 90); // Scale 0-90% height
                                         return `L ${i} ${y}`;
                                     }).join(' ')}
                                 `}
                                 fill="none"
                                 stroke="#ef4444"
-                                strokeWidth="0.8"
-                                className="drop-shadow"
+                                strokeWidth="2"
+                                className="drop-shadow filter"
                             />
                         </>
                     )}
@@ -411,8 +459,8 @@ export default function Timeline({ match, timeline }: { match: any, timeline: Ti
                                 </span>
                             ) : (
                                 <div className="flex gap-4">
-                                     <span className="text-blue-400">Blue Wards: {visionData[hoveredFrame].blue}</span>
-                                     <span className="text-red-400">Red Wards: {visionData[hoveredFrame].red}</span>
+                                     <span className="text-blue-400">Blue Vision: {visionGraphData[hoveredFrame].blue}%</span>
+                                     <span className="text-red-400">Red Vision: {visionGraphData[hoveredFrame].red}%</span>
                                 </div>
                             )}
                         </div>
