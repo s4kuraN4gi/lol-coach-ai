@@ -73,16 +73,25 @@ export async function fetchDashboardStats(puuid: string, summonerId: string): Pr
         const matchIds = idsRes.data;
         console.log(`[Stats] Found ${matchIds.length} matches for ${puuid}`);
 
+
         // 3. Cache Check
-        // Query Supabase for existing matches
-        const { data: cachedMatches, error: cacheError } = await supabase
-            .from('match_cache')
-            .select('match_id, data')
-            .in('match_id', matchIds);
-        
         const cachedMap = new Map<string, any>();
-        if (cachedMatches) {
-            cachedMatches.forEach((row: any) => cachedMap.set(row.match_id, row.data));
+        try {
+            // Query Supabase for existing matches
+            const { data: cachedMatches, error: cacheError } = await supabase
+                .from('match_cache')
+                .select('match_id, data')
+                .in('match_id', matchIds);
+            
+            if (cacheError) {
+                console.warn("[Stats] Cache Lookup Failed (Table likely missing):", cacheError.message);
+                // Continue without cache, missingIds will be all
+            } else if (cachedMatches) {
+                cachedMatches.forEach((row: any) => cachedMap.set(row.match_id, row.data));
+            }
+        } catch (dbErr) {
+            console.error("[Stats] Unexpected DB Error:", dbErr);
+            // Ignore DB error and proceed
         }
 
         const missingIds = matchIds.filter(id => !cachedMap.has(id));
@@ -96,6 +105,7 @@ export async function fetchDashboardStats(puuid: string, summonerId: string): Pr
             for (let i = 0; i < missingIds.length; i += chunkSize) {
 
                 const chunk = missingIds.slice(i, i + chunkSize);
+                console.log(`[Stats] Fetching chunk ${i} - ${i+chunkSize}`);
                 const promises = chunk.map(id => fetchMatchDetail(id));
                 const results = await Promise.all(promises);
                 
@@ -104,6 +114,8 @@ export async function fetchDashboardStats(puuid: string, summonerId: string): Pr
                         newMatches.push(r.data);
                         // Add to map for immediate use
                         cachedMap.set(r.data.metadata.matchId, r.data);
+                    } else {
+                        console.error("[Stats] Failed to fetch match:", r.error);
                     }
                 });
                 
@@ -114,18 +126,22 @@ export async function fetchDashboardStats(puuid: string, summonerId: string): Pr
             
             // 5. Save to Cache
             if (newMatches.length > 0) {
-                // Prepare rows
-                const rows = newMatches.map(m => ({
-                    match_id: m.metadata.matchId,
-                    data: m
-                }));
-                
-                // Bulk Upsert (Ignore conflicts)
-                const { error: insertError } = await supabase
-                    .from('match_cache')
-                    .upsert(rows, { onConflict: 'match_id', ignoreDuplicates: true });
-                
-                if (insertError) console.error("Cache Insert Error:", insertError);
+                try {
+                    // Prepare rows
+                    const rows = newMatches.map(m => ({
+                        match_id: m.metadata.matchId,
+                        data: m
+                    }));
+                    
+                    // Bulk Upsert (Ignore conflicts)
+                    const { error: insertError } = await supabase
+                        .from('match_cache')
+                        .upsert(rows, { onConflict: 'match_id', ignoreDuplicates: true });
+                    
+                    if (insertError) console.error("Cache Insert Error:", insertError.message);
+                } catch (dbErr) {
+                    console.error("Cache Insert Exception:", dbErr);
+                }
             }
         }
 
