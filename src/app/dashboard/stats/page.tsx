@@ -56,7 +56,7 @@ export default async function StatsPage() {
             .filter(res => res.success && res.data)
             .map(res => res.data)
             .map((m: any) => {
-                const p = m.info.participants.find((p: any) => p.puuid === profile.puuid);
+                const p = m.info.participants.find((p: any) => p.puuid === activeAccount.puuid);
                 if (!p) return null;
                 
                 // Aggregate Stats
