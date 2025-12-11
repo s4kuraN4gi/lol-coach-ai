@@ -21,7 +21,9 @@ export function pruneMatchData(matchData: any): any {
         "kda",
         "killParticipation",
         "turretPlatesTaken",
-        "visionScorePerMinute"
+        "visionScorePerMinute",
+        "laneMinionsFirst10Minutes",
+        "jungleCsBefore10Minutes"
     ];
 
     pruned.info.participants.forEach((p: any) => {

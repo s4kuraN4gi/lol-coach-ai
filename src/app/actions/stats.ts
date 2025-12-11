@@ -80,7 +80,23 @@ export async function fetchDashboardStats(puuid: string, summonerId?: string | n
         }
 
         // 1. Fetch Rank
-        const ranks = await fetchRank(validSummonerId);
+        let ranks = await fetchRank(validSummonerId);
+
+        // Self-heal: If NO ranks found, SummonerID might be stale. Re-fetch ID from Riot.
+        if (ranks.length === 0 && validSummonerId) {
+             const { fetchSummonerByPuuid } = await import('./riot');
+             log(`[Stats] No ranks found. Verifying SummonerID...`);
+             const freshSummoner = await fetchSummonerByPuuid(puuid, true); // noCache=true
+             
+             if (freshSummoner && freshSummoner.id !== validSummonerId) {
+                 log(`[Stats] SummonerID mismatch! Updating to: ${freshSummoner.id}`);
+                 validSummonerId = freshSummoner.id;
+                 ranks = await fetchRank(validSummonerId);
+                 log(`[Stats] Retry Rank Fetch found: ${ranks.length}`);
+             } else {
+                 log(`[Stats] SummonerID is valid (unchanged). User is likely truly Unranked.`);
+             }
+        }
 
         stats.ranks = ranks;
         log(`[Stats] Ranks fetched: ${ranks.length}`);
