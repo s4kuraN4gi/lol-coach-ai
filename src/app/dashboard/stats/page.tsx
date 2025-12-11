@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { fetchMatchIds, fetchMatchDetail, fetchRank } from "@/app/actions/riot";
+import { getActiveSummoner } from "@/app/actions/profile";
 import DashboardLayout from "@/app/Components/layout/DashboardLayout";
 import Link from "next/link";
 
@@ -26,10 +27,10 @@ export default async function StatsPage() {
         );
     }
 
-    // Get Profile
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+    // Get Active Summoner
+    const activeAccount = await getActiveSummoner();
 
-    if (!profile || !profile.puuid) {
+    if (!activeAccount || !activeAccount.puuid) {
         return (
              <DashboardLayout>
                 <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
@@ -43,7 +44,7 @@ export default async function StatsPage() {
 
     // Fetch Matches (Server-Side)
     // Fetch count=10 for history page
-    const matchIdsRes = await fetchMatchIds(profile.puuid, 10);
+    const matchIdsRes = await fetchMatchIds(activeAccount.puuid, 10);
     let history: HistoryItem[] = [];
     let stats = { wins: 0, losses: 0, kills: 0, deaths: 0, assists: 0 };
 
