@@ -327,7 +327,8 @@ export async function analyzeMatch(
   summonerName: string,
   championName: string,
   kda: string,
-  win: boolean
+  win: boolean,
+  userApiKey?: string // [NEW] BYOK Support
 ) {
   const supabase = await createClient();
   const {
@@ -336,6 +337,7 @@ export async function analyzeMatch(
   if (!user) return { error: "Not authenticated" };
 
   // まずDBに既存の解析があるか確認 (節約のため)
+  // 保存済みがあれば、API呼び出し不要なのでBYOKチェックもスキップして返す
   const { data: existing } = await supabase
     .from("match_analyses")
     .select("analysis_text")
@@ -347,26 +349,56 @@ export async function analyzeMatch(
     return { success: true, advice: existing.analysis_text, cached: true };
   }
 
-  // Gemini API Key Check
-  const apiKey = process.env.GEMINI_API_KEY;
+  // --- Logic for Limits & Keys (Shared with analyzeVideo) ---
+  const status = await getAnalysisStatus();
+  if (!status) return { error: "User profile not found." };
+
+  let useEnvKey = false;
+  let shouldIncrementCount = false;
+
+  if (status.is_premium) {
+      // 1. Premium User
+      const today = new Date().toISOString().split('T')[0];
+      const lastDate = status.last_analysis_date ? status.last_analysis_date.split('T')[0] : null;
+      let currentCount = status.daily_analysis_count;
+      if (lastDate !== today) currentCount = 0;
+
+      if (currentCount >= 50) return { error: "Daily limit reached (50/50). Try again tomorrow." };
+      
+      useEnvKey = true;
+      shouldIncrementCount = true;
+  } else {
+      // 2. Free User
+      if (userApiKey) {
+          useEnvKey = false; // Use provided key
+      } else {
+          // Fallback: Check for legacy credits or deny
+          if (status.analysis_credits > 0) {
+              useEnvKey = true;
+              // Will decrement later
+          } else {
+              return { error: "API Key required. Please upgrade or enter your own Gemini API Key." };
+          }
+      }
+  }
+
+  const apiKey = useEnvKey ? process.env.GEMINI_API_KEY : userApiKey;
   let resultAdvice = "";
 
   if (!apiKey) {
-    console.warn("GEMINI_API_KEY is missing. Using mock response.");
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    const mocks = [
-      `【Mock】${championName}での${kda}は見事ですが、視界スコアが低めです。`,
-      `【Mock】${win ? "勝利おめでとう！" : "惜しい試合でした。"} 集団戦の立ち位置を改善しましょう。`,
-    ];
-    resultAdvice = mocks[Math.floor(Math.random() * mocks.length)];
+      if (!useEnvKey && !userApiKey) return { error: "Configuration Error: API Key missing." };
+      // If server key missing but supposed to use it...
+       console.warn("GEMINI_API_KEY is missing via Env. Using Mock.");
+       await new Promise((resolve) => setTimeout(resolve, 1500));
+       resultAdvice = `【Mock】${championName}での${kda}は見事ですが、APIキーが設定されていません。`;
   } else {
-    try {
-      const { GoogleGenerativeAI } = await import("@google/generative-ai");
-      const genAI = new GoogleGenerativeAI(apiKey);
-      // 'gemini-flash-latest' (v1.5)
-      const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+      // Call Gemini
+      try {
+        const { GoogleGenerativeAI } = await import("@google/generative-ai");
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); // Use explicit model name
 
-      const prompt = `
+        const prompt = `
 あなたはLeague of Legendsのプロコーチです。
 以下の試合結果を元に、プレイヤーへの具体的かつ簡潔な改善アドバイス（ダメ出し含む）を日本語で作成してください。
 300文字以内で、箇条書きや絵文字を使って読みやすくしてください。
@@ -381,37 +413,18 @@ KDA: ${kda}
 2. 改善点（具体的に）
 3. 次へのアクション
 `;
+        const result = await model.generateContent(prompt);
+        resultAdvice = result.response.text();
 
-      const result = await model.generateContent(prompt);
-      resultAdvice = result.response.text();
-    } catch (e: any) {
-      console.error("Gemini Match Analysis API Error:", e);
-
-      // Debug: If 404, try to list available models to see what IS valid
-      if (e.message.includes("404") || e.message.includes("not found")) {
-        try {
-          const listRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
-          );
-          const listData = await listRes.json();
-          if (listData.models) {
-            const modelNames = listData.models
-              .map((m: any) => m.name)
-              .join(", ");
-            return {
-              error: `Gemini 404 Error. Available models: ${modelNames}`,
-            };
-          }
-        } catch (listErr) {
-          console.error("Failed to list models:", listErr);
-        }
+      } catch (e: any) {
+          console.error("Gemini Match Analysis Error:", e);
+          return { error: `Gemini Error: ${e.message}` };
       }
-
-      return { error: `Gemini Error: ${e.message || "Unknown error"}` };
-    }
   }
 
-  // DBに保存
+  // --- Post-Process: Update DB ---
+  
+  // 1. Save Result
   const { error } = await supabase.from("match_analyses").insert({
     user_id: user.id,
     match_id: matchId,
@@ -419,13 +432,25 @@ KDA: ${kda}
     champion_name: championName,
     analysis_text: resultAdvice,
   });
+  if (error) console.error("Failed to save analysis:", error);
 
-  if (error) {
-    console.error("Failed to save analysis:", error);
-    // 保存失敗しても結果は返す
+  // 2. Update Limits/Credits
+  if (shouldIncrementCount) {
+      const today = new Date().toISOString();
+      const todayDateStr = today.split('T')[0];
+      const lastDateStr = status.last_analysis_date ? status.last_analysis_date.split('T')[0] : null;
+      let newCount = status.daily_analysis_count + 1;
+      if (lastDateStr !== todayDateStr) newCount = 1;
+
+      await supabase.from("profiles").update({ daily_analysis_count: newCount, last_analysis_date: today }).eq("id", user.id);
+  } else if (!userApiKey && useEnvKey && !status.is_premium) {
+      // Consume Credit
+      await supabase.from("profiles").update({ analysis_credits: status.analysis_credits - 1 }).eq("id", user.id);
   }
 
   revalidatePath("/dashboard");
+  revalidatePath(`/dashboard/match/${matchId}`); // Also revalidate specific page
+
   return { success: true, advice: resultAdvice };
 }
 
