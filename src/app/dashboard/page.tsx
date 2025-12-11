@@ -155,20 +155,25 @@ export default function DashboardPage() {
             <LPWidget rank={stats?.rank || null} recentMatches={stats?.recentMatches || []} />
         </div>
 
-        {/* Row 2: Champion Performance & Future Widgets */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {/* Row 2: Champion Performance & Skill Radar */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <ChampionPerformance stats={stats?.championStats || []} />
-            
-            {/* Placeholder for Skill Radar / Unique Stats */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 flex flex-col items-center justify-center text-center relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5"></div>
-                <div className="text-5xl mb-4 opacity-50">🚧</div>
-                <h3 className="text-xl font-bold text-slate-300 mb-2">More Analytics Coming Soon</h3>
-                <p className="text-slate-500 max-w-sm">
-                    Skill Radar, Personal Win Conditions, and Nemesis Analysis are being implemented.
-                </p>
-            </div>
+            <SkillRadar stats={stats?.radarStats || null} />
         </div>
+
+        {/* Row 3: Unique Analysis (A, B, C, D) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+             <div className="space-y-6">
+                 <WinConditionWidget stats={stats?.uniqueStats || null} />
+                 <SurvivalWidget stats={stats?.uniqueStats || null} />
+             </div>
+             <div className="space-y-6">
+                 <NemesisWidget stats={stats?.uniqueStats || null} />
+                 <ClutchWidget stats={stats?.uniqueStats || null} />
+             </div>
+        </div>
+
         
       </DashboardLayout>
     </>
