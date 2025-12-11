@@ -225,6 +225,16 @@ export default function DashboardPage() {
         </div>
 
         
+        {/* Debug Logs Section (Always Visible for now) */}
+        <div className="mt-12 p-4 bg-slate-900 rounded-lg border border-slate-800">
+            <p className="text-xs font-bold text-slate-500 mb-2 uppercase">System Logs (Debug)</p>
+            <div className="max-h-48 overflow-y-auto space-y-1">
+                {debugLogs.length > 0 ? debugLogs.map((log, i) => (
+                    <p key={i} className="text-[10px] font-mono text-slate-500 border-b border-slate-800 pb-1">{log}</p>
+                )) : <p className="text-xs text-slate-600 italic">No logs available.</p>}
+            </div>
+        </div>
+
       </DashboardLayout>
     </>
   );
