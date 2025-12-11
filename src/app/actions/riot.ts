@@ -165,6 +165,7 @@ export async function fetchMatchDetail(matchId: string): Promise<{ success: bool
         console.error("fetchMatchDetail exception:", e);
         return { success: false, error: e.message };
     }
+}
 // 6. Get Match Timeline by MatchID
 export async function fetchMatchTimeline(matchId: string): Promise<{ success: boolean, data?: any, error?: string }> {
     if (!RIOT_API_KEY) return { success: false, error: "RIOT_API_KEY is missing" };

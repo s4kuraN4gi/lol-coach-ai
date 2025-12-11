@@ -1,5 +1,5 @@
 import { fetchMatchDetail, fetchMatchTimeline } from "@/app/actions/riot";
-import DashboardLayout from "@/app/dashboard/components/layout/DashboardLayout";
+import DashboardLayout from "@/app/Components/layout/DashboardLayout";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import Timeline from "./components/Timeline";
