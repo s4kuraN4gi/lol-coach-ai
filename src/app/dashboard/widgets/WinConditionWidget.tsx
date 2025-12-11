@@ -1,50 +1,80 @@
-import { UniqueStats } from "@/app/actions/stats";
+import DashboardCard from "../components/DashboardCard";
+import InfoTooltip from "../components/InfoTooltip";
 
-export default function WinConditionWidget({ stats }: { stats: UniqueStats | null }) {
-    if (!stats) {
-        return (
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 h-full flex flex-col justify-center items-center text-center">
-                <div className="text-sm font-bold text-slate-400 mb-1">WIN CONDITIONS</div>
-                <div className="text-xs text-slate-600">Collecting match data...</div>
-            </div>
-        );
-    }
+export default function WinConditionWidget({ stats }: { stats: any }) {
+    if (!stats) return <DashboardCard>Collecting match data...</DashboardCard>;
 
-    const conditions = stats.winConditions;
+    // Helper for coloring
+    const getWinRateColor = (wins: number, total: number) => {
+        if (total === 0) return "text-slate-500";
+        const wr = (wins / total) * 100;
+        if (wr >= 60) return "text-yellow-400 font-bold"; 
+        if (wr >= 50) return "text-emerald-400"; 
+        return "text-rose-400"; 
+    };
 
     return (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-            <div className="flex justify-between items-start mb-4">
-                <div className="text-slate-400 text-xs font-bold tracking-wider">VICTORY CONDITIONS</div>
-                <div className="text-[10px] text-slate-500">When you...</div>
-            </div>
+        <DashboardCard className="relative overflow-hidden group hover:border-yellow-500/30 transition-all duration-500">
+             <div className="flex items-center mb-6">
+                <div className="p-2 bg-yellow-500/10 rounded-lg mr-3 shadow-[0_0_15px_rgba(234,179,8,0.1)]">
+                    <span className="text-xl">🏆</span>
+                </div>
+                <div>
+                     <h3 className="text-sm font-bold text-slate-200 flex items-center gap-1">
+                        Win Conditions
+                        <InfoTooltip content={{
+                            what: "勝利に直結する3大アクション（First Blood, First Tower, Solo Kill）の達成率。",
+                            why: "これらを取得した試合の勝率が高い＝あなたの「勝ちパターン」です。",
+                            how: "勝率60%以上の項目を意識して狙うことで、勝率を安定させられます。"
+                        }} />
+                     </h3>
+                     <p className="text-xs text-slate-500">Victory Factors</p>
+                </div>
+             </div>
 
-            <div className="space-y-4">
-                {conditions.map((item) => (
-                    <div key={item.label}>
-                        <div className="flex justify-between text-xs text-slate-300 mb-1">
-                            <span className="font-bold flex items-center gap-2">
-                                {item.label.includes("Blood") && "🩸"}
-                                {item.label.includes("Tower") && "🏯"}
-                                {item.label.includes("Solo") && "⚔️"}
-                                {item.label}
-                            </span>
-                            <span className={item.winRate >= 60 ? "text-yellow-400" : "text-slate-400"}>
-                                {item.winRate}% WR ({item.count} games)
-                            </span>
-                        </div>
-                        <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                            <div 
-                                className={`h-full rounded-full ${item.winRate >= 60 ? "bg-yellow-500" : "bg-blue-500"}`}
-                                style={{ width: `${item.winRate}%` }}
-                            ></div>
+             <div className="space-y-4">
+                {/* First Blood */}
+                <div className="flex items-center justify-between p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
+                    <div className="flex items-center gap-3">
+                        <span className="text-sm">🩸</span>
+                        <span className="text-xs text-slate-300">First Blood</span>
+                    </div>
+                    <div className="text-right">
+                        <div className="text-xs font-mono text-slate-400">{stats.firstBlood.wins} / {stats.firstBlood.total}</div>
+                        <div className={`text-sm font-bold ${getWinRateColor(stats.firstBlood.wins, stats.firstBlood.total)}`}>
+                            {stats.firstBlood.total > 0 ? Math.round((stats.firstBlood.wins / stats.firstBlood.total) * 100) : 0}%
                         </div>
                     </div>
-                ))}
-            </div>
-            {conditions.length === 0 && (
-                <div className="text-xs text-slate-500 text-center py-4">Not enough data to determine conditions</div>
-            )}
-        </div>
+                </div>
+
+                {/* First Tower */}
+                <div className="flex items-center justify-between p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
+                    <div className="flex items-center gap-3">
+                        <span className="text-sm">🏯</span>
+                        <span className="text-xs text-slate-300">First Tower</span>
+                    </div>
+                    <div className="text-right">
+                        <div className="text-xs font-mono text-slate-400">{stats.firstTower.wins} / {stats.firstTower.total}</div>
+                        <div className={`text-sm font-bold ${getWinRateColor(stats.firstTower.wins, stats.firstTower.total)}`}>
+                            {stats.firstTower.total > 0 ? Math.round((stats.firstTower.wins / stats.firstTower.total) * 100) : 0}%
+                        </div>
+                    </div>
+                </div>
+
+                {/* Solo Kills */}
+                <div className="flex items-center justify-between p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
+                    <div className="flex items-center gap-3">
+                         <span className="text-sm">⚔️</span>
+                         <span className="text-xs text-slate-300">Solo Kills</span>
+                    </div>
+                    <div className="text-right">
+                        <div className="text-xs font-mono text-slate-400">{stats.soloKill.wins} / {stats.soloKill.total}</div>
+                        <div className={`text-sm font-bold ${getWinRateColor(stats.soloKill.wins, stats.soloKill.total)}`}>
+                            {stats.soloKill.total > 0 ? Math.round((stats.soloKill.wins / stats.soloKill.total) * 100) : 0}%
+                        </div>
+                    </div>
+                </div>
+             </div>
+        </DashboardCard>
     );
 }
