@@ -235,7 +235,9 @@ export async function fetchDashboardStats(puuid: string, summonerId?: string | n
         let closeWins = 0, closeTotal = 0;
         let stompWins = 0, stompTotal = 0;
 
-        matches.sort((a, b) => b.info.gameCreation - a.info.gameCreation).forEach(m => {
+// Filter: Only Analyze Summoner's Rift (CLASSIC) to avoid ARAM skewing stats
+            if (m.info.gameMode !== 'CLASSIC') return;
+
             const p = m.info.participants.find((p: any) => p.puuid === puuid);
             if (!p) {
                  log(`[Stats] WAITING PUUID Match Fail: ${m.metadata.matchId}`);
