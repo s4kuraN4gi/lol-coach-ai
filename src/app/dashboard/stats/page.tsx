@@ -1,10 +1,12 @@
-import { createClient } from "@/utils/supabase/server";
-import { fetchMatchIds, fetchMatchDetail, fetchRank } from "@/app/actions/riot";
-import { getActiveSummoner } from "@/app/actions/profile";
+```typescript
+"use client";
+
+import { useState, useEffect } from "react";
+import { fetchMatchIds, fetchMatchDetail } from "@/app/actions/riot";
 import DashboardLayout from "@/app/Components/layout/DashboardLayout";
 import Link from "next/link";
-
-export const dynamic = 'force-dynamic';
+import LoadingAnimation from "@/app/Components/LoadingAnimation";
+import { useSummoner } from "@/app/Providers/SummonerProvider";
 
 type HistoryItem = {
     matchId: string;
@@ -16,82 +18,131 @@ type HistoryItem = {
     duration: number;
 }
 
-export default async function StatsPage() {
-    let content = null;
+export default function StatsPage() {
+    const { activeSummoner, loading: summonerLoading } = useSummoner();
+    const [history, setHistory] = useState<HistoryItem[]>([]);
+    const [stats, setStats] = useState({ wins: 0, losses: 0, kills: 0, deaths: 0, assists: 0 });
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    try {
-        const supabase = await createClient();
-        const { data: { user } } = await supabase.auth.getUser();
+    useEffect(() => {
+        if (summonerLoading) return;
         
-        // Auth Check
-        if (!user) {
-            return (
-                <DashboardLayout>
-                    <div className="p-8 text-center text-slate-400">Please log in.</div>
-                </DashboardLayout>
-            );
-        }
+        async function loadData() {
+            if (!activeSummoner?.puuid) return;
 
-        // Get Active Summoner
-        const activeAccount = await getActiveSummoner();
-
-        if (!activeAccount || !activeAccount.puuid) {
-            return (
-                <DashboardLayout>
-                    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-                        <h2 className="text-xl font-bold text-white mb-4">No Account Linked</h2>
-                        <p className="text-slate-400 mb-6">Link your Riot Account in settings to view stats.</p>
-                        <Link href="/account" className="bg-blue-600 text-white px-6 py-2 rounded-lg">Go to Settings</Link>
-                    </div>
-                </DashboardLayout>
-            );
-        }
-
-        // Fetch Matches
-        const matchIdsRes = await fetchMatchIds(activeAccount.puuid, 5);
-        
-        let history: HistoryItem[] = [];
-        let stats = { wins: 0, losses: 0, kills: 0, deaths: 0, assists: 0 };
-
-        if (matchIdsRes.success && matchIdsRes.data) {
-            const matchPromises = matchIdsRes.data.map(id => fetchMatchDetail(id));
-            const matchesRes = await Promise.all(matchPromises);
+            setLoading(true);
+            setError(null);
             
-            history = matchesRes
-                .filter(res => res.success && res.data)
-                .map(res => res.data)
-                .map((m: any) => {
-                    const p = m.info.participants.find((p: any) => p.puuid === activeAccount.puuid);
-                    if (!p) return null;
-                    
-                    stats.wins += p.win ? 1 : 0;
-                    stats.losses += p.win ? 0 : 1;
-                    stats.kills += p.kills;
-                    stats.deaths += p.deaths;
-                    stats.assists += p.assists;
+            try {
+                // Fetch Matches
+                // Fetch count=5 to prevent timeouts on Vercel
+                const matchIdsRes = await fetchMatchIds(activeSummoner.puuid, 5);
+                
+                if (matchIdsRes.error) {
+                    throw new Error(matchIdsRes.error);
+                }
 
-                    return {
-                        matchId: m.metadata.matchId,
-                        champion: p.championName,
-                        win: p.win,
-                        kda: `${p.kills}/${p.deaths}/${p.assists}`,
-                        date: new Date(m.info.gameCreation).toLocaleDateString(),
-                        mode: m.info.gameMode,
-                        duration: m.info.gameDuration
-                    };
-                })
-                .filter(h => h !== null);
-        } else if (matchIdsRes.error) {
-             throw new Error("Match IDs Fetch Error: " + matchIdsRes.error);
+                if (matchIdsRes.success && matchIdsRes.data) {
+                    const matchPromises = matchIdsRes.data.map(id => fetchMatchDetail(id));
+                    const matchesRes = await Promise.all(matchPromises);
+                    
+                    const newStats = { wins: 0, losses: 0, kills: 0, deaths: 0, assists: 0 };
+
+                    const items = matchesRes
+                        .filter(res => res.success && res.data)
+                        .map(res => res.data)
+                        .map((m: any) => {
+                            const p = m.info.participants.find((p: any) => p.puuid === activeSummoner.puuid);
+                            if (!p) return null;
+                            
+                            newStats.wins += p.win ? 1 : 0;
+                            newStats.losses += p.win ? 0 : 1;
+                            newStats.kills += p.kills;
+                            newStats.deaths += p.deaths;
+                            newStats.assists += p.assists;
+
+                            return {
+                                matchId: m.metadata.matchId,
+                                champion: p.championName,
+                                win: p.win,
+                                kda: `${p.kills}/${p.deaths}/${p.assists}`,
+                                date: new Date(m.info.gameCreation).toLocaleDateString(),
+                                mode: m.info.gameMode,
+                                duration: m.info.gameDuration
+                            };
+                        })
+                        .filter((h): h is HistoryItem => h !== null);
+                    
+                    setHistory(items);
+                    setStats(newStats);
+                }
+            } catch (e: any) {
+                console.error("Stats Data Error:", e);
+                setError(e.message || "Failed to load stats.");
+            } finally {
+                setLoading(false);
+            }
         }
 
-        const totalGames = stats.wins + stats.losses;
-        const winRate = totalGames > 0 ? Math.round((stats.wins / totalGames) * 100) : 0;
-        const avgKda = totalGames > 0 
-            ? ((stats.kills + stats.assists) / Math.max(1, stats.deaths)).toFixed(2)
-            : "0.00";
+        loadData();
+    }, [activeSummoner, summonerLoading]);
 
-        content = (
+    // Derived Stats
+    const totalGames = stats.wins + stats.losses;
+    const winRate = totalGames > 0 ? Math.round((stats.wins / totalGames) * 100) : 0;
+    const avgKda = totalGames > 0 
+        ? ((stats.kills + stats.assists) / Math.max(1, stats.deaths)).toFixed(2)
+        : "0.00";
+
+    // 1. Loading State
+    if (summonerLoading || (loading && history.length === 0)) {
+         return (
+            <DashboardLayout>
+                <div className="flex flex-col items-center justify-center min-h-[60vh]">
+                    <LoadingAnimation />
+                    <p className="mt-4 text-slate-400 animate-pulse">Fetching match history...</p>
+                </div>
+            </DashboardLayout>
+         );
+    }
+
+    // 2. No Account State
+    if (!activeSummoner || !activeSummoner.puuid) {
+        return (
+            <DashboardLayout>
+                <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+                    <h2 className="text-xl font-bold text-white mb-4">No Account Linked</h2>
+                    <p className="text-slate-400 mb-6">Link your Riot Account in settings to view stats.</p>
+                    <Link href="/account" className="bg-blue-600 text-white px-6 py-2 rounded-lg">Go to Settings</Link>
+                </div>
+            </DashboardLayout>
+        );
+    }
+
+    // 3. Error State (Partial)
+    if (error) {
+        return (
+            <DashboardLayout>
+                 <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
+                    <h2 className="text-xl font-bold text-red-400 mb-2">Error Loading Stats</h2>
+                    <p className="bg-slate-900 border border-slate-800 p-4 rounded text-sm text-slate-300 mb-4 whitespace-pre-wrap max-w-lg">
+                        {error}
+                    </p>
+                    <button 
+                        onClick={() => window.location.reload()}
+                        className="text-blue-400 underline"
+                    >
+                        Try Refreshing
+                    </button>
+                </div>
+            </DashboardLayout>
+        )
+    }
+
+    // 4. Main Content
+    return (
+        <DashboardLayout>
              <div className="max-w-7xl mx-auto p-4 md:p-8 animate-fadeIn">
                  <h1 className="text-3xl font-black italic tracking-tighter text-white mb-8">
                     DETAILED STATS & HISTORY
@@ -118,7 +169,7 @@ export default async function StatsPage() {
                 </h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {history.map((match: any) => (
+                    {history.map((match) => (
                         <Link 
                             key={match.matchId} 
                             href={`/dashboard/match/${match.matchId}`}
@@ -159,30 +210,13 @@ export default async function StatsPage() {
                         </Link>
                     ))}
                 </div>
-                {history.length === 0 && (
+                {history.length === 0 && !loading && (
                     <div className="text-center py-10 text-slate-500 border border-slate-800 border-dashed rounded-xl">
                         No recent matches found. Play a game to see stats!
                     </div>
                 )}
              </div>
-        );
-
-    } catch (e: any) {
-        console.error("Stats Page Fatal Error:", e);
-        return (
-            <DashboardLayout>
-                <div className="p-8 text-center text-red-400">
-                    <h2 className="text-xl font-bold mb-2">Something Went Wrong</h2>
-                    <p className="font-mono bg-slate-900 border border-slate-800 p-4 rounded inline-block text-left text-sm max-w-2xl whitespace-pre-wrap">
-                        {e.stack || e.message || "Unknown Error"}
-                    </p>
-                    <div className="mt-4">
-                         <Link href="/dashboard" className="text-blue-400 underline">Back to Dashboard</Link>
-                    </div>
-                </div>
-            </DashboardLayout>
-        );
-    }
-
-    return <DashboardLayout>{content}</DashboardLayout>;
+        </DashboardLayout>
+    )
 }
+```
