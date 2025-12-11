@@ -165,8 +165,33 @@ export async function fetchMatchDetail(matchId: string): Promise<{ success: bool
         console.error("fetchMatchDetail exception:", e);
         return { success: false, error: e.message };
     }
+// 6. Get Match Timeline by MatchID
+export async function fetchMatchTimeline(matchId: string): Promise<{ success: boolean, data?: any, error?: string }> {
+    if (!RIOT_API_KEY) return { success: false, error: "RIOT_API_KEY is missing" };
+    
+    // Timeline endpoint: /lol/match/v5/matches/{matchId}/timeline
+    const url = `https://${REGION_ROUTING}.api.riotgames.com/lol/match/v5/matches/${matchId}/timeline`;
+    
+    try {
+        const res = await fetch(url, {
+            headers: { "X-Riot-Token": RIOT_API_KEY },
+            next: { revalidate: 86400 } // Cache for 24 hours (Immutable data)
+        });
+        
+        if (!res.ok) {
+            console.error(`MatchTimeline Error (${res.status}) for ${matchId}`);
+           return { success: false, error: `Match Timeline Error (${res.status})` };
+        }
+        
+        const data = await res.json();
+        return { success: true, data };
+    } catch (e: any) {
+        console.error("fetchMatchTimeline exception:", e);
+        return { success: false, error: e.message };
+    }
 }
-// 6. Get Third Party Code by SummonerID
+
+// 7. Get Third Party Code by SummonerID
 export async function fetchThirdPartyCode(summonerId: string): Promise<string | null> {
     if (!RIOT_API_KEY) return null;
     
