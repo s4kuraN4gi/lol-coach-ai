@@ -193,7 +193,7 @@ export default function DashboardPage() {
 
 
         {/* Row 1: Profile & LP Widget */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
             <ProfileCard 
                 summonerName={activeSummoner.summoner_name}
                 tagLine={activeSummoner.tag_line}
@@ -211,37 +211,23 @@ export default function DashboardPage() {
             <LPWidget rank={displayedRank} recentMatches={stats?.recentMatches || []} />
         </div>
 
-
-
         {/* Row 2: Champion Performance & Skill Radar */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
             <ChampionPerformance stats={stats?.championStats || []} />
             <SkillRadar stats={stats?.radarStats || null} />
         </div>
 
         {/* Row 3: Unique Analysis (A, B, C, D) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-             <div className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+             <div className="space-y-4">
                  <WinConditionWidget stats={stats?.uniqueStats || null} />
                  <SurvivalWidget stats={stats?.uniqueStats || null} />
              </div>
-             <div className="space-y-6">
+             <div className="space-y-4">
                  <NemesisWidget stats={stats?.uniqueStats || null} />
                  <ClutchWidget stats={stats?.uniqueStats || null} />
              </div>
         </div>
-
-        
-        {/* Debug Logs Section (Always Visible for now) */}
-        <div className="mt-12 p-4 bg-slate-900 rounded-lg border border-slate-800">
-            <p className="text-xs font-bold text-slate-500 mb-2 uppercase">System Logs (Debug)</p>
-            <div className="max-h-48 overflow-y-auto space-y-1">
-                {debugLogs.length > 0 ? debugLogs.map((log, i) => (
-                    <p key={i} className="text-[10px] font-mono text-slate-500 border-b border-slate-800 pb-1">{log}</p>
-                )) : <p className="text-xs text-slate-600 italic">No logs available.</p>}
-            </div>
-        </div>
-
       </DashboardLayout>
     </>
   );
