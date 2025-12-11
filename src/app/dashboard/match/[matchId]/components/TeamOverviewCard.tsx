@@ -13,6 +13,7 @@ type Participant = {
     assists: number;
     visionScore: number;
     totalMinionsKilled: number;
+    neutralMinionsKilled: number;
     item0: number; // Item ID
     item1: number;
     item2: number;
@@ -28,6 +29,15 @@ type TeamOverviewCardProps = {
     participants: Participant[];
     win: boolean;
 }
+
+const getChampionImageUrl = (championName: string) => {
+    // Fix known DDragon naming inconsistencies
+    const nameMap: Record<string, string> = {
+        "FiddleSticks": "Fiddlesticks",
+    };
+    const cName = nameMap[championName] || championName;
+    return `https://ddragon.leagueoflegends.com/cdn/14.24.1/img/champion/${cName}.png`;
+};
 
 export default function TeamOverviewCard({ teamId, teamName, participants, win }: TeamOverviewCardProps) {
 
@@ -52,12 +62,15 @@ export default function TeamOverviewCard({ teamId, teamName, participants, win }
                         {/* Champion Icon */}
                         <div className="relative">
                             <img 
-                                src={`https://ddragon.leagueoflegends.com/cdn/14.24.1/img/champion/${p.championName}.png`}
+                                src={getChampionImageUrl(p.championName)}
                                 alt={p.championName}
-                                className="w-10 h-10 rounded shadow-md"
+                                className="w-10 h-10 rounded shadow-md object-cover bg-slate-800"
+                                onError={(e) => {
+                                    e.currentTarget.src = "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/-1.png";
+                                }}
                             />
                             <div className="absolute -bottom-1 -right-1 bg-slate-900 text-[9px] text-slate-400 px-1 rounded border border-slate-700">
-                                {((p.totalMinionsKilled || 0 )).toString()} CS
+                                {((p.totalMinionsKilled || 0) + (p.neutralMinionsKilled || 0)).toString()} CS
                             </div>
                         </div>
 
