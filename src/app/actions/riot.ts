@@ -143,7 +143,10 @@ export async function fetchMatchIds(puuid: string, count: number = 20, queue?: n
 }
 
 // 5. Get Match Details by MatchID
-export async function fetchMatchDetail(matchId: string): Promise<{ success: boolean, data?: any, error?: string }> {
+// Helper delay
+const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+
+export async function fetchMatchDetail(matchId: string, retries = 3): Promise<{ success: boolean, data?: any, error?: string }> {
     if (!RIOT_API_KEY) return { success: false, error: "RIOT_API_KEY is missing" };
     
     const url = `https://${REGION_ROUTING}.api.riotgames.com/lol/match/v5/matches/${matchId}`;
@@ -153,6 +156,13 @@ export async function fetchMatchDetail(matchId: string): Promise<{ success: bool
             headers: { "X-Riot-Token": RIOT_API_KEY },
             cache: 'no-store'
         });
+
+        if (res.status === 429 && retries > 0) {
+            const retryAfter = parseInt(res.headers.get("Retry-After") || "1");
+            console.log(`[RiotAPI] 429 Hit. Waiting ${retryAfter}s...`);
+            await delay((retryAfter + 1) * 1000); // Wait +1s buffer
+            return fetchMatchDetail(matchId, retries - 1);
+        }
         
         if (!res.ok) {
             console.error(`MatchDetail Error (${res.status}) for ${matchId}`);

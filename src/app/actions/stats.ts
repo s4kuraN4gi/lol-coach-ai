@@ -180,7 +180,13 @@ export async function fetchDashboardStats(puuid: string, summonerId: string): Pr
 
         matches.sort((a, b) => b.info.gameCreation - a.info.gameCreation).forEach(m => {
             const p = m.info.participants.find((p: any) => p.puuid === puuid);
-            if (!p) return;
+            if (!p) {
+                 log(`[Stats] WAITING PUUID Match Fail: ${m.metadata.matchId}`);
+                 // Log first few chars to compare
+                 const participants = m.info.participants.map((px: any) => px.puuid.slice(0, 10)).join(', ');
+                 log(`[Stats] Wanted: ${puuid.slice(0, 10)}... Found: ${participants}`);
+                 return;
+            }
 
             // Recent Matches (Win/Loss Trend)
             stats.recentMatches.push({
