@@ -22,6 +22,7 @@ export default function DashboardPage() {
     const {activeSummoner, loading:summonerLoading} = useSummoner();
     const [stats, setStats] = useState<DashboardStatsDTO | null>(null);
     const [isFetching, setIsFetching] = useState(false);
+    const [currentQueue, setCurrentQueue] = useState<"SOLO" | "FLEX">("SOLO");
     
     // Note: ProfileCard logic was moved into ProfileCard component previously or page did logic?
     // Looking at previous file view, ProfileCard took raw props like `rank`, `tier` etc.
@@ -50,7 +51,7 @@ export default function DashboardPage() {
     const fetchData = useCallback(async () => {
         if (!activeSummoner) return;
         setIsFetching(true);
-
+        console.log("Start Dashboard Refresh...");
 
 
         const { puuid, summoner_id } = activeSummoner;
@@ -76,8 +77,15 @@ export default function DashboardPage() {
     }, [activeSummoner]);
 
     useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+        if(activeSummoner && !stats) { // Only fetch if not already fetched? Or always on mount?
+            fetchData();
+        }
+    }, [activeSummoner]); // removed fetchData from dep array to avoid loops, though useCallback handles it.
+
+    // Filter Rank based on Queue Selection
+    const displayedRank = stats?.ranks?.find(r => 
+        currentQueue === "SOLO" ? r.queueType === "RANKED_SOLO_5x5" : r.queueType === "RANKED_FLEX_SR"
+    ) || null;
 
     if (authLoading || summonerLoading || (!stats && isFetching)) {
          return (
@@ -138,6 +146,7 @@ export default function DashboardPage() {
             </button>
         </div>
 
+
         {/* Row 1: Profile & LP Widget */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <ProfileCard 
@@ -145,17 +154,18 @@ export default function DashboardPage() {
                 tagLine={activeSummoner.tag_line}
                 level={activeSummoner.summoner_level || 0}
                 iconId={activeSummoner.profile_icon_id || 29}
-                tier={stats?.rank?.tier}
-                rank={stats?.rank?.rank}
-                lp={stats?.rank?.leaguePoints}
-                wins={stats?.rank?.wins}
-                losses={stats?.rank?.losses}
-                currentQueue={"SOLO"} // Stats returns prioritized rank
-                onQueueChange={() => {}} // Disabled for now as stats only returns one rank
+                tier={displayedRank?.tier}
+                rank={displayedRank?.rank}
+                lp={displayedRank?.leaguePoints}
+                wins={displayedRank?.wins}
+                losses={displayedRank?.losses}
+                currentQueue={currentQueue}
+                onQueueChange={(q) => setCurrentQueue(q as "SOLO" | "FLEX")}
             />
 
-            <LPWidget rank={stats?.rank || null} recentMatches={stats?.recentMatches || []} />
+            <LPWidget rank={displayedRank} recentMatches={stats?.recentMatches || []} />
         </div>
+
 
 
         {/* Row 2: Champion Performance & Skill Radar */}

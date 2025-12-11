@@ -33,7 +33,7 @@ export type UniqueStats = {
 }
 
 export type DashboardStatsDTO = {
-    rank: LeagueEntryDTO | null;
+    ranks: LeagueEntryDTO[];
     recentMatches: {
         win: boolean;
         timestamp: number;
@@ -48,7 +48,7 @@ const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
 export async function fetchDashboardStats(puuid: string, summonerId: string): Promise<DashboardStatsDTO> {
     const stats: DashboardStatsDTO = {
-        rank: null,
+        ranks: [],
         recentMatches: [],
         championStats: [],
         radarStats: null,
@@ -58,10 +58,8 @@ export async function fetchDashboardStats(puuid: string, summonerId: string): Pr
     try {
         // 1. Fetch Rank
         const ranks = await fetchRank(summonerId);
-        // Prioritize SOLO, then FLEX
-        stats.rank = ranks.find(r => r.queueType === "RANKED_SOLO_5x5") 
-                     || ranks.find(r => r.queueType === "RANKED_FLEX_SR") 
-                     || null;
+        stats.ranks = ranks;
+
 
         // 2. Fetch Matches (20 for analytics)
         const idsRes = await fetchMatchIds(puuid, 20); // Fetch 20
