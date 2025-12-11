@@ -4,7 +4,7 @@ import Link from "next/link";
 export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }) {
     if (!stats || stats.length === 0) {
         return (
-             <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col items-center justify-center min-h-[200px] text-center">
+             <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col items-center justify-center min-h-[200px] text-center">
                  <div className="text-slate-500 font-bold mb-2">No Champion Data</div>
                  <div className="text-xs text-slate-600">Play matches to see your top performers</div>
             </div>
@@ -14,7 +14,7 @@ export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }
     const topChamp = stats[0];
 
     return (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 relative overflow-hidden group">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 relative overflow-hidden group">
              {/* Background Splash for Top Champ */}
              <div className="absolute inset-0 opacity-10 grayscale group-hover:grayscale-0 transition duration-700">
                   <img 

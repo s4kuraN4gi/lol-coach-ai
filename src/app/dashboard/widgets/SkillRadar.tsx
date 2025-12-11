@@ -3,7 +3,7 @@ import { RadarStats } from "@/app/actions/stats";
 export default function SkillRadar({ stats }: { stats: RadarStats | null }) {
     if (!stats) {
         return (
-             <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex items-center justify-center min-h-[300px] relative overflow-hidden">
+             <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center justify-center min-h-[300px] relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-pink-500/5"></div>
                  <div className="text-center relative z-10">
                      <div className="text-slate-500 font-bold mb-2">Analyzing Playstyle...</div>
@@ -45,7 +45,7 @@ export default function SkillRadar({ stats }: { stats: RadarStats | null }) {
     }).join(" ");
 
     return (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 relative overflow-hidden flex flex-col items-center">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 relative overflow-hidden flex flex-col items-center">
             {/* Header */}
             <div className="w-full flex justify-between items-start mb-2 z-10">
                 <div className="text-slate-400 text-xs font-bold tracking-wider">SKILL RADAR</div>

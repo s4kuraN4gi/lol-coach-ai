@@ -21,7 +21,7 @@ export default function ClutchWidget({ stats }: { stats: UniqueStats | null }) {
 
     return (
         <DashboardCard className="relative overflow-hidden group hover:border-blue-500/30 transition-all duration-500">
-             <div className="flex items-center mb-6">
+             <div className="flex items-center mb-3">
                 <div className="p-2 bg-blue-500/10 rounded-lg mr-3 shadow-[0_0_15px_rgba(59,130,246,0.1)]">
                     <span className="text-xl">⚖️</span>
                 </div>
@@ -38,7 +38,7 @@ export default function ClutchWidget({ stats }: { stats: UniqueStats | null }) {
                 </div>
              </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
                  {/* Close Games */}
                  <div>
                      <div className="flex justify-between text-xs text-slate-300 mb-1">

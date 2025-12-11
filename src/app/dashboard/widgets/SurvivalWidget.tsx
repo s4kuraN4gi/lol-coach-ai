@@ -9,7 +9,7 @@ export default function SurvivalWidget({ stats }: { stats: UniqueStats | null })
 
     return (
         <DashboardCard className="relative overflow-hidden group hover:border-emerald-500/30 transition-all duration-500">
-            <div className="flex items-center mb-4">
+            <div className="flex items-center mb-2">
                 <div className="p-2 bg-emerald-500/10 rounded-lg mr-3 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
                     <span className="text-xl">🛡️</span>
                 </div>

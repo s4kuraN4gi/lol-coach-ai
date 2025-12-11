@@ -3,7 +3,7 @@ import { LeagueEntryDTO } from "@/app/actions/riot";
 export default function LPWidget({ rank, recentMatches }: { rank: LeagueEntryDTO | null, recentMatches: { win: boolean }[] }) {
     if (!rank) {
         return (
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col items-center justify-center min-h-[200px] text-center">
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col items-center justify-center min-h-[200px] text-center">
                  <div className="w-16 h-16 bg-slate-800 rounded-full mb-4 animate-pulse"></div>
                  <div className="text-slate-500 font-bold mb-2">Unranked</div>
                  <div className="text-xs text-slate-600">Play ranked games to see LP progression</div>
@@ -38,7 +38,7 @@ export default function LPWidget({ rank, recentMatches }: { rank: LeagueEntryDTO
 
 
     return (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 relative overflow-hidden group">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 relative overflow-hidden group">
             {/* Background Decoration */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
 
