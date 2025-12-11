@@ -24,6 +24,7 @@ export default function DashboardPage() {
     const [isFetching, setIsFetching] = useState(false);
     const [currentQueue, setCurrentQueue] = useState<"SOLO" | "FLEX">("SOLO");
     const [error, setError] = useState<string | null>(null);
+    const [debugLogs, setDebugLogs] = useState<string[]>([]);
     
     // Note: ProfileCard logic was moved into ProfileCard component previously or page did logic?
     // Looking at previous file view, ProfileCard took raw props like `rank`, `tier` etc.
@@ -34,8 +35,7 @@ export default function DashboardPage() {
 
     // Queue selection for ProfileCard (SOLO/FLEX) logic is mostly inside fetchDashboardStats which prioritizes SOLO.
     // However, ProfileCard allows switching queue? 
-    // `fetchDashboardStats` returns a SINGLE rank (prioritized).
-    // If we want to support switching, `fetchDashboardStats` should return ALL ranks or the Page should handle switching.
+    // `fetchDashboardStats` should return ALL ranks or the Page should handle switching.
     // The previous implementation fetched ALL ranks.
     // `fetchDashboardStats` currently returns `rank: LeagueEntryDTO | null`.
     // Just one rank.
@@ -53,6 +53,7 @@ export default function DashboardPage() {
         if (!activeSummoner) return;
         setIsFetching(true);
         setError(null);
+        setDebugLogs([]);
         console.log("Start Dashboard Refresh...");
 
 
@@ -69,6 +70,7 @@ export default function DashboardPage() {
             const data = await fetchDashboardStats(puuid, summoner_id);
             console.log("Fetched Stats Result:", JSON.stringify(data, null, 2));
             setStats(data);
+            if (data.debugLog) setDebugLogs(data.debugLog);
             
             if (data.recentMatches.length === 0) {
                 setError("直近の対戦データが見つかりませんでした。(JPサーバーでプレイしていますか？)");
@@ -110,23 +112,25 @@ export default function DashboardPage() {
         return (
             <DashboardLayout>
                 <div className="flex flex-col items-center justify-center p-12 text-center h-[60vh]">
-                    <div className="bg-slate-800/50 p-8 rounded-2xl border border-slate-700 max-w-lg">
+                    <div className="bg-slate-800/50 p-8 rounded-2xl border border-slate-700 max-w-lg w-full">
                         <div className="text-4xl mb-4">📭</div>
                         <h2 className="text-xl font-bold text-white mb-2">対戦データが見つかりませんでした</h2>
                         <p className="text-slate-400 mb-6">
                             連携されたアカウントの直近の対戦履歴（過去10戦）が存在しないか、取得できませんでした。
                         </p>
-                        <div className="text-left text-sm text-slate-500 space-y-2 mb-6 bg-slate-900 p-4 rounded">
-                            <p>考えられる原因：</p>
-                            <ul className="list-disc list-inside ml-2 space-y-1">
-                                <li>Riot APIキーが無効/期限切れ</li>
-                                <li>JPサーバー以外のアカウント</li>
-                                <li>長期間対戦を行っていない</li>
-                            </ul>
+                        
+                        <div className="text-left bg-slate-950 p-4 rounded mb-6 border border-slate-800">
+                             <p className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">Troubleshooting Log</p>
+                             <div className="max-h-32 overflow-y-auto space-y-1">
+                                {debugLogs.length > 0 ? debugLogs.map((log, i) => (
+                                    <div key={i} className="text-[10px] font-mono text-slate-500 whitespace-pre-wrap leading-tight border-b border-slate-900 pb-1">{log}</div>
+                                )) : <div className="text-xs text-slate-600 italic">No logs available.</div>}
+                             </div>
                         </div>
+
                          <button 
                             onClick={fetchData} 
-                            className="bg-primary-500 hover:bg-primary-600 px-6 py-2 rounded-lg text-white font-bold transition-colors"
+                            className="bg-primary-500 hover:bg-primary-600 px-6 py-2 rounded-lg text-white font-bold transition-colors w-full"
                         >
                             再試行
                         </button>

@@ -32,6 +32,7 @@ export type UniqueStats = {
     clutch: { closeWr: number, stompWr: number, closeGames: number, stompGames: number };
 }
 
+
 export type DashboardStatsDTO = {
     ranks: LeagueEntryDTO[];
     recentMatches: {
@@ -41,18 +42,23 @@ export type DashboardStatsDTO = {
     championStats: ChampionStat[]; // For Champion Card
     radarStats: RadarStats | null;
     uniqueStats: UniqueStats | null;
+    debugLog: string[];
 }
 
 // Rate limit safe fetcher
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
 export async function fetchDashboardStats(puuid: string, summonerId: string): Promise<DashboardStatsDTO> {
+    const logs: string[] = [];
+    const log = (msg: string) => { console.log(msg); logs.push(msg); };
+
     const stats: DashboardStatsDTO = {
         ranks: [],
         recentMatches: [],
         championStats: [],
         radarStats: null,
-        uniqueStats: null
+        uniqueStats: null,
+        debugLog: []
     };
 
     try {
@@ -62,17 +68,16 @@ export async function fetchDashboardStats(puuid: string, summonerId: string): Pr
         const ranks = await fetchRank(summonerId);
 
         stats.ranks = ranks;
-
+        log(`[Stats] Ranks fetched: ${ranks.length}`);
 
 
         // 2. Fetch Matches (10 for speed optimization)
         // Fetches 10 matches to avoid Rate Limit throttling (allows 1 batch of 10)
         const idsRes = await fetchMatchIds(puuid, 10); 
-        if (!idsRes.success || !idsRes.data) throw new Error("Failed to fetch match IDs");
+        if (!idsRes.success || !idsRes.data) throw new Error(`Failed to fetch match IDs: ${idsRes.error}`);
 
         const matchIds = idsRes.data;
-        console.log(`[Stats] Found ${matchIds.length} matches for ${puuid}`);
-
+        log(`[Stats] Found ${matchIds.length} matches for ${puuid.slice(0, 8)}...`);
 
         // 3. Cache Check
         const cachedMap = new Map<string, any>();
@@ -84,18 +89,17 @@ export async function fetchDashboardStats(puuid: string, summonerId: string): Pr
                 .in('match_id', matchIds);
             
             if (cacheError) {
-                console.warn("[Stats] Cache Lookup Failed (Table likely missing):", cacheError.message);
-                // Continue without cache, missingIds will be all
+                log(`[Stats] Cache Lookup Failed: ${cacheError.message}`);
             } else if (cachedMatches) {
                 cachedMatches.forEach((row: any) => cachedMap.set(row.match_id, row.data));
+                log(`[Stats] Cache Hit: ${cachedMap.size}`);
             }
-        } catch (dbErr) {
-            console.error("[Stats] Unexpected DB Error:", dbErr);
-            // Ignore DB error and proceed
+        } catch (dbErr: any) {
+            log(`[Stats] Unexpected DB Error: ${dbErr.message}`);
         }
 
         const missingIds = matchIds.filter(id => !cachedMap.has(id));
-        console.log(`[Stats] Cache Hit: ${cachedMap.size}, Missing: ${missingIds.length}`);
+        log(`[Stats] Missing IDs: ${missingIds.length}`);
 
         // 4. Fetch Missing from Riot
         const newMatches: any[] = [];
@@ -105,17 +109,17 @@ export async function fetchDashboardStats(puuid: string, summonerId: string): Pr
             for (let i = 0; i < missingIds.length; i += chunkSize) {
 
                 const chunk = missingIds.slice(i, i + chunkSize);
-                console.log(`[Stats] Fetching chunk ${i} - ${i+chunkSize}`);
+                log(`[Stats] Fetching chunk ${i} - ${i+chunkSize}`);
                 const promises = chunk.map(id => fetchMatchDetail(id));
                 const results = await Promise.all(promises);
                 
-                results.forEach(r => {
+                results.forEach((r, idx) => {
                     if (r.success && r.data) {
                         newMatches.push(r.data);
                         // Add to map for immediate use
                         cachedMap.set(r.data.metadata.matchId, r.data);
                     } else {
-                        console.error("[Stats] Failed to fetch match:", r.error);
+                        log(`[Stats] Failed to fetch match ${chunk[idx]}: ${r.error}`);
                     }
                 });
                 
@@ -138,14 +142,16 @@ export async function fetchDashboardStats(puuid: string, summonerId: string): Pr
                         .from('match_cache')
                         .upsert(rows, { onConflict: 'match_id', ignoreDuplicates: true });
                     
-                    if (insertError) console.error("Cache Insert Error:", insertError.message);
-                } catch (dbErr) {
-                    console.error("Cache Insert Exception:", dbErr);
+                    if (insertError) log(`[Stats] Cache Insert Error: ${insertError.message}`);
+                    else log(`[Stats] Cached ${rows.length} new matches`);
+                } catch (dbErr: any) {
+                    log(`[Stats] Cache Insert Exception: ${dbErr.message}`);
                 }
             }
         }
 
         // 6. Aggregate Data from ALL matches (Cached + New)
+
         // Use map to ensure order logic if needed, but matchIds list preserves order
         const matches = matchIds.map(id => cachedMap.get(id)).filter(Boolean);
         
