@@ -351,16 +351,10 @@ export default function DashboardPage() {
                                             <div className="text-center py-8">
                                                 <p className="text-slate-500 mb-6 font-mono text-sm">AI analysis not generated yet.</p>
                                                 <button 
-                                                    onClick={handleAnalyze}
-                                                    disabled={isAnalyzing}
-                                                    className="bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-bold text-sm px-6 py-3 rounded-full shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-105 disabled:opacity-50 disabled:scale-100 transition-all border border-blue-400/20"
+                                                    onClick={() => router.push(`/dashboard/match/${selectedHistory.id}`)}
+                                                    className="bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-bold text-sm px-6 py-3 rounded-full shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-105 transition-all border border-blue-400/20"
                                                 >
-                                                    {isAnalyzing ? (
-                                                        <span className="flex items-center gap-2">
-                                                            <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
-                                                            GENERATING ADVICE...
-                                                        </span>
-                                                    ) : "✨ ANALYZE MATCH WITH AI"}
+                                                    ✨ VIEW TIMELINE & AI ANALYSIS
                                                 </button>
                                             </div>
                                         )}
