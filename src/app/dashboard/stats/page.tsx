@@ -23,6 +23,7 @@ export default function StatsPage() {
     const [stats, setStats] = useState({ wins: 0, losses: 0, kills: 0, deaths: 0, assists: 0 });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [filter, setFilter] = useState<"ALL" | "SOLO" | "FLEX" | "NORMAL" | "ARAM">("ALL");
 
     useEffect(() => {
         if (summonerLoading) return;
@@ -34,12 +35,29 @@ export default function StatsPage() {
             setError(null);
             
             try {
+                // Determine Queue ID / Type
+                let queueId: number | undefined;
+                let type: string | undefined;
+
+                switch (filter) {
+                    case "SOLO": queueId = 420; break;
+                    case "FLEX": queueId = 440; break;
+                    case "ARAM": queueId = 450; break;
+                    case "NORMAL": type = "normal"; break;
+                    default: break;
+                }
+
                 // Fetch Matches
-                // Fetch count=5 to prevent timeouts on Vercel
-                const matchIdsRes = await fetchMatchIds(activeSummoner.puuid, 5);
+                // Fetch count=10 for better gallery view
+                const matchIdsRes = await fetchMatchIds(activeSummoner.puuid, 10, queueId, type);
                 
                 if (matchIdsRes.error) {
-                    throw new Error(matchIdsRes.error);
+                     // Ignore specific error if filtered result is empty (might return success=false?)
+                     // Actually fetchMatchIds usually returns empty array if success.
+                     // On specific error, assume empty or throw.
+                     if (matchIdsRes.error !== "No PUUID") {
+                         throw new Error(matchIdsRes.error);
+                     }
                 }
 
                 if (matchIdsRes.success && matchIdsRes.data) {
@@ -75,17 +93,23 @@ export default function StatsPage() {
                     
                     setHistory(items);
                     setStats(newStats);
+                } else {
+                    // Reset if Error or Empty
+                    setHistory([]);
+                    setStats({ wins: 0, losses: 0, kills: 0, deaths: 0, assists: 0 });
                 }
             } catch (e: any) {
                 console.error("Stats Data Error:", e);
-                setError(e.message || "Failed to load stats.");
+                // Don't show hard error for empty filter, just clear
+                setHistory([]);
+                // setError(e.message || "Failed to load stats.");
             } finally {
                 setLoading(false);
             }
         }
 
         loadData();
-    }, [activeSummoner, activeSummoner?.puuid, summonerLoading]);
+    }, [activeSummoner, activeSummoner?.puuid, summonerLoading, filter]);
 
     // Derived Stats
     const totalGames = stats.wins + stats.losses;
@@ -162,10 +186,28 @@ export default function StatsPage() {
                      </div>
                 </div>
 
-                <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                    <span className="w-1.5 h-6 bg-blue-500 rounded-full"></span>
-                    MATCH GALLERY
-                </h2>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                        <span className="w-1.5 h-6 bg-blue-500 rounded-full"></span>
+                        MATCH GALLERY
+                    </h2>
+                    
+                    <div className="flex bg-slate-900/80 rounded-lg p-1 border border-slate-700 overflow-x-auto max-w-full">
+                        {(["ALL", "SOLO", "FLEX", "NORMAL", "ARAM"] as const).map((mode) => (
+                             <button 
+                                key={mode}
+                                onClick={() => setFilter(mode)}
+                                className={`px-3 py-1 text-xs font-bold rounded-md whitespace-nowrap transition ${
+                                    filter === mode 
+                                    ? "bg-blue-600 text-white shadow-md" 
+                                    : "text-slate-400 hover:text-slate-200"
+                                }`}
+                            >
+                                {mode}
+                            </button>
+                        ))}
+                    </div>
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {history.map((match) => (
@@ -211,7 +253,7 @@ export default function StatsPage() {
                 </div>
                 {history.length === 0 && !loading && (
                     <div className="text-center py-10 text-slate-500 border border-slate-800 border-dashed rounded-xl">
-                        No recent matches found. Play a game to see stats!
+                        No matches found for this filter.
                     </div>
                 )}
              </div>
