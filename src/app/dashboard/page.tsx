@@ -153,21 +153,28 @@ export default function DashboardPage() {
   return (
     <>
       <DashboardLayout>
-            <button 
-                onClick={() => {
-                    fetchData();
-                }}
-                className="text-sm bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-4 py-2 rounded-lg transition shadow-lg hover:shadow-blue-500/10 flex items-center gap-2"
-                disabled={isFetching}
-            >
-                {isFetching ? (
-                    <>
-                        <span className="w-2 h-2 bg-blue-500 rounded-full animate-ping"></span> 更新中...
-                    </>
-                ) : (
-                    "↻ データを更新"
-                )}
-            </button>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div>
+                <h1 className="text-2xl font-bold font-display uppercase tracking-wider text-white">Dashboard</h1>
+                <p className="text-slate-400 text-sm">Your Growth Center</p>
+            </div>
+            <div className="flex justify-end">
+                <button 
+                    onClick={() => {
+                        fetchData();
+                    }}
+                    className="text-sm bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-4 py-2 rounded-lg transition shadow-lg hover:shadow-blue-500/10 flex items-center gap-2"
+                    disabled={isFetching}
+                >
+                    {isFetching ? (
+                        <>
+                            <span className="w-2 h-2 bg-blue-500 rounded-full animate-ping"></span> 更新中...
+                        </>
+                    ) : (
+                        "↻ データを更新"
+                    )}
+                </button>
+            </div>
         </div>
 
 
