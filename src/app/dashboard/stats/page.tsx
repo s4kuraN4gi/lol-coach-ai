@@ -15,41 +15,41 @@ type HistoryItem = {
 }
 
 export default async function StatsPage() {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    // Auth Check
-    if (!user) {
-        return (
-            <DashboardLayout>
-                <div className="p-8 text-center text-slate-400">Please log in.</div>
-            </DashboardLayout>
-        );
-    }
-
-    // Get Active Summoner
-    const activeAccount = await getActiveSummoner();
-
-    if (!activeAccount || !activeAccount.puuid) {
-        return (
-             <DashboardLayout>
-                <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-                    <h2 className="text-xl font-bold text-white mb-4">No Account Linked</h2>
-                    <p className="text-slate-400 mb-6">Link your Riot Account in settings to view stats.</p>
-                    <Link href="/account" className="bg-blue-600 text-white px-6 py-2 rounded-lg">Go to Settings</Link>
-                </div>
-            </DashboardLayout>
-        );
-    }
-
-    let history: HistoryItem[] = [];
-    let stats = { wins: 0, losses: 0, kills: 0, deaths: 0, assists: 0 };
-    let errorMsg = null;
+    let content = null;
 
     try {
-        // Fetch Matches (Server-Side)
-        // Fetch count=10 for history page
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        // Auth Check
+        if (!user) {
+            return (
+                <DashboardLayout>
+                    <div className="p-8 text-center text-slate-400">Please log in.</div>
+                </DashboardLayout>
+            );
+        }
+
+        // Get Active Summoner
+        const activeAccount = await getActiveSummoner();
+
+        if (!activeAccount || !activeAccount.puuid) {
+            return (
+                <DashboardLayout>
+                    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+                        <h2 className="text-xl font-bold text-white mb-4">No Account Linked</h2>
+                        <p className="text-slate-400 mb-6">Link your Riot Account in settings to view stats.</p>
+                        <Link href="/account" className="bg-blue-600 text-white px-6 py-2 rounded-lg">Go to Settings</Link>
+                    </div>
+                </DashboardLayout>
+            );
+        }
+
+        // Fetch Matches
         const matchIdsRes = await fetchMatchIds(activeAccount.puuid, 10);
+        
+        let history: HistoryItem[] = [];
+        let stats = { wins: 0, losses: 0, kills: 0, deaths: 0, assists: 0 };
 
         if (matchIdsRes.success && matchIdsRes.data) {
             const matchPromises = matchIdsRes.data.map(id => fetchMatchDetail(id));
@@ -62,7 +62,6 @@ export default async function StatsPage() {
                     const p = m.info.participants.find((p: any) => p.puuid === activeAccount.puuid);
                     if (!p) return null;
                     
-                    // Aggregate Stats
                     stats.wins += p.win ? 1 : 0;
                     stats.losses += p.win ? 0 : 1;
                     stats.kills += p.kills;
@@ -81,40 +80,21 @@ export default async function StatsPage() {
                 })
                 .filter(h => h !== null);
         } else if (matchIdsRes.error) {
-             throw new Error(matchIdsRes.error);
+             throw new Error("Match IDs Fetch Error: " + matchIdsRes.error);
         }
-    } catch (e: any) {
-        console.error("Stats Page Load Error:", e);
-        errorMsg = e.message || "Failed to load match history.";
-    }
 
-    if (errorMsg) {
-         return (
-            <DashboardLayout>
-                <div className="p-8 text-center text-red-400">
-                    <h2 className="text-xl font-bold mb-2">Error Loading Stats</h2>
-                    <p className="font-mono bg-slate-900 border border-slate-800 p-4 rounded inline-block text-left text-sm">
-                        {errorMsg}
-                    </p>
-                </div>
-            </DashboardLayout>
-         );
-    }
+        const totalGames = stats.wins + stats.losses;
+        const winRate = totalGames > 0 ? Math.round((stats.wins / totalGames) * 100) : 0;
+        const avgKda = totalGames > 0 
+            ? ((stats.kills + stats.assists) / Math.max(1, stats.deaths)).toFixed(2)
+            : "0.00";
 
-    const totalGames = stats.wins + stats.losses;
-    const winRate = totalGames > 0 ? Math.round((stats.wins / totalGames) * 100) : 0;
-    const avgKda = totalGames > 0 
-        ? ((stats.kills + stats.assists) / Math.max(1, stats.deaths)).toFixed(2)
-        : "0.00";
-
-    return (
-        <DashboardLayout>
+        content = (
              <div className="max-w-7xl mx-auto p-4 md:p-8 animate-fadeIn">
                  <h1 className="text-3xl font-black italic tracking-tighter text-white mb-8">
                     DETAILED STATS & HISTORY
                  </h1>
 
-                {/* Aggregate Stats Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                      <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
                         <div className="text-slate-400 text-xs font-bold tracking-wider mb-1">WIN RATE</div>
@@ -128,10 +108,8 @@ export default async function StatsPage() {
                         <div className="text-3xl font-black text-yellow-500">{avgKda}</div>
                         <div className="text-xs text-slate-500 mt-1">Avg. Performance</div>
                      </div>
-                     {/* More stat cards can go here */}
                 </div>
 
-                {/* Match List */}
                 <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                     <span className="w-1.5 h-6 bg-blue-500 rounded-full"></span>
                     MATCH GALLERY
@@ -147,7 +125,6 @@ export default async function StatsPage() {
                                 ${match.win ? 'hover:border-blue-500/50' : 'hover:border-red-500/50'}
                             `}
                         >
-                             {/* Background Image (Champ) - Placeholder or API */}
                              <div className="absolute inset-0 opacity-20 grayscale group-hover:grayscale-0 transition duration-500">
                                  <img 
                                     src={`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${match.champion}_0.jpg`} 
@@ -186,6 +163,24 @@ export default async function StatsPage() {
                     </div>
                 )}
              </div>
-        </DashboardLayout>
-    )
+        );
+
+    } catch (e: any) {
+        console.error("Stats Page Fatal Error:", e);
+        return (
+            <DashboardLayout>
+                <div className="p-8 text-center text-red-400">
+                    <h2 className="text-xl font-bold mb-2">Something Went Wrong</h2>
+                    <p className="font-mono bg-slate-900 border border-slate-800 p-4 rounded inline-block text-left text-sm max-w-2xl whitespace-pre-wrap">
+                        {e.stack || e.message || "Unknown Error"}
+                    </p>
+                    <div className="mt-4">
+                         <Link href="/dashboard" className="text-blue-400 underline">Back to Dashboard</Link>
+                    </div>
+                </div>
+            </DashboardLayout>
+        );
+    }
+
+    return <DashboardLayout>{content}</DashboardLayout>;
 }
