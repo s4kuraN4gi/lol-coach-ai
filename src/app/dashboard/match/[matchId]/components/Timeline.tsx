@@ -133,6 +133,7 @@ const ObjectiveIcon = ({ type, subtype }: { type: string, subtype?: string }) =>
 
 export default function Timeline({ match, timeline }: { match: any, timeline: TimelineDTO }) {
     const [hoveredFrame, setHoveredFrame] = useState<number | null>(null);
+    const [graphMode, setGraphMode] = useState<'gold' | 'vision'>('gold');
 
     // Calculate Game Duration from last frame timestamp
     const duration = timeline.info.frames[timeline.info.frames.length - 1].timestamp;
@@ -170,8 +171,27 @@ export default function Timeline({ match, timeline }: { match: any, timeline: Ti
         });
     }, [timeline, team100Ids]);
 
-    // Max diff for scaling
+    // Max diff for scaling (Gold)
     const maxDiff = Math.max(...goldDiffData.map(d => Math.abs(d.diff)), 2000); 
+
+    // Calculate Vision Data (Cumulative Wards Placed)
+    const visionData = useMemo(() => {
+        let blueTotal = 0;
+        let redTotal = 0;
+        return timeline.info.frames.map(frame => {
+            frame.events.forEach(e => {
+                if (e.type === "WARD_PLACED") {
+                    const p = match.info.participants.find((p: any) => p.participantId === e.creatorId);
+                    if (p?.teamId === 100) blueTotal++;
+                    else if (p?.teamId === 200) redTotal++;
+                }
+            });
+            return { timestamp: frame.timestamp, blue: blueTotal, red: redTotal };
+        });
+    }, [timeline, match]);
+
+    // Max Vision for Scaling
+    const maxVision = Math.max(...visionData.map(d => Math.max(d.blue, d.red)), 10);
 
     // Extract Objectives
     const objectives = useMemo(() => {
@@ -192,8 +212,26 @@ export default function Timeline({ match, timeline }: { match: any, timeline: Ti
                  <h2 className="text-white font-bold flex items-center gap-2">
                     <span>🎞️</span> MATCH TIMELINE
                  </h2>
-                 <div className="text-xs text-slate-400 font-mono">
-                     Duration: {formatTime(duration)}
+                 
+                 <div className="flex items-center gap-4">
+                     {/* Toggle */}
+                     <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-700">
+                        <button 
+                            onClick={() => setGraphMode('gold')}
+                            className={`px-3 py-1 text-xs font-bold rounded transition ${graphMode === 'gold' ? 'bg-slate-700 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}
+                        >
+                            GOLD
+                        </button>
+                        <button 
+                            onClick={() => setGraphMode('vision')}
+                            className={`px-3 py-1 text-xs font-bold rounded transition ${graphMode === 'vision' ? 'bg-slate-700 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}
+                        >
+                            VISION
+                        </button>
+                     </div>
+                     <div className="text-xs text-slate-400 font-mono">
+                         Duration: {formatTime(duration)}
+                     </div>
                  </div>
             </div>
 
@@ -208,29 +246,65 @@ export default function Timeline({ match, timeline }: { match: any, timeline: Ti
                     preserveAspectRatio="none"
                     className="absolute inset-0 top-6 bottom-6 h-[calc(100%-3rem)]" /* Match py-6 padding */
                 >
-                    {/* Zero Line */}
-                    <line x1="0" y1="50" x2={goldDiffData.length} y2="50" stroke="#334155" strokeWidth="0.5" strokeDasharray="2" />
-
-
-                    {/* Gold Difference Path */}
-                    <path 
-                        d={`
-                            M 0 50
-                            ${goldDiffData.map((d, i) => {
-                                const percent = d.diff / maxDiff;
-                                const clampedPercent = Math.max(-1, Math.min(1, percent));
-                                // Reduced scale factor from 45 to 35 to prevent peak cutoff
-                                const y = 50 - (clampedPercent * 35); 
-                                return `L ${i} ${y}`;
-                            }).join(' ')}
-                            L ${goldDiffData.length} 50
-                            Z
-                        `}
-                        fill="url(#goldGradient)"
-                        fillOpacity="0.4"
-                        stroke="rgba(255,255,255,0.3)"
-                        strokeWidth="0.2"
-                    />
+                    {/* Zero Line (50% for Gold, Bottom for Vision?) */}
+                    {graphMode === 'gold' ? (
+                        <>
+                            <line x1="0" y1="50" x2={goldDiffData.length} y2="50" stroke="#334155" strokeWidth="0.5" strokeDasharray="2" />
+                            {/* Gold Difference Path */}
+                            <path 
+                                d={`
+                                    M 0 50
+                                    ${goldDiffData.map((d, i) => {
+                                        const percent = d.diff / maxDiff;
+                                        const clampedPercent = Math.max(-1, Math.min(1, percent));
+                                        // Reduced scale factor from 45 to 35 to prevent peak cutoff
+                                        const y = 50 - (clampedPercent * 35); 
+                                        return `L ${i} ${y}`;
+                                    }).join(' ')}
+                                    L ${goldDiffData.length} 50
+                                    Z
+                                `}
+                                fill="url(#goldGradient)"
+                                fillOpacity="0.4"
+                                stroke="rgba(255,255,255,0.3)"
+                                strokeWidth="0.2"
+                            />
+                        </>
+                    ) : (
+                        <>
+                            {/* Vision Graph (Cumulative) */}
+                            {/* Blue Team Line */}
+                            <path 
+                                d={`
+                                    M 0 100
+                                    ${visionData.map((d, i) => {
+                                        const percent = d.blue / maxVision; // 0 to 1
+                                        const y = 100 - (percent * 90); // Scale 0-90% height
+                                        return `L ${i} ${y}`;
+                                    }).join(' ')}
+                                `}
+                                fill="none"
+                                stroke="#3b82f6"
+                                strokeWidth="0.8"
+                                className="drop-shadow"
+                            />
+                            {/* Red Team Line */}
+                            <path 
+                                d={`
+                                    M 0 100
+                                    ${visionData.map((d, i) => {
+                                        const percent = d.red / maxVision; // 0 to 1
+                                        const y = 100 - (percent * 90); // Scale 0-90% height
+                                        return `L ${i} ${y}`;
+                                    }).join(' ')}
+                                `}
+                                fill="none"
+                                stroke="#ef4444"
+                                strokeWidth="0.8"
+                                className="drop-shadow"
+                            />
+                        </>
+                    )}
 
                     <defs>
                         <linearGradient id="goldGradient" x1="0" y1="0" x2="0" y2="1">
@@ -242,7 +316,7 @@ export default function Timeline({ match, timeline }: { match: any, timeline: Ti
                     </defs>
                 </svg>
 
-                {/* Objective Markers Overlay */}
+                {/* Objective Markers Overlay (Always Show) */}
                 {objectives.map((obj, i) => {
                     // Try to determine team color
                     let teamId = obj.killerTeamId;
@@ -271,14 +345,10 @@ export default function Timeline({ match, timeline }: { match: any, timeline: Ti
                         typeName = "Objective";
                     }
 
-                    // Stagger visually
+                    // Positioning
+                    // If Vision Mode, markers might overlap lines differently, but X axis is same.
+                    // Keep Y positioning logic for now.
                     const isBuilding = obj.type === "BUILDING_KILL";
-                    const isTopHalf = i % 2 === 0; // Simple stagger
-                    const topPos = isBuilding ? (isBlue ? "15%" : "85%") : "50%"; // Towers at edges, Monsters Center? 
-                    // No, keeping graph logic: Timeline is usually 'advantage'. 
-                    // Let's place markers ON the line? Hard to calc Y here properly without dup logic.
-                    // Sticky to center line (50%) but offset slightly?
-                    // Let's keep existing logic but just center them better.
                     
                     return (
                         <div 
@@ -333,13 +403,24 @@ export default function Timeline({ match, timeline }: { match: any, timeline: Ti
             <div className="p-3 border-t border-slate-800 bg-slate-900/90 flex items-center justify-between text-xs text-slate-300 font-mono">
                 {hoveredFrame !== null ? (
                     <>
-                        <div>⏱ {formatTime(goldDiffData[hoveredFrame].timestamp)}</div>
-                        <div className={goldDiffData[hoveredFrame].diff > 0 ? "text-blue-400" : "text-red-400"}>
-                            Gold Diff: {goldDiffData[hoveredFrame].diff > 0 ? "+" : ""}{goldDiffData[hoveredFrame].diff}
+                        <div className="flex items-center gap-4">
+                            <span>⏱ {formatTime(goldDiffData[hoveredFrame].timestamp)}</span>
+                            {graphMode === 'gold' ? (
+                                <span className={goldDiffData[hoveredFrame].diff > 0 ? "text-blue-400" : "text-red-400"}>
+                                    Gold Diff: {goldDiffData[hoveredFrame].diff > 0 ? "+" : ""}{goldDiffData[hoveredFrame].diff}
+                                </span>
+                            ) : (
+                                <div className="flex gap-4">
+                                     <span className="text-blue-400">Blue Wards: {visionData[hoveredFrame].blue}</span>
+                                     <span className="text-red-400">Red Wards: {visionData[hoveredFrame].red}</span>
+                                </div>
+                            )}
                         </div>
                     </>
                 ) : (
-                    <div className="text-slate-500 w-full text-center">Hover chart to view gold difference</div>
+                    <div className="text-slate-500 w-full text-center">
+                        Hover chart to view {graphMode === 'gold' ? "gold difference" : "vision stats"}
+                    </div>
                 )}
             </div>
         </div>

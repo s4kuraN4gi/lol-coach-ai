@@ -60,15 +60,21 @@ export default function TeamOverviewCard({ teamId, teamName, participants, win }
                 {participants.map((p) => (
                     <div key={p.puuid} className="p-3 flex items-center gap-3 hover:bg-white/5 transition group">
                         {/* Champion Icon */}
-                        <div className="relative">
+                        <div className="relative group/icon">
                             <img 
                                 src={getChampionImageUrl(p.championName)}
                                 alt={p.championName}
-                                className="w-10 h-10 rounded shadow-md object-cover bg-slate-800"
+                                className="w-10 h-10 rounded shadow-md object-cover bg-slate-800 cursor-help"
                                 onError={(e) => {
                                     e.currentTarget.src = "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/-1.png";
                                 }}
                             />
+                            
+                            {/* Hover Name Tooltip */}
+                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-700 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover/icon:opacity-100 transition pointer-events-none whitespace-nowrap z-20 shadow-xl">
+                                {p.championName}
+                            </div>
+
                             <div className="absolute -bottom-1 -right-1 bg-slate-900 text-[9px] text-slate-400 px-1 rounded border border-slate-700">
                                 {((p.totalMinionsKilled || 0) + (p.neutralMinionsKilled || 0)).toString()} CS
                             </div>
