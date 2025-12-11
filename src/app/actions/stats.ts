@@ -1,5 +1,6 @@
 'use server'
 
+import { createClient } from "@/utils/supabase/server";
 import { fetchMatchIds, fetchMatchDetail, fetchRank, type LeagueEntryDTO } from "./riot";
 
 export type ChampionStat = {
@@ -13,7 +14,6 @@ export type ChampionStat = {
     winRate: number;
     avgKda: string;
 }
-
 
 
 export type RadarStats = {
@@ -56,8 +56,11 @@ export async function fetchDashboardStats(puuid: string, summonerId: string): Pr
     };
 
     try {
+        const supabase = await createClient();
+
         // 1. Fetch Rank
         const ranks = await fetchRank(summonerId);
+
         stats.ranks = ranks;
 
 
@@ -68,26 +71,67 @@ export async function fetchDashboardStats(puuid: string, summonerId: string): Pr
         const matchIds = idsRes.data;
         console.log(`[Stats] Found ${matchIds.length} matches for ${puuid}`);
 
-        // 3. Batch Fetch Details to respect Rate Limits (20 req / 1 sec)
-        // We split into chunks of 10 and wait a bit.
-        const matches: any[] = [];
-        const chunkSize = 10;
+        // 3. Cache Check
+        // Query Supabase for existing matches
+        const { data: cachedMatches, error: cacheError } = await supabase
+            .from('match_cache')
+            .select('match_id, data')
+            .in('match_id', matchIds);
         
-        for (let i = 0; i < matchIds.length; i += chunkSize) {
-            const chunk = matchIds.slice(i, i + chunkSize);
-            const promises = chunk.map(id => fetchMatchDetail(id));
-            const results = await Promise.all(promises);
-            results.forEach(r => {
-                if (r.success && r.data) matches.push(r.data);
-            });
+        const cachedMap = new Map<string, any>();
+        if (cachedMatches) {
+            cachedMatches.forEach((row: any) => cachedMap.set(row.match_id, row.data));
+        }
+
+        const missingIds = matchIds.filter(id => !cachedMap.has(id));
+        console.log(`[Stats] Cache Hit: ${cachedMap.size}, Missing: ${missingIds.length}`);
+
+        // 4. Fetch Missing from Riot
+        const newMatches: any[] = [];
+        if (missingIds.length > 0) {
+            const chunkSize = 5; // Chunk size 5 is safer for burst
             
-            if (i + chunkSize < matchIds.length) {
-                await delay(1200); // Wait 1.2s between chunks
+            for (let i = 0; i < missingIds.length; i += chunkSize) {
+                const chunk = missingIds.slice(i, i + chunkSize);
+                const promises = chunk.map(id => fetchMatchDetail(id));
+                const results = await Promise.all(promises);
+                
+                results.forEach(r => {
+                    if (r.success && r.data) {
+                        newMatches.push(r.data);
+                        // Add to map for immediate use
+                        cachedMap.set(r.data.metadata.matchId, r.data);
+                    }
+                });
+                
+                if (i + chunkSize < missingIds.length) {
+                    await delay(1200); // Wait 1.2s between chunks
+                }
+            }
+            
+            // 5. Save to Cache
+            if (newMatches.length > 0) {
+                // Prepare rows
+                const rows = newMatches.map(m => ({
+                    match_id: m.metadata.matchId,
+                    data: m
+                }));
+                
+                // Bulk Upsert (Ignore conflicts)
+                const { error: insertError } = await supabase
+                    .from('match_cache')
+                    .upsert(rows, { onConflict: 'match_id', ignoreDuplicates: true });
+                
+                if (insertError) console.error("Cache Insert Error:", insertError);
             }
         }
 
-        // 4. Aggregate Data
+        // 6. Aggregate Data from ALL matches (Cached + New)
+        // Use map to ensure order logic if needed, but matchIds list preserves order
+        const matches = matchIds.map(id => cachedMap.get(id)).filter(Boolean);
+        
         const championMap = new Map<string, { wins: number, games: number, k: number, d: number, a: number, cs: number }>();
+
         
         // Radar aggregators
         let totalK = 0, totalD = 0, totalA = 0;
