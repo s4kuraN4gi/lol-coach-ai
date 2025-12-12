@@ -9,7 +9,7 @@ import ChampionPerformance from "./widgets/ChampionPerformance";
 import SkillRadar from "./widgets/SkillRadar"; 
 import WinConditionWidget from "./widgets/WinConditionWidget";
 import NemesisWidget from "./widgets/NemesisWidget";
-import SurvivalWidget from "./widgets/SurvivalWidget";
+import LaningPhaseWidget from "./widgets/LaningPhaseWidget";
 import ClutchWidget from "./widgets/ClutchWidget";
 import { useRouter } from "next/navigation";
 
@@ -231,7 +231,7 @@ export default function DashboardPage() {
         {/* Row 3: Unique Analysis (A, B, C, D) */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
              <WinConditionWidget stats={stats?.uniqueStats || null} />
-             <SurvivalWidget stats={stats?.uniqueStats || null} />
+             <LaningPhaseWidget stats={stats?.uniqueStats || null} />
              <NemesisWidget stats={stats?.uniqueStats || null} />
              <ClutchWidget stats={stats?.uniqueStats || null} />
         </div>

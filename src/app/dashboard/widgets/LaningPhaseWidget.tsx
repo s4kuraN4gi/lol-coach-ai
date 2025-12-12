@@ -2,30 +2,32 @@ import { UniqueStats } from "@/app/actions/stats";
 import DashboardCard from "../components/DashboardCard";
 import InfoTooltip from "../components/InfoTooltip";
 
-export default function SurvivalWidget({ stats }: { stats: UniqueStats | null }) {
-    if (!stats) return <DashboardCard>Calculating death rate...</DashboardCard>;
+export default function LaningPhaseWidget({ stats }: { stats: UniqueStats | null }) {
+    if (!stats) return <DashboardCard><div className="animate-pulse h-32 bg-slate-800 rounded"></div></DashboardCard>;
 
+    // Solo Death Rate (Lower is Better)
     const rate = stats.survival.soloDeathRate;
 
     return (
-        <DashboardCard className="relative  group hover:border-emerald-500/30 transition-all duration-500">
-            <div className="flex items-center mb-2">
-                <div className="p-2 bg-emerald-500/10 rounded-lg mr-3 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
-                    <span className="text-xl">🛡️</span>
+        <DashboardCard>
+            <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-2">
+                    <div className="p-2 bg-rose-500/20 rounded-lg text-rose-400">
+                        ⚔️
+                    </div>
+                    <div>
+                        <h3 className="text-xs font-bold text-slate-400 tracking-wider">LANING PHASE</h3>
+                        <p className="text-[10px] text-slate-500 font-mono">Early Game Stability</p>
+                    </div>
                 </div>
-                <div>
-                     <h3 className="text-sm font-bold text-slate-200 flex items-center gap-1">
-                        Survival Instinct
-                        <InfoTooltip content={{
-                            what: "孤立死（味方が近くにいない状態でのデス）の発生率",
-                            why: "孤立死はマップの視界不足や、無謀なプッシュが原因で、逆転のきっかけを与えやすいです。",
-                            how: "30%以下を目指しましょう。ワードを置いていない場所には入らないのが鉄則です。"
-                        }} />
-                     </h3>
-                     <p className="text-xs text-slate-500">Isolation Rate</p>
-                </div>
-             </div>
-            
+                <InfoTooltip 
+                    title="レーニングフェーズ (攻守)"
+                    what="序盤10分間の「生存安定性」と「稼ぐ力」を総合評価します。"
+                    why="不用意なデスを避けつつ(守り)、CSを確実に稼ぐ(攻め)ことが、試合を作る土台となります。"
+                    how="ソロデス率を0%に抑え、かつ10分時点でCS 80以上を目指しましょう。"
+                />
+            </div>
+
             <div className="flex items-center gap-4 justify-center py-2">
                 <div className="relative w-16 h-16 transform transition-transform group-hover:scale-110 duration-500">
                     <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
@@ -49,13 +51,16 @@ export default function SurvivalWidget({ stats }: { stats: UniqueStats | null })
                     <div className="absolute inset-0 flex items-center justify-center font-black text-slate-200 text-sm">
                         {rate}%
                     </div>
+                     <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[8px] text-slate-500 font-bold uppercase whitespace-nowrap">
+                       Solo Death
+                   </div>
                 </div>
                 <div className="flex-1">
                      <div className={`text-xs font-bold ${rate > 30 ? "text-rose-400" : "text-emerald-400"}`}>
                         {rate > 50 ? "High Risk" : rate > 30 ? "Caution" : "Safe"}
                      </div>
                      <div className="text-[10px] text-slate-500 leading-tight mt-1 border-l-2 border-slate-700 pl-2">
-                         {rate > 50 ? "サイドレーンでの孤立死が目立ちます。視界がない場所への深入りを避けましょう。" : rate > 30 ? "時折、無防備なデスがあります。ミニマップを見る頻度を上げましょう。" : "素晴らしい生存意識です。この調子で不用意なデスを避け続けましょう。"}
+                         {rate > 50 ? "孤立死が多すぎます。視界確保を優先してください。" : rate > 30 ? "時折、不用意なデスがあります。" : "非常に安定した立ち上がりです。"}
                      </div>
                 </div>
             </div>
