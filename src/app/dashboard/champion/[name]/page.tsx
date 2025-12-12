@@ -10,11 +10,25 @@ export default async function ChampionPage({ params }: { params: { name: string 
         redirect("/login");
     }
 
-    const puuid = user.user_metadata?.puuid;
-    // Handle case where PUUID might be missing (though unlikely if logged in properly)
+    // Attempt to get PUUID from DB (Primary Source)
+    const { data: summoner } = await supabase
+        .from('summoners')
+        .select('puuid')
+        .eq('user_id', user.id)
+        .single();
+
+    const puuid = summoner?.puuid || user.user_metadata?.puuid;
+
     if (!puuid) {
-         // redirect or show error
-         return <div className="p-8 text-red-400">Error: No PUUID found. Please update your profile.</div>
+         return (
+             <div className="p-8 text-center">
+                 <h2 className="text-xl font-bold text-red-400 mb-2">サモナー情報が見つかりません</h2>
+                 <p className="text-slate-400 mb-4">アカウント設定からサモナーを連携してください。</p>
+                 <a href="/dashboard/account" className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded">
+                     アカウント連携へ
+                 </a>
+             </div>
+         );
     }
 
     const stats = await getChampionStats(puuid, decodeURIComponent(params.name));
