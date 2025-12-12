@@ -21,14 +21,22 @@ export default function CoachPage() {
     const { activeSummoner, loading: summonerLoading } = useSummoner();
 
     // State
+    // State
     const [matches, setMatches] = useState<MatchSummary[]>([]);
     const [loadingIds, setLoadingIds] = useState(true);
     const [selectedMatch, setSelectedMatch] = useState<MatchSummary | null>(null);
-    const [youtubeUrl, setYoutubeUrl] = useState("");
-    const [videoReady, setVideoReady] = useState(false);
-    const [player, setPlayer] = useState<any>(null); // YouTube Player Instance
     const [insights, setInsights] = useState<CoachingInsight[] | null>(null);
     const [isAnalyzing, startTransition] = useTransition();
+
+    // Video State
+    const [videoSourceType, setVideoSourceType] = useState<"YOUTUBE" | "LOCAL">("YOUTUBE");
+    const [youtubeUrl, setYoutubeUrl] = useState("");
+    const [localVideoUrl, setLocalVideoUrl] = useState<string | null>(null);
+    const [videoReady, setVideoReady] = useState(false);
+    
+    // Players
+    const [ytPlayer, setYtPlayer] = useState<any>(null); 
+    const localVideoRef = useRef<HTMLVideoElement>(null);
 
     // Fetch Matches logic
     const loadMatches = useCallback(async () => {
@@ -82,7 +90,8 @@ export default function CoachPage() {
         };
     }, []);
 
-    const loadVideo = () => {
+    // Handlers
+    const loadYoutubeVideo = () => {
         if (!selectedMatch) return;
         const videoId = extractVideoId(youtubeUrl);
         if (!videoId) {
@@ -90,26 +99,40 @@ export default function CoachPage() {
             return;
         }
 
-        if (player) {
-            player.loadVideoById(videoId);
+        setVideoSourceType("YOUTUBE");
+
+        if (ytPlayer) {
+            ytPlayer.loadVideoById(videoId);
         } else {
              new window.YT.Player('youtube-player', {
                 height: '100%',
                 width: '100%',
                 videoId: videoId,
-                playerVars: {
-                    'playsinline': 1,
-                    // 'start': 0
-                },
+                playerVars: { 'playsinline': 1 },
                 events: {
                     'onReady': (event: any) => {
-                        setPlayer(event.target);
+                        setYtPlayer(event.target);
                         setVideoReady(true);
                     }
                 }
             });
         }
         setVideoReady(true);
+    };
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const objectUrl = URL.createObjectURL(file);
+        setLocalVideoUrl(objectUrl);
+        setVideoSourceType("LOCAL");
+        setVideoReady(true);
+        
+        // Reset YouTube player if active to prevent dual audio
+        if (ytPlayer && ytPlayer.pauseVideo) {
+            ytPlayer.pauseVideo();
+        }
     };
 
     const runAnalysis = () => {
@@ -127,10 +150,14 @@ export default function CoachPage() {
     }
 
     const seekTo = (timestampMs: number) => {
-        if (player && player.seekTo) {
-            const seconds = timestampMs / 1000;
-            player.seekTo(seconds, true);
-            player.playVideo();
+        const seconds = timestampMs / 1000;
+
+        if (videoSourceType === "YOUTUBE" && ytPlayer && ytPlayer.seekTo) {
+            ytPlayer.seekTo(seconds, true);
+            ytPlayer.playVideo();
+        } else if (videoSourceType === "LOCAL" && localVideoRef.current) {
+            localVideoRef.current.currentTime = seconds;
+            localVideoRef.current.play();
         }
     }
 
@@ -200,32 +227,53 @@ export default function CoachPage() {
                                 {/* Controls Bar */}
                                 <div className="flex items-center gap-4 bg-slate-900 border border-slate-800 p-4 rounded-xl">
                                     <button 
-                                        onClick={() => { setSelectedMatch(null); setInsights(null); setVideoReady(false); setYoutubeUrl(""); }}
+                                        onClick={() => { setSelectedMatch(null); setInsights(null); setVideoReady(false); setYoutubeUrl(""); setLocalVideoUrl(null); }}
                                         className="text-slate-400 hover:text-white font-bold text-sm"
                                     >
                                         ← BACK
                                     </button>
                                     <div className="h-6 w-px bg-slate-700"></div>
-                                    <div className="flex-1 flex gap-2">
-                                        <input 
-                                            type="text" 
-                                            placeholder="Paste YouTube URL here (e.g. https://youtu.be/...)" 
-                                            className="flex-1 bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:ring-2 focus:ring-purple-500 outline-none"
-                                            value={youtubeUrl}
-                                            onChange={(e) => setYoutubeUrl(e.target.value)}
-                                        />
-                                        <button 
-                                            onClick={loadVideo}
-                                            disabled={!youtubeUrl}
-                                            className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded font-bold text-sm transition"
-                                        >
-                                            LOAD VIDEO
-                                        </button>
+                                    
+                                    {/* Video Input Controls */}
+                                    <div className="flex-1 flex gap-2 overflow-x-auto">
+                                        {/* Option A: YouTube */}
+                                        <div className="flex items-center gap-2 bg-slate-950 rounded px-2 border border-slate-700">
+                                            <span className="text-red-500 text-lg">▶</span>
+                                            <input 
+                                                type="text" 
+                                                placeholder="YouTube URL..." 
+                                                className="bg-transparent text-white w-32 focus:w-64 transition-all outline-none text-sm py-2"
+                                                value={youtubeUrl}
+                                                onChange={(e) => setYoutubeUrl(e.target.value)}
+                                            />
+                                            <button 
+                                                onClick={loadYoutubeVideo}
+                                                disabled={!youtubeUrl}
+                                                className="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded text-white"
+                                            >
+                                                LOAD
+                                            </button>
+                                        </div>
+
+                                        <span className="flex items-center text-slate-500 text-xs font-bold px-1">OR</span>
+
+                                        {/* Option B: Local File */}
+                                        <label className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded cursor-pointer transition whitespace-nowrap">
+                                            <span className="text-lg">📁</span>
+                                            <span className="text-sm font-bold">Select File</span>
+                                            <input 
+                                                type="file" 
+                                                accept="video/*" 
+                                                className="hidden" 
+                                                onChange={handleFileSelect}
+                                            />
+                                        </label>
                                     </div>
+
                                     <button 
                                         onClick={runAnalysis}
                                         disabled={isAnalyzing || !!insights}
-                                        className="bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white px-6 py-2 rounded font-bold text-sm transition shadow-[0_0_15px_rgba(168,85,247,0.4)]"
+                                        className="bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white px-6 py-2 rounded font-bold text-sm transition shadow-[0_0_15px_rgba(168,85,247,0.4)] whitespace-nowrap"
                                     >
                                         {isAnalyzing ? "ANALYZING..." : "ANALYZE TIMELINE 🧠"}
                                     </button>
@@ -233,11 +281,26 @@ export default function CoachPage() {
 
                                 {/* Video Area */}
                                 <div className="flex-1 bg-black rounded-xl overflow-hidden border border-slate-800 relative shadow-2xl">
-                                    <div id="youtube-player" className="w-full h-full"></div>
+                                    {/* YouTube Player Container */}
+                                    <div 
+                                        id="youtube-player" 
+                                        className={`w-full h-full ${videoSourceType === 'YOUTUBE' ? 'block' : 'hidden'}`}
+                                    ></div>
+                                    
+                                    {/* Local Video Player Container */}
+                                    {videoSourceType === 'LOCAL' && localVideoUrl && (
+                                        <video
+                                            ref={localVideoRef}
+                                            src={localVideoUrl}
+                                            controls
+                                            className="w-full h-full object-contain bg-black"
+                                        />
+                                    )}
+
                                     {!videoReady && (
-                                        <div className="absolute inset-0 flex items-center justify-center text-slate-500 flex-col gap-2">
+                                        <div className="absolute inset-0 flex items-center justify-center text-slate-500 flex-col gap-2 pointer-events-none bg-slate-950/80 z-10">
                                             <span className="text-4xl">📺</span>
-                                            <span>Enter YouTube URL to Sync</span>
+                                            <span>Select Local Video or Paste YouTube URL</span>
                                         </div>
                                     )}
                                 </div>
