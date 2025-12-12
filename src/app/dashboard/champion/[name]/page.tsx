@@ -74,8 +74,10 @@ export default async function ChampionPage({ params }: { params: Promise<{ name:
                             <div className="text-xl font-bold text-slate-200">{stats.summary.csPerMin}</div>
                         </div>
                         <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
-                            <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Avg Gold</div>
-                            <div className="text-xl font-bold text-slate-200">~</div> 
+                            <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Gold Diff</div>
+                            <div className={`text-xl font-bold ${stats.laning.goldDiff > 0 ? "text-green-400" : "text-red-400"}`}>
+                                {stats.laning.goldDiff > 0 ? "+" : ""}{stats.laning.goldDiff}
+                            </div>
                         </div>
                         {/* Add more summary stats here */}
                     </div>
@@ -92,12 +94,23 @@ export default async function ChampionPage({ params }: { params: Promise<{ name:
                     </div>
                     <div className="space-y-4">
                         <div className="flex justify-between items-center">
-                             <span className="text-sm text-slate-400">CS Diff @ 15</span>
-                             <span className={`text-lg font-bold ${stats.laning.csDiff15 > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                {stats.laning.csDiff15 > 0 ? '+' : ''}{stats.laning.csDiff15}
+                             <span className="text-sm text-slate-400">CS Diff @ 10</span>
+                             <span className={`text-lg font-bold ${stats.laning.csDiff10 > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                {stats.laning.csDiff10 > 0 ? '+' : ''}{stats.laning.csDiff10}
                              </span>
                         </div>
-                         {/* More laning stats */}
+                        <div className="flex justify-between items-center">
+                             <span className="text-sm text-slate-400">Gold Diff</span>
+                             <span className={`text-lg font-bold ${stats.laning.goldDiff > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                {stats.laning.goldDiff > 0 ? '+' : ''}{stats.laning.goldDiff}
+                             </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                             <span className="text-sm text-slate-400">XP Diff</span>
+                             <span className={`text-lg font-bold ${stats.laning.xpDiff > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                {stats.laning.xpDiff > 0 ? '+' : ''}{stats.laning.xpDiff}
+                             </span>
+                        </div>
                     </div>
                 </div>
 
@@ -152,6 +165,59 @@ export default async function ChampionPage({ params }: { params: Promise<{ name:
                             <span className="text-xs text-slate-500 font-medium">35m+</span>
                          </div>
                     </div>
+                </div>
+            </div>
+
+            {/* Matchup Analysis */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                <h3 className="text-xl font-bold text-slate-100 mb-4">Matchup Analysis</h3>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left text-slate-400">
+                        <thead className="text-xs text-slate-500 uppercase bg-slate-800/50">
+                            <tr>
+                                <th className="px-4 py-3 rounded-l-lg">Opponent</th>
+                                <th className="px-4 py-3">Games</th>
+                                <th className="px-4 py-3">Win Rate</th>
+                                <th className="px-4 py-3">Gold Diff</th>
+                                <th className="px-4 py-3">CS Diff</th>
+                                <th className="px-4 py-3 text-right rounded-r-lg">Kill Diff</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800">
+                            {stats.matchups.slice(0, 10).map((matchup) => (
+                                <tr key={matchup.opponentChampion} className="hover:bg-slate-800/30 transition-colors">
+                                    <td className="px-4 py-3 font-medium text-slate-200">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-slate-800 overflow-hidden relative border border-slate-600">
+                                                 <img src={`https://ddragon.leagueoflegends.com/cdn/14.24.1/img/champion/${matchup.opponentChampion}.png`} alt={matchup.opponentChampion} className="w-full h-full object-cover" />
+                                            </div>
+                                            {matchup.opponentChampion}
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3">{matchup.games}</td>
+                                    <td className={`px-4 py-3 font-bold ${matchup.winRate >= 50 ? 'text-green-400' : 'text-red-400'}`}>
+                                        {matchup.winRate}%
+                                    </td>
+                                    <td className={`px-4 py-3 ${matchup.goldDiff > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                        {matchup.goldDiff > 0 ? '+' : ''}{matchup.goldDiff}
+                                    </td>
+                                    <td className={`px-4 py-3 ${matchup.csDiff > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                        {matchup.csDiff > 0 ? '+' : ''}{matchup.csDiff}
+                                    </td>
+                                    <td className={`px-4 py-3 text-right ${matchup.killDiff > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                        {matchup.killDiff > 0 ? '+' : ''}{matchup.killDiff}
+                                    </td>
+                                </tr>
+                            ))}
+                            {stats.matchups.length === 0 && (
+                                <tr>
+                                    <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                                        No matchup data available yet.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
