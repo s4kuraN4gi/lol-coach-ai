@@ -6,6 +6,10 @@ import DashboardLayout from "@/app/Components/layout/DashboardLayout";
 import Link from "next/link";
 import { useSummoner } from "@/app/Providers/SummonerProvider";
 import StatsSkeleton from "../components/skeletons/StatsSkeleton";
+// Premium Imports
+import PlanStatusBadge from "@/app/Components/subscription/PlanStatusBadge";
+import PremiumFeatureGate from "@/app/Components/subscription/PremiumFeatureGate";
+import { getAnalysisStatus, type AnalysisStatus } from "@/app/actions/analysis";
 
 type HistoryItem = {
     matchId: string;
@@ -23,11 +27,20 @@ type HistoryItem = {
 
 export default function StatsPage() {
     const { activeSummoner, loading: summonerLoading } = useSummoner();
+    
+    // Premium Status State
+    const [analysisStatus, setAnalysisStatus] = useState<AnalysisStatus | null>(null);
+
     // history includes null for loading items
     const [history, setHistory] = useState<(HistoryItem | null)[]>([]);
     const [loadingIds, setLoadingIds] = useState(false); // Only for initial ID fetch
     const [error, setError] = useState<string | null>(null);
     const [filter, setFilter] = useState<"ALL" | "SOLO" | "FLEX" | "NORMAL" | "ARAM">("ALL");
+
+    // Fetch Premium Status
+    useEffect(() => {
+        getAnalysisStatus().then(setAnalysisStatus);
+    }, []);
 
     useEffect(() => {
         if (summonerLoading) return;
@@ -99,16 +112,6 @@ export default function StatsPage() {
                                          next[index] = item;
                                          return next;
                                      });
-                                 } else {
-                                     // Participant not found? valid match but weird.
-                                     // Remove placeholder or keep it? 
-                                     // Let's filter it out eventually, or just mark null.
-                                     // For stable index, maybe keep null?
-                                     // If we keep null, it stays as skeleton forever? Bad.
-                                     // Better to remove it or replace with error?
-                                     // Let's just remove it from array? No, index-based update breaks.
-                                     // We'll set a special "Error" item or just ignore. 
-                                     // Ideally this shouldn't happen if PUUID matches.
                                  }
                              }
                          }).catch(err => console.error("Match Detail Error", err));
@@ -199,27 +202,58 @@ export default function StatsPage() {
     }
 
     // 4. Main Content (Progressive)
+    const isPremium = analysisStatus?.is_premium ?? false;
+
     return (
         <DashboardLayout>
              <div className="max-w-7xl mx-auto p-4 md:p-8 animate-fadeIn">
-                 <h1 className="text-3xl font-black italic tracking-tighter text-white mb-8">
-                    DETAILED STATS & HISTORY
-                 </h1>
+                 {/* Header with Premium Badge */}
+                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                     <h1 className="text-3xl font-black italic tracking-tighter text-white">
+                        DETAILED STATS & HISTORY
+                     </h1>
+                     <PlanStatusBadge 
+                        initialStatus={analysisStatus} 
+                        onStatusUpdate={setAnalysisStatus}
+                     />
+                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                     <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
-                        <div className="text-slate-400 text-xs font-bold tracking-wider mb-1">WIN RATE</div>
-                        <div className={`text-3xl font-black ${winRate >= 50 ? 'text-blue-400' : 'text-slate-200'}`}>
-                            {winRate}%
-                        </div>
-                        <div className="text-xs text-slate-500 mt-1">{stats.wins}W - {stats.losses}L</div>
-                     </div>
-                     <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
-                        <div className="text-slate-400 text-xs font-bold tracking-wider mb-1">KDA RATIO</div>
-                        <div className="text-3xl font-black text-yellow-500">{avgKda}</div>
-                        <div className="text-xs text-slate-500 mt-1">Avg. Performance</div>
-                     </div>
-                </div>
+                {/* Premium Gated Stats */}
+                <PremiumFeatureGate
+                    isPremium={isPremium}
+                    title="Unlock Advanced Statistics"
+                    description="Get deep insights into your win rates, KDA trends, and performance metrics."
+                    onUpgrade={() => {
+                        // Optimistic update handled by component or page reload if needed
+                        getAnalysisStatus().then(setAnalysisStatus);
+                    }}
+                >
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                         <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
+                            <div className="text-slate-400 text-xs font-bold tracking-wider mb-1">WIN RATE</div>
+                            <div className={`text-3xl font-black ${winRate >= 50 ? 'text-blue-400' : 'text-slate-200'}`}>
+                                {winRate}%
+                            </div>
+                            <div className="text-xs text-slate-500 mt-1">{stats.wins}W - {stats.losses}L</div>
+                         </div>
+                         <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
+                            <div className="text-slate-400 text-xs font-bold tracking-wider mb-1">KDA RATIO</div>
+                            <div className="text-3xl font-black text-yellow-500">{avgKda}</div>
+                            <div className="text-xs text-slate-500 mt-1">Avg. Performance</div>
+                         </div>
+                         {/* Adding Placeholder Cards for 'PREMIUM' Look */}
+                         <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl opacity-75">
+                            <div className="text-slate-400 text-xs font-bold tracking-wider mb-1">CS / MIN</div>
+                            <div className="text-3xl font-black text-purple-400">7.2</div>
+                            <div className="text-xs text-slate-500 mt-1">Top 15%</div>
+                         </div>
+                         <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl opacity-75">
+                            <div className="text-slate-400 text-xs font-bold tracking-wider mb-1">VISION SCORE</div>
+                            <div className="text-3xl font-black text-green-400">24.5</div>
+                            <div className="text-xs text-slate-500 mt-1">Excellent</div>
+                         </div>
+                    </div>
+                </PremiumFeatureGate>
 
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">

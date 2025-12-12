@@ -5,6 +5,10 @@ import { fetchMatchIds, fetchMatchDetail } from "@/app/actions/riot";
 import { resolveChampionId } from "@/app/actions/champion";
 import Link from "next/link";
 import { ChampionDetailsDTO } from "@/app/actions/champion";
+// Premium Imports
+import PlanStatusBadge from "@/app/Components/subscription/PlanStatusBadge";
+import PremiumFeatureGate from "@/app/Components/subscription/PremiumFeatureGate";
+import { getAnalysisStatus, type AnalysisStatus } from "@/app/actions/analysis";
 
 type Match = any; // We can use strict type if available
 
@@ -13,6 +17,14 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
     const [matchDetails, setMatchDetails] = useState<Match[]>([]);
     const [totalMatches, setTotalMatches] = useState<number>(0);
     const [error, setError] = useState<string | null>(null);
+    
+    // Premium Status State
+    const [analysisStatus, setAnalysisStatus] = useState<AnalysisStatus | null>(null);
+
+    // Fetch Premium Status
+    useEffect(() => {
+        getAnalysisStatus().then(setAnalysisStatus);
+    }, []);
 
     useEffect(() => {
         let ignore = false;
@@ -220,6 +232,9 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
     const loadedCount = matchDetails.length;
     const progress = totalMatches > 0 ? Math.round((loadedCount / totalMatches) * 100) : 0;
     const isComplete = totalMatches > 0 && loadedCount >= totalMatches;
+    
+    // Determine Premium Status
+    const isPremium = analysisStatus?.is_premium ?? false;
 
     // --- RENDER ---
 
@@ -262,11 +277,17 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
     // Main Content
     return (
         <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-6 animate-fadeIn">
-            <div>
-                <Link href="/dashboard" className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors group mb-4">
+            <div className="flex justify-between items-center mb-4">
+                <Link href="/dashboard" className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors group">
                      <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                      Back to Dashboard
                 </Link>
+                {/* Upgrade Button in Header Area (Optional, or rely on internal prompts) */}
+                {!isPremium && (
+                   <div className="scale-75 origin-right">
+                       <PlanStatusBadge initialStatus={analysisStatus} onStatusUpdate={setAnalysisStatus} />
+                   </div>
+                )}
             </div>
 
             {/* Header / Summary */}
@@ -379,106 +400,124 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                     </div>
                 </div>
 
-                {/* Power Spikes */}
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-                    <div className="flex items-center gap-2 mb-4">
-                         <span className="text-xl">📈</span>
-                         <h3 className="font-bold text-slate-100">Power Spikes</h3>
-                    </div>
-                    <div className="flex items-end justify-between h-32 gap-2 mt-2">
-                         {/* Early */}
-                         <div className="flex flex-col items-center gap-1 w-1/3 group h-full justify-end">
-                            <div className="relative w-full bg-slate-800/50 rounded-t-lg transition-all" style={{ height: '100%' }}>
-                                <div className="absolute bottom-0 w-full bg-blue-500/50 rounded-t-lg transition-all group-hover:bg-blue-400/60" style={{ height: `${stats.spikes.earlyGame.winRate}%` }}>
-                                     <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-300 opacity-0 group-hover:opacity-100 whitespace-nowrap z-20">
-                                         {stats.spikes.earlyGame.winRate}% ({stats.spikes.earlyGame.games}G)
-                                     </div>
+                {/* Power Spikes - GATED */}
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-0 overflow-hidden relative">
+                    <PremiumFeatureGate 
+                        isPremium={isPremium} 
+                        title="Unlock Power Spikes" 
+                        description="See when you are strongest in the game."
+                        onUpgrade={() => getAnalysisStatus().then(setAnalysisStatus)}
+                    >
+                        <div className="p-5">
+                            <div className="flex items-center gap-2 mb-4">
+                                <span className="text-xl">📈</span>
+                                <h3 className="font-bold text-slate-100">Power Spikes</h3>
+                            </div>
+                            <div className="flex items-end justify-between h-32 gap-2 mt-2">
+                                {/* Early */}
+                                <div className="flex flex-col items-center gap-1 w-1/3 group h-full justify-end">
+                                    <div className="relative w-full bg-slate-800/50 rounded-t-lg transition-all" style={{ height: '100%' }}>
+                                        <div className="absolute bottom-0 w-full bg-blue-500/50 rounded-t-lg transition-all group-hover:bg-blue-400/60" style={{ height: `${stats.spikes.earlyGame.winRate}%` }}>
+                                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-300 opacity-0 group-hover:opacity-100 whitespace-nowrap z-20">
+                                                {stats.spikes.earlyGame.winRate}% ({stats.spikes.earlyGame.games}G)
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span className="text-xs text-slate-500 font-medium mt-1">0-25m</span>
+                                </div>
+
+                                {/* Mid */}
+                                <div className="flex flex-col items-center gap-1 w-1/3 group h-full justify-end">
+                                    <div className="relative w-full bg-slate-800/50 rounded-t-lg transition-all" style={{ height: '100%' }}>
+                                        <div className="absolute bottom-0 w-full bg-purple-500/50 rounded-t-lg transition-all group-hover:bg-purple-400/60" style={{ height: `${stats.spikes.midGame.winRate}%` }}>
+                                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-300 opacity-0 group-hover:opacity-100 whitespace-nowrap z-20">
+                                                {stats.spikes.midGame.winRate}% ({stats.spikes.midGame.games}G)
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span className="text-xs text-slate-500 font-medium mt-1">25-35m</span>
+                                </div>
+
+                                {/* Late */}
+                                <div className="flex flex-col items-center gap-1 w-1/3 group h-full justify-end">
+                                    <div className="relative w-full bg-slate-800/50 rounded-t-lg transition-all" style={{ height: '100%' }}>
+                                        <div className="absolute bottom-0 w-full bg-red-500/50 rounded-t-lg transition-all group-hover:bg-red-400/60" style={{ height: `${stats.spikes.lateGame.winRate}%` }}>
+                                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-300 opacity-0 group-hover:opacity-100 whitespace-nowrap z-20">
+                                                {stats.spikes.lateGame.winRate}% ({stats.spikes.lateGame.games}G)
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span className="text-xs text-slate-500 font-medium mt-1">35m+</span>
                                 </div>
                             </div>
-                            <span className="text-xs text-slate-500 font-medium mt-1">0-25m</span>
-                         </div>
-
-                         {/* Mid */}
-                         <div className="flex flex-col items-center gap-1 w-1/3 group h-full justify-end">
-                             <div className="relative w-full bg-slate-800/50 rounded-t-lg transition-all" style={{ height: '100%' }}>
-                                <div className="absolute bottom-0 w-full bg-purple-500/50 rounded-t-lg transition-all group-hover:bg-purple-400/60" style={{ height: `${stats.spikes.midGame.winRate}%` }}>
-                                     <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-300 opacity-0 group-hover:opacity-100 whitespace-nowrap z-20">
-                                         {stats.spikes.midGame.winRate}% ({stats.spikes.midGame.games}G)
-                                     </div>
-                                </div>
-                             </div>
-                            <span className="text-xs text-slate-500 font-medium mt-1">25-35m</span>
-                         </div>
-
-                         {/* Late */}
-                         <div className="flex flex-col items-center gap-1 w-1/3 group h-full justify-end">
-                             <div className="relative w-full bg-slate-800/50 rounded-t-lg transition-all" style={{ height: '100%' }}>
-                                <div className="absolute bottom-0 w-full bg-red-500/50 rounded-t-lg transition-all group-hover:bg-red-400/60" style={{ height: `${stats.spikes.lateGame.winRate}%` }}>
-                                     <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-300 opacity-0 group-hover:opacity-100 whitespace-nowrap z-20">
-                                         {stats.spikes.lateGame.winRate}% ({stats.spikes.lateGame.games}G)
-                                     </div>
-                                </div>
-                             </div>
-                            <span className="text-xs text-slate-500 font-medium mt-1">35m+</span>
-                         </div>
-                    </div>
+                        </div>
+                    </PremiumFeatureGate>
                 </div>
             </div>
 
-            {/* Matchup Analysis */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-                <h3 className="text-xl font-bold text-slate-100 mb-4">Matchup Analysis</h3>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left text-slate-400">
-                        <thead className="text-xs text-slate-500 uppercase bg-slate-800/50">
-                            <tr>
-                                <th className="px-4 py-3 rounded-l-lg">Opponent</th>
-                                <th className="px-4 py-3">Games</th>
-                                <th className="px-4 py-3">Win Rate</th>
-                                <th className="px-4 py-3">Key Items</th>
-                                <th className="px-4 py-3">Gold Diff</th>
-                                <th className="px-4 py-3">CS Diff</th>
-                                <th className="px-4 py-3 text-right rounded-r-lg">Kill Diff</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-800">
-                            {stats.matchups.slice(0, 10).map((matchup) => (
-                                <tr key={matchup.opponentChampion} className="hover:bg-slate-800/30 transition-colors">
-                                    <td className="px-4 py-3 font-medium text-slate-200">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-slate-800 overflow-hidden relative border border-slate-600">
-                                                 <img src={`https://ddragon.leagueoflegends.com/cdn/14.24.1/img/champion/${matchup.opponentChampion}.png`} alt={matchup.opponentChampion} className="w-full h-full object-cover" />
-                                            </div>
-                                            {matchup.opponentChampion}
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3">{matchup.games}</td>
-                                    <td className={`px-4 py-3 font-bold ${matchup.winRate >= 50 ? 'text-green-400' : 'text-red-400'}`}>
-                                        {matchup.winRate}%
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <div className="flex gap-1">
-                                            {matchup.keyItems.map(itemId => (
-                                                 <div key={itemId} className="w-8 h-8 rounded border border-slate-700 bg-slate-800 overflow-hidden" title={`Item ${itemId}`}>
-                                                     <img src={`https://ddragon.leagueoflegends.com/cdn/14.24.1/img/item/${itemId}.png`} alt={`Item ${itemId}`} className="w-full h-full object-cover" />
-                                                 </div>
-                                            ))}
-                                        </div>
-                                    </td>
-                                    <td className={`px-4 py-3 ${matchup.goldDiff > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                        {matchup.goldDiff > 0 ? '+' : ''}{matchup.goldDiff}
-                                    </td>
-                                    <td className={`px-4 py-3 ${matchup.csDiff > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                        {matchup.csDiff > 0 ? '+' : ''}{matchup.csDiff}
-                                    </td>
-                                    <td className={`px-4 py-3 text-right ${matchup.killDiff > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                        {matchup.killDiff > 0 ? '+' : ''}{matchup.killDiff}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+            {/* Matchup Analysis - GATED */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-0 overflow-hidden relative">
+                 <PremiumFeatureGate 
+                    isPremium={isPremium} 
+                    title="Unlock Matchup Analysis" 
+                    description="Deep dive into your performance against specific champions."
+                    onUpgrade={() => getAnalysisStatus().then(setAnalysisStatus)}
+                >
+                    <div className="p-6">
+                        <h3 className="text-xl font-bold text-slate-100 mb-4">Matchup Analysis</h3>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left text-slate-400">
+                                <thead className="text-xs text-slate-500 uppercase bg-slate-800/50">
+                                    <tr>
+                                        <th className="px-4 py-3 rounded-l-lg">Opponent</th>
+                                        <th className="px-4 py-3">Games</th>
+                                        <th className="px-4 py-3">Win Rate</th>
+                                        <th className="px-4 py-3">Key Items</th>
+                                        <th className="px-4 py-3">Gold Diff</th>
+                                        <th className="px-4 py-3">CS Diff</th>
+                                        <th className="px-4 py-3 text-right rounded-r-lg">Kill Diff</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-800">
+                                    {stats.matchups.slice(0, 10).map((matchup) => (
+                                        <tr key={matchup.opponentChampion} className="hover:bg-slate-800/30 transition-colors">
+                                            <td className="px-4 py-3 font-medium text-slate-200">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-slate-800 overflow-hidden relative border border-slate-600">
+                                                        <img src={`https://ddragon.leagueoflegends.com/cdn/14.24.1/img/champion/${matchup.opponentChampion}.png`} alt={matchup.opponentChampion} className="w-full h-full object-cover" />
+                                                    </div>
+                                                    {matchup.opponentChampion}
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3">{matchup.games}</td>
+                                            <td className={`px-4 py-3 font-bold ${matchup.winRate >= 50 ? 'text-green-400' : 'text-red-400'}`}>
+                                                {matchup.winRate}%
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <div className="flex gap-1">
+                                                    {matchup.keyItems.map(itemId => (
+                                                        <div key={itemId} className="w-8 h-8 rounded border border-slate-700 bg-slate-800 overflow-hidden" title={`Item ${itemId}`}>
+                                                            <img src={`https://ddragon.leagueoflegends.com/cdn/14.24.1/img/item/${itemId}.png`} alt={`Item ${itemId}`} className="w-full h-full object-cover" />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </td>
+                                            <td className={`px-4 py-3 ${matchup.goldDiff > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                {matchup.goldDiff > 0 ? '+' : ''}{matchup.goldDiff}
+                                            </td>
+                                            <td className={`px-4 py-3 ${matchup.csDiff > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                {matchup.csDiff > 0 ? '+' : ''}{matchup.csDiff}
+                                            </td>
+                                            <td className={`px-4 py-3 text-right ${matchup.killDiff > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                {matchup.killDiff > 0 ? '+' : ''}{matchup.killDiff}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </PremiumFeatureGate>
             </div>
         </div>
     );
