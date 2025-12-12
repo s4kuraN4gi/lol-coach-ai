@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState, useTransition, useEffect } from "react";
 import { upgradeToPremium, downgradeToFree, type AnalysisStatus, getAnalysisStatus } from "@/app/actions/analysis";
 
 type Props = {
@@ -11,6 +11,11 @@ type Props = {
 export default function PremiumPromoCard({ initialStatus, onStatusUpdate }: Props) {
     const [status, setStatus] = useState<AnalysisStatus | null>(initialStatus);
     const [isPending, startTransition] = useTransition();
+
+    // Sync state with prop updates (e.g. initial fetch from parent)
+    useEffect(() => {
+        setStatus(initialStatus);
+    }, [initialStatus]);
 
     const isPremium = status?.is_premium;
 
