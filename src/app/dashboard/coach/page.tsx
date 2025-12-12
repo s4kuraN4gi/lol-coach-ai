@@ -225,12 +225,29 @@ export default function CoachPage() {
                             <div className="flex flex-col h-full gap-4">
                                 {/* Controls Bar */}
                                 <div className="flex items-center gap-4 bg-slate-900 border border-slate-800 p-4 rounded-xl">
-                                    <button 
-                                        onClick={() => { setSelectedMatch(null); setInsights(null); setVideoReady(false); setYoutubeUrl(""); setLocalVideoUrl(null); }}
-                                        className="text-slate-400 hover:text-white font-bold text-sm"
-                                    >
-                                        ← BACK
-                                    </button>
+                                    <div className="flex flex-col gap-1">
+                                        <button 
+                                            onClick={() => { setSelectedMatch(null); setInsights(null); setVideoReady(false); setYoutubeUrl(""); setLocalVideoUrl(null); }}
+                                            className="text-slate-400 hover:text-white font-bold text-sm"
+                                        >
+                                            ← BACK
+                                        </button>
+                                        <button 
+                                            onClick={async () => {
+                                                const { listAvailableModels } = await import("@/app/actions/debug_gemini");
+                                                const res = await listAvailableModels();
+                                                if (res.error) {
+                                                    alert("Error: " + res.error);
+                                                } else {
+                                                    const names = res.models.map((m: any) => m.name).join("\n");
+                                                    alert("Available Models:\n" + names);
+                                                }
+                                            }}
+                                            className="text-[10px] text-slate-600 hover:text-slate-400 underline"
+                                        >
+                                            Debug Models
+                                        </button>
+                                    </div>
                                     <div className="h-6 w-px bg-slate-700"></div>
                                     
                                     {/* Video Input Controls */}
