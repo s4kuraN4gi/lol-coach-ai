@@ -14,7 +14,7 @@ export default function SidebarNav() {
     const navItems = [
       { name: "ダッシュボード", href: "/dashboard", icon: "📊" },
       { name: "詳細戦績", href: "/dashboard/stats", icon: "📈" },
-      { name: "動画コーチング", href: "/dashboard/replay", icon: "🎥" },
+
       { name: "AI Coach", href: "/dashboard/coach", icon: "🧠" },
       { name: "サモナー解析", href: "/chat", icon: "💬" },
       { name: "アカウント", href: "/account", icon: "⚙️" },

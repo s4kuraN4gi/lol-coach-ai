@@ -5,6 +5,10 @@ import DashboardLayout from "../../Components/layout/DashboardLayout";
 import { fetchMatchIds, fetchMatchDetail } from "@/app/actions/riot";
 import { analyzeMatchTimeline, CoachingInsight } from "@/app/actions/coach";
 import { useSummoner } from "../../Providers/SummonerProvider";
+import { getAnalysisStatus, type AnalysisStatus } from "@/app/actions/analysis";
+import PlanStatusBadge from "../../Components/subscription/PlanStatusBadge";
+import PremiumPromoCard from "../../Components/subscription/PremiumPromoCard";
+import PremiumFeatureGate from "../../Components/subscription/PremiumFeatureGate";
 
 // Types
 type MatchSummary = {
@@ -25,6 +29,7 @@ export default function CoachPage() {
     const [loadingIds, setLoadingIds] = useState(true);
     const [selectedMatch, setSelectedMatch] = useState<MatchSummary | null>(null);
     const [insights, setInsights] = useState<CoachingInsight[] | null>(null);
+    const [status, setStatus] = useState<AnalysisStatus | null>(null); // Premium Status
     const [isAnalyzing, startTransition] = useTransition();
 
     // Progress State
@@ -40,6 +45,11 @@ export default function CoachPage() {
     // Players
     const [ytPlayer, setYtPlayer] = useState<any>(null); 
     const localVideoRef = useRef<HTMLVideoElement>(null);
+
+    // Load Premium Status
+    useEffect(() => {
+        getAnalysisStatus().then(setStatus);
+    }, []);
 
     // Fetch Matches logic
     const loadMatches = useCallback(async () => {
@@ -174,6 +184,7 @@ export default function CoachPage() {
                         </h1>
                         <p className="text-slate-400 text-sm">Riotの試合データとリプレイ動画を同期し、AIが徹底コーチング。</p>
                      </div>
+                     <PlanStatusBadge initialStatus={status} onStatusUpdate={setStatus} />
                 </header>
 
                 {/* Main Content Area */}
@@ -343,6 +354,11 @@ export default function CoachPage() {
                                 </div>
                             </div>
                         )}
+                        {!selectedMatch && (
+                            <div className="mt-auto">
+                                <PremiumPromoCard initialStatus={status} onStatusUpdate={setStatus} />
+                            </div>
+                        )}
                     </div>
 
                     {/* Right: Coaching Feed (4 Cols) */}
@@ -369,38 +385,44 @@ export default function CoachPage() {
                                 </div>
                             )}
 
-                            {insights && insights.map((insight, idx) => (
-                                <div 
-                                    key={idx} 
-                                    onClick={() => seekTo(insight.timestamp)}
-                                    className="bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-purple-500 transition rounded-lg p-4 cursor-pointer group relative overflow-hidden"
-                                >
-                                    <div className={`absolute left-0 top-0 bottom-0 w-1 ${
-                                        insight.type === 'MISTAKE' ? 'bg-red-500' : 
-                                        insight.type === 'GOOD_PLAY' ? 'bg-green-500' : 
-                                        insight.type === 'TURNING_POINT' ? 'bg-amber-500' : 'bg-blue-500'
-                                    }`}></div>
-                                    
-                                    <div className="flex justify-between items-start mb-2 pl-3">
-                                        <span className="font-mono text-xs font-bold bg-slate-950 px-2 py-1 rounded text-slate-300 group-hover:text-white transition-colors">
-                                            ▶ {insight.timestampStr}
-                                        </span>
-                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
-                                            insight.type === 'MISTAKE' ? 'border-red-500/30 text-red-400 bg-red-500/10' : 'border-blue-500/30 text-blue-400 bg-blue-500/10'
-                                        }`}>
-                                            {insight.type}
-                                        </span>
+                            {insights && (
+                                <PremiumFeatureGate isPremium={!!status?.is_premium} blurAmount="md">
+                                    <div className="space-y-4">
+                                        {insights.map((insight, idx) => (
+                                            <div 
+                                                key={idx} 
+                                                onClick={() => seekTo(insight.timestamp)}
+                                                className="bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-purple-500 transition rounded-lg p-4 cursor-pointer group relative overflow-hidden"
+                                            >
+                                                <div className={`absolute left-0 top-0 bottom-0 w-1 ${
+                                                    insight.type === 'MISTAKE' ? 'bg-red-500' : 
+                                                    insight.type === 'GOOD_PLAY' ? 'bg-green-500' : 
+                                                    insight.type === 'TURNING_POINT' ? 'bg-amber-500' : 'bg-blue-500'
+                                                }`}></div>
+                                                
+                                                <div className="flex justify-between items-start mb-2 pl-3">
+                                                    <span className="font-mono text-xs font-bold bg-slate-950 px-2 py-1 rounded text-slate-300 group-hover:text-white transition-colors">
+                                                        ▶ {insight.timestampStr}
+                                                    </span>
+                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                                                        insight.type === 'MISTAKE' ? 'border-red-500/30 text-red-400 bg-red-500/10' : 'border-blue-500/30 text-blue-400 bg-blue-500/10'
+                                                    }`}>
+                                                        {insight.type}
+                                                    </span>
+                                                </div>
+                                                
+                                                <div className="pl-3">
+                                                    <h4 className="font-bold text-slate-200 text-sm mb-1">{insight.title}</h4>
+                                                    <p className="text-xs text-slate-400 mb-2">{insight.description}</p>
+                                                    <div className="bg-purple-500/10 border border-purple-500/20 p-2 rounded text-xs text-purple-200 mt-2">
+                                                        💡 {insight.advice}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
-                                    
-                                    <div className="pl-3">
-                                        <h4 className="font-bold text-slate-200 text-sm mb-1">{insight.title}</h4>
-                                        <p className="text-xs text-slate-400 mb-2">{insight.description}</p>
-                                        <div className="bg-purple-500/10 border border-purple-500/20 p-2 rounded text-xs text-purple-200 mt-2">
-                                            💡 {insight.advice}
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
+                                </PremiumFeatureGate>
+                            )}
                         </div>
                     </div>
                 </div>
