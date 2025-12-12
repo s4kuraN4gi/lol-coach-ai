@@ -23,7 +23,11 @@ export function pruneMatchData(matchData: any): any {
         "turretPlatesTaken",
         "visionScorePerMinute",
         "laneMinionsFirst10Minutes",
-        "jungleCsBefore10Minutes"
+        "jungleCsBefore10Minutes",
+        "teamDamagePercentage",
+        "damageTakenOnTeamPercentage",
+        "maxCsAdvantageOnLaneOpponent",
+        "maxLevelLeadLaneOpponent"
     ];
 
     pruned.info.participants.forEach((p: any) => {

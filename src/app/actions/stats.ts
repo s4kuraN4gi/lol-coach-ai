@@ -1,8 +1,7 @@
 'use server'
 
 import { createClient } from "@/utils/supabase/server";
-import { fetchMatchIds, fetchMatchDetail, fetchRank, fetchSummonerByPuuid, type LeagueEntryDTO } from "./riot";
-import { pruneMatchData } from "@/utils/optimizer";
+import { fetchRank, fetchSummonerByPuuid, type LeagueEntryDTO } from "./riot";
 
 export type ChampionStat = {
     name: string;
@@ -107,109 +106,12 @@ export async function fetchDashboardStats(puuid: string, summonerId?: string | n
         }
 
 
-        // 2. Fetch Matches (Expanded to 50 for broader history)
-        const idsRes = await fetchMatchIds(puuid, 50); 
-        if (!idsRes.success || !idsRes.data) throw new Error(`Failed to fetch match IDs: ${idsRes.error}`);
-
-        const matchIds = idsRes.data;
-        log(`[Stats] Found ${matchIds.length} matches for ${puuid.slice(0, 8)}...`);
-
-        // 3. Cache Check
-        const cachedMap = new Map<string, any>();
-        try {
-            // Query Supabase for existing matches
-            const { data: cachedMatches, error: cacheError } = await supabase
-                .from('match_cache')
-                .select('match_id, data')
-                .in('match_id', matchIds);
-            
-            if (cacheError) {
-                log(`[Stats] Cache Lookup Failed: ${cacheError.message}`);
-            } else if (cachedMatches) {
-                cachedMatches.forEach((row: any) => {
-                    // Cache Validation: Check if CS metrics exist (Fix for missing CS widget data)
-                    // We check if challenges exist and have specific new keys
-                    // Note: participants is array, we verify structure
-                    const p = row.data.info?.participants?.[0];
-                    const hasCsData = p?.challenges && (
-                        'laneMinionsFirst10Minutes' in p.challenges || 
-                        'jungleCsBefore10Minutes' in p.challenges
-                    );
-                    
-                    if (hasCsData) {
-                        cachedMap.set(row.match_id, row.data);
-                    } 
-                    // If not valid, we skip setting it in cachedMap, so it will be in missingIds
-                });
-                log(`[Stats] Cache Hit (Valid): ${cachedMap.size} / ${cachedMatches.length}`);
-            }
-        } catch (dbErr: any) {
-            log(`[Stats] Unexpected DB Error: ${dbErr.message}`);
-        }
-
-        const missingIds = matchIds.filter(id => !cachedMap.has(id));
-        log(`[Stats] Missing IDs: ${missingIds.length}`);
-
-        // 4. Fetch Missing from Riot (Limit to 10 new per request for speed)
-        const matchesToFetch = missingIds.slice(0, 10);
-        log(`[Stats] Fetching ${matchesToFetch.length} new matches from Riot...`);
-
-        const newMatches: any[] = [];
-        if (matchesToFetch.length > 0) {
-            // Chunking for Rate Limit Safety
-            // 5 requests per batch (safe for dev credentials)
-            const chunkSize = 5; 
-            const chunkedIds = [];
-            for (let i = 0; i < matchesToFetch.length; i += chunkSize) {
-                chunkedIds.push(matchesToFetch.slice(i, i + chunkSize));
-            }
-
-            for (const chunk of chunkedIds) {
-                const promises = chunk.map(mid => fetchMatchDetail(mid));
-                const results = await Promise.all(promises);
-
-                results.forEach((detail, idx) => {
-                    if (detail.success && detail.data) {
-                        // Optimize Data Storage
-                        const optimized = pruneMatchData(detail.data);
-                        newMatches.push(optimized);
-                        // Add to map for immediate use
-                        cachedMap.set(optimized.metadata.matchId, optimized);
-                    } else {
-                        log(`Failed to fetch match ${chunk[idx]}: ${detail.error}`);
-                    }
-                });
-                
-                // Wait between chunks to respect rate limit (approx 20 requests/1sec -> 5 req is fine, but safety buffer)
-                if (chunkedIds.length > 1) await delay(200);
-            }
-        }
-            
-            // 5. Save to Cache
-            if (newMatches.length > 0) {
-                try {
-                    // Prepare rows
-                    const rows = newMatches.map(m => ({
-                        match_id: m.metadata.matchId,
-                        data: m
-                    }));
-                    
-                    // Bulk Upsert (Ignore conflicts)
-                    const { error: insertError } = await supabase
-                        .from('match_cache')
-                        .upsert(rows, { onConflict: 'match_id', ignoreDuplicates: true });
-                    
-                    if (insertError) log(`[Stats] Cache Insert Error: ${insertError.message}`);
-                    else log(`[Stats] Cached ${rows.length} new matches`);
-                } catch (dbErr: any) {
-                    log(`[Stats] Cache Insert Exception: ${dbErr.message}`);
-                }
-            }
-
-        // 6. Aggregate Data from ALL matches (Cached + New)
-
-        // Use map to ensure order logic if needed, but matchIds list preserves order
-        const matches = matchIds.map(id => cachedMap.get(id)).filter(Boolean);
+        // 2. Fetch Matches (Delegated to Service)
+        const { fetchAndCacheMatches } = await import('@/services/matchService');
+        const { matches, logs: serviceLogs } = await fetchAndCacheMatches(puuid, 50);
+        serviceLogs.forEach(l => log(l));
+        
+        log(`[Stats] Processing ${matches.length} matches...`);
         
         const championMap = new Map<string, { wins: number, games: number, k: number, d: number, a: number, cs: number }>();
 

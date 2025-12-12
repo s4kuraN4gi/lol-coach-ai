@@ -35,7 +35,8 @@ export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }
                  </div>
 
                  {/* Top 1 Highlight */}
-                 <div className="flex items-center gap-4 mb-6">
+                 {/* Top 1 Highlight */}
+                 <Link href={`/dashboard/champion/${encodeURIComponent(topChamp.name)}`} className="flex items-center gap-4 mb-6 hover:bg-white/5 p-2 -ml-2 rounded-lg transition overflow-visible group/top cursor-pointer">
                      <div className="w-16 h-16 rounded-lg border-2 border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.3)] overflow-hidden relative">
                          <img 
                             src={`https://ddragon.leagueoflegends.com/cdn/14.23.1/img/champion/${topChamp.name}.png`} 
@@ -44,8 +45,8 @@ export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }
                          />
                          <div className="absolute bottom-0 right-0 bg-yellow-500 text-black font-black text-[10px] px-1">#1</div>
                      </div>
-                     <div>
-                         <div className="text-xl font-black text-white italic">{topChamp.name}</div>
+                     <div className="flex-1">
+                         <div className="text-xl font-black text-white italic group-hover/top:text-blue-400 transition-colors">{topChamp.name}</div>
                          <div className="flex items-center gap-2 text-xs">
                              <span className={topChamp.winRate >= 60 ? "text-yellow-400 font-bold" : topChamp.winRate >= 50 ? "text-blue-400 font-bold" : "text-slate-400"}>
                                  {topChamp.winRate}% WR
@@ -57,12 +58,15 @@ export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }
                              KDA {topChamp.avgKda}
                          </div>
                      </div>
-                 </div>
+                     <div className="opacity-0 group-hover/top:opacity-100 transition-opacity text-slate-400 pr-2">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                     </div>
+                 </Link>
                  
                  {/* List 2 & 3 */}
                  <div className="space-y-3">
                      {stats.slice(1, 3).map((champ, i) => (
-                         <div key={champ.name} className="flex items-center justify-between p-2 rounded bg-slate-800/50 border border-slate-700/50 hover:bg-slate-800 transition">
+                         <Link key={champ.name} href={`/dashboard/champion/${encodeURIComponent(champ.name)}`} className="flex items-center justify-between p-2 rounded bg-slate-800/50 border border-slate-700/50 hover:bg-slate-800 hover:border-blue-500/30 transition group/list cursor-pointer">
                              <div className="flex items-center gap-3">
                                  <div className="w-8 h-8 rounded border border-slate-600 overflow-hidden">
                                     <img 
@@ -71,20 +75,23 @@ export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }
                                         className="w-full h-full object-cover"
                                     />
                                  </div>
-                                 <div>
-                                     <div className="text-sm font-bold text-slate-200">{champ.name}</div>
+                                 <div className="flex-1">
+                                     <div className="text-sm font-bold text-slate-200 group-hover/list:text-blue-400 transition-colors">{champ.name}</div>
                                      <div className="text-[10px] text-slate-500">{champ.games} Games</div>
                                  </div>
                              </div>
-                             <div className="text-right">
-                                 <div className={`text-sm font-black tabular-nums ${champ.winRate >= 50 ? 'text-blue-400' : 'text-slate-400'}`}>
-                                     {champ.winRate}%
-                                 </div>
-                                 <div className="text-[10px] text-slate-500 font-mono">
-                                     {champ.avgKda} KDA
-                                 </div>
+                             <div className="flex items-center gap-3">
+                                <div className="text-right">
+                                    <div className={`text-sm font-black tabular-nums ${champ.winRate >= 50 ? 'text-blue-400' : 'text-slate-400'}`}>
+                                        {champ.winRate}%
+                                    </div>
+                                    <div className="text-[10px] text-slate-500 font-mono">
+                                        {champ.avgKda} KDA
+                                    </div>
+                                </div>
+                                <svg className="w-4 h-4 text-slate-600 group-hover/list:text-blue-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                              </div>
-                         </div>
+                         </Link>
                      ))}
                  </div>
              </div>
