@@ -68,12 +68,12 @@ export default function CoachPage() {
     }, [activeSummoner]);
 
     useEffect(() => {
-        // DEBUG: List models
-        import("@/app/actions/debug_gemini").then(mod => mod.listAvailableModels());
-
-        async function loadMatches() {
-            setLoadingIds(true);
-
+        if (activeSummoner) {
+            loadMatches();
+        } else if (!summonerLoading) {
+            setLoadingIds(false);
+        }
+    }, [activeSummoner, summonerLoading, loadMatches]);
 
     // YouTube Embed Logic
     useEffect(() => {

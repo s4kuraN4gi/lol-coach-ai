@@ -41,7 +41,7 @@ export async function analyzeMatchTimeline(matchId: string, puuid: string, userA
 
         // 3. Prompt Gemini
         const genAI = new GoogleGenerativeAI(apiKeyToUse);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-002", generationConfig: { responseMimeType: "application/json" } });
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-001", generationConfig: { responseMimeType: "application/json" } });
 
         const prompt = `
         You are a professional League of Legends Coach.
