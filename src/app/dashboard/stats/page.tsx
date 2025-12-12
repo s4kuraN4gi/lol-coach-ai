@@ -6,8 +6,10 @@ import DashboardLayout from "@/app/Components/layout/DashboardLayout";
 import Link from "next/link";
 import LoadingAnimation from "@/app/Components/LoadingAnimation";
 import { useSummoner } from "@/app/Providers/SummonerProvider";
+import StatsSkeleton from "../components/skeletons/StatsSkeleton";
 
 type HistoryItem = {
+
     matchId: string;
     champion: string;
     win: boolean;
@@ -122,10 +124,7 @@ export default function StatsPage() {
     if (summonerLoading || (loading && history.length === 0)) {
          return (
             <DashboardLayout>
-                <div className="flex flex-col items-center justify-center min-h-[60vh]">
-                    <LoadingAnimation />
-                    <p className="mt-4 text-slate-400 animate-pulse">Fetching match history...</p>
-                </div>
+                <StatsSkeleton />
             </DashboardLayout>
          );
     }

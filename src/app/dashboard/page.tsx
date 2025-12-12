@@ -17,6 +17,8 @@ import { useRouter } from "next/navigation";
 import { useSummoner } from "../Providers/SummonerProvider";
 import { useAuth } from "../Providers/AuthProvider";
 import { fetchDashboardStats, type DashboardStatsDTO } from "../actions/stats";
+import DashboardSkeleton from "./components/skeletons/DashboardSkeleton";
+
 
 export default function DashboardPage() {
     const {activeSummoner, loading:summonerLoading} = useSummoner();
@@ -119,12 +121,7 @@ export default function DashboardPage() {
     if (authLoading || summonerLoading || (!stats && isFetching)) {
          return (
             <DashboardLayout>
-                <div className="flex items-center justify-center h-[60vh]">
-                   <div className="text-center">
-                       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
-                       <p className="text-slate-400 animate-pulse">Analyzing Battle Data...</p>
-                   </div>
-                </div>
+                <DashboardSkeleton />
             </DashboardLayout>
          )
     }
