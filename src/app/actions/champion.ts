@@ -1,7 +1,16 @@
 'use server'
 
 import { fetchAndCacheMatches } from "@/services/matchService";
-import { fetchSummonerByPuuid } from "./riot";
+
+export type MatchupStat = {
+    opponentChampion: string;
+    games: number;
+    wins: number;
+    winRate: number;
+    goldDiff: number;
+    csDiff: number;
+    killDiff: number;
+}
 
 export type ChampionDetailsDTO = {
     championName: string;
@@ -17,10 +26,10 @@ export type ChampionDetailsDTO = {
         csPerMin: number;
     };
     laning: {
-        goldDiff15: number;
-        csDiff15: number;
-        xpDiff15: number;
-        laneWinRate: number; // based on Gold@15
+        goldDiff: number; // Avg Gold Diff (Global)
+        csDiff10: number;
+        xpDiff: number; // Avg XP Diff
+        laneWinRate: number; // based on Gold Lead
     };
     combat: {
         damageShare: number; // % of team damage
@@ -28,10 +37,11 @@ export type ChampionDetailsDTO = {
         damagePerDeath: number;
     };
     spikes: {
-        earlyGame: number; // Winrate 0-20 min
-        midGame: number; // Winrate 20-30 min
-        lateGame: number; // Winrate 30+ min
+        earlyGame: number; // Winrate 0-25 min
+        midGame: number; // Winrate 25-35 min
+        lateGame: number; // Winrate 35+ min
     };
+    matchups: MatchupStat[];
 }
 
 export async function getChampionStats(puuid: string, championName: string): Promise<ChampionDetailsDTO | null> {
@@ -39,12 +49,10 @@ export async function getChampionStats(puuid: string, championName: string): Pro
 
     console.log(`[ChampionStats] Fetching for PUUID: ${puuid?.slice(0, 10)}..., Champion: ${championName}`);
 
-    // Fetch matches (limit 50, same as dashboard for consistency)
     const { matches } = await fetchAndCacheMatches(puuid, 50);
     console.log(`[ChampionStats] Matches Fetched: ${matches.length}`);
 
     // Filter for specific champion
-    // Normalize championName comparison (case-insensitive)
     const championMatches = matches.filter(m => {
         const p = m.info.participants.find((p: any) => p.puuid === puuid);
         if (!p) return false;
@@ -54,13 +62,6 @@ export async function getChampionStats(puuid: string, championName: string): Pro
     console.log(`[ChampionStats] Filtered Matches: ${championMatches.length}`);
 
     if (championMatches.length === 0) {
-        // Log distinct champion names found for debugging
-        const foundChamps = new Set(matches.map(m => {
-             const p = m.info.participants.find((p: any) => p.puuid === puuid);
-             return p?.championName;
-        }).filter(Boolean));
-        console.log(`[ChampionStats] Champions found in history: ${Array.from(foundChamps).join(', ')}`);
-        
         return null;
     }
 
@@ -68,7 +69,8 @@ export async function getChampionStats(puuid: string, championName: string): Pro
     let wins = 0;
     let kills = 0, deaths = 0, assists = 0;
     let cs = 0, duration = 0;
-    let goldDiff15 = 0, csDiff15 = 0, xpDiff15 = 0, lanewins = 0;
+    let totalCsDiff10 = 0, totalGoldDiff = 0, totalXpDiff = 0;
+    let laningGames = 0; // Games where we found an opponent
     let damageShare = 0, killParticipation = 0;
     
     // Spikes tracking
@@ -77,6 +79,9 @@ export async function getChampionStats(puuid: string, championName: string): Pro
         mid: { wins: 0, games: 0 },
         late: { wins: 0, games: 0 }
     };
+
+    // Matchup Map
+    const matchupMap = new Map<string, { games: number, wins: number, goldDiff: number, csDiff: number, killDiff: number }>();
 
     championMatches.forEach(m => {
         const p = m.info.participants.find((p: any) => p.puuid === puuid);
@@ -90,45 +95,6 @@ export async function getChampionStats(puuid: string, championName: string): Pro
         cs += (p.totalMinionsKilled + p.neutralMinionsKilled);
         duration += m.info.gameDuration;
 
-        // Laning (vs Lane Opponent is hard to determine reliably without role matching, 
-        // but we can use challenges if available, or just raw @15 stats if we had opponent.
-        // For now, let's use challenges if they exist for specific diffs, 
-        // or approximate with individual challenges)
-        
-        // Riot Challenges often have 'maxCsAdvantageOnLaneOpponent' or similar. 
-        // 'goldPerMinute' etc.
-        // For direct laning diffs, we ideally need the opponent. 
-        // Logic: Find opponent role (same teamPosition, different teamId).
-        const opponent = m.info.participants.find((o: any) => 
-            o.teamId !== p.teamId && o.teamPosition === p.teamPosition
-        );
-
-        if (opponent) {
-            // Note: Timeline data is better, but match v5 dto has no timeline.
-            // We rely on rough approximations if exact @15 isn't in challenges.
-            // Actually, we can use challenges: 'laningPhaseGoldExpAdvantage', 'goldDiffAt15' is NOT in standard DTO.
-            // But we have `challenges.goldAdvantageAt15`? No.
-            // We might have to rely on `challenges` object.
-            
-            // Let's check whitelisted challenges in optimizer.ts?
-            // "laneMinionsFirst10Minutes", "goldPerMinute", "damagePerMinute"
-            
-            // If we lack timeline, we might skip precise Diff@15 for now or use available proxies.
-            // For MVP let's calculate simplistic diffs closer to 'End Game' diffs scaled, OR 
-            // use `challenges` if we added them to whitelist.
-            // Let's assume we will add `goldDiffAt15` logic later if missing.
-            // For now, let's use specific known challenges if present:
-            // `laneMinionsFirst10Minutes` - `opponent.laneMinionsFirst10Minutes`
-            
-            if (p.challenges?.laneMinionsFirst10Minutes && opponent.challenges?.laneMinionsFirst10Minutes) {
-                csDiff15 += (p.challenges.laneMinionsFirst10Minutes - opponent.challenges.laneMinionsFirst10Minutes);
-                // This is @10, but close enough proxy for laning phase strength
-            }
-            
-            // Gold/XP diffs are harder without timeline. 
-            // We'll leave them as 0 or estimated for now if data is missing.
-        }
-
         // Combat
         if (p.challenges?.teamDamagePercentage) {
             damageShare += p.challenges.teamDamagePercentage;
@@ -141,7 +107,44 @@ export async function getChampionStats(puuid: string, championName: string): Pro
             killParticipation += p.challenges.killParticipation;
         }
 
-        // Power Spikes (Winrate by Duration)
+        // Matchup & Laning
+        const opponent = m.info.participants.find((o: any) => 
+            o.teamId !== p.teamId && o.teamPosition === p.teamPosition && p.teamPosition !== 'UTILITY'
+        );
+
+        if (opponent) {
+            laningGames++;
+            
+            // Laning Metrics
+            // CS Diff @ 10 (using challenges)
+            if (p.challenges?.laneMinionsFirst10Minutes !== undefined && opponent.challenges?.laneMinionsFirst10Minutes !== undefined) {
+                totalCsDiff10 += (p.challenges.laneMinionsFirst10Minutes - opponent.challenges.laneMinionsFirst10Minutes);
+            }
+            // Fallback to Jungle CS if jungle
+            else if (p.teamPosition === 'JUNGLE' && p.challenges?.jungleCsBefore10Minutes !== undefined && opponent.challenges?.jungleCsBefore10Minutes !== undefined) {
+                 totalCsDiff10 += (p.challenges.jungleCsBefore10Minutes - opponent.challenges.jungleCsBefore10Minutes);
+            }
+
+            // Gold/XP Diff (Whole Game Avg as proxy if @15 not avail)
+            // Or better: Gold Per Minute Diff * 15?
+            const gDiff = p.goldEarned - opponent.goldEarned;
+            totalGoldDiff += gDiff;
+            totalXpDiff += (p.champExperience - opponent.champExperience); // Total XP diff
+
+            // Matchup Stats
+            const opponentName = opponent.championName;
+            const current = matchupMap.get(opponentName) || { games: 0, wins: 0, goldDiff: 0, csDiff: 0, killDiff: 0 };
+            
+            current.games++;
+            if (p.win) current.wins++;
+            current.goldDiff += gDiff;
+            current.csDiff += ((p.totalMinionsKilled + p.neutralMinionsKilled) - (opponent.totalMinionsKilled + opponent.neutralMinionsKilled));
+            current.killDiff += (p.kills - opponent.kills);
+            
+            matchupMap.set(opponentName, current);
+        }
+
+        // Power Spikes
         const mins = m.info.gameDuration / 60;
         if (mins < 25) {
             spikes.early.games++;
@@ -157,8 +160,19 @@ export async function getChampionStats(puuid: string, championName: string): Pro
 
     const games = championMatches.length;
     
+    // Process Matchups
+    const matchups: MatchupStat[] = Array.from(matchupMap.entries()).map(([name, data]) => ({
+        opponentChampion: name,
+        games: data.games,
+        wins: data.wins,
+        winRate: Math.round((data.wins / data.games) * 100),
+        goldDiff: Math.round(data.goldDiff / data.games),
+        csDiff: Math.round(data.csDiff / data.games),
+        killDiff: parseFloat((data.killDiff / data.games).toFixed(1))
+    })).sort((a, b) => b.games - a.games);
+
     return {
-        championName: championName, // Return essentially what was requested, normalized handling can be added
+        championName: championName,
         summary: {
             games,
             wins,
@@ -171,20 +185,21 @@ export async function getChampionStats(puuid: string, championName: string): Pro
             csPerMin: parseFloat(((cs / games) / (duration / games / 60)).toFixed(1))
         },
         laning: {
-            goldDiff15: 0, // Placeholder until better data source
-            csDiff15: parseFloat((csDiff15 / games).toFixed(1)), // Based on CS@10 actually
-            xpDiff15: 0, // Placeholder
-            laneWinRate: 0 // Placeholder
+            goldDiff: laningGames ? Math.round(totalGoldDiff / laningGames) : 0,
+            csDiff10: laningGames ? parseFloat((totalCsDiff10 / laningGames).toFixed(1)) : 0,
+            xpDiff: laningGames ? Math.round(totalXpDiff / laningGames) : 0,
+            laneWinRate: 0 // TODO: Implement if needed
         },
         combat: {
             damageShare: parseFloat(((damageShare / games) * 100).toFixed(1)),
             killParticipation: parseFloat(((killParticipation / games) * 100).toFixed(1)),
-            damagePerDeath: 0 // TODO
+            damagePerDeath: 0 
         },
         spikes: {
             earlyGame: spikes.early.games ? Math.round((spikes.early.wins / spikes.early.games) * 100) : 0,
             midGame: spikes.mid.games ? Math.round((spikes.mid.wins / spikes.mid.games) * 100) : 0,
             lateGame: spikes.late.games ? Math.round((spikes.late.wins / spikes.late.games) * 100) : 0,
-        }
+        },
+        matchups: matchups
     };
 }
