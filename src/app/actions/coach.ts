@@ -15,6 +15,9 @@ export type CoachingInsight = {
     advice: string;
 };
 
+// Fallback sequence: Most standard -> Legacy standard -> Experimental
+const MODELS_TO_TRY = ["gemini-1.5-flash", "gemini-1.5-flash-001", "gemini-pro", "gemini-2.0-flash-exp"];
+
 export async function analyzeMatchTimeline(matchId: string, puuid: string, userApiKey?: string): Promise<{ success: boolean, insights?: CoachingInsight[], error?: string }> {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -71,7 +74,7 @@ export async function analyzeMatchTimeline(matchId: string, puuid: string, userA
     // --- End Limit Logic ---
 
     try {
-        // 1. Fetch Data (Timeline + Match Details for Context)
+        // 1. Fetch Data
         const [timelineRes, matchRes] = await Promise.all([
             fetchMatchTimeline(matchId),
             fetchMatchDetail(matchId)
@@ -83,20 +86,18 @@ export async function analyzeMatchTimeline(matchId: string, puuid: string, userA
         const timeline = timelineRes.data;
         const match = matchRes.data;
 
-        // 2. Build Match Context (User, Opponent, Runes, Spells)
+        // 2. Build Match Context
         const context = getMatchContext(match, puuid);
         if (!context) return { success: false, error: "Participant analysis failed" };
 
         const { userPart, opponentPart } = context;
 
-        // 3. Summarize Timeline (Filter for User & key objectives)
+        // 3. Summarize Timeline
         const events = summarizeTimeline(timeline, userPart.participantId, opponentPart?.participantId);
 
-        // 4. Prompt Gemini (MACRO FOCUSED)
+        // 4. Prompt Gemini with Fallback Logic
         const genAI = new GoogleGenerativeAI(apiKeyToUse);
-        // Using specific -001 version for maximum stability
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-001", generationConfig: { responseMimeType: "application/json" } });
-
+        
         const prompt = `
         あなたはプロのLoLコーチ（日本の高レートプレイヤー）です。
         以下の試合タイムラインを分析し、マクロ視点でのアドバイスを提供してください。
@@ -141,8 +142,32 @@ export async function analyzeMatchTimeline(matchId: string, puuid: string, userA
         ]
         `;
 
-        const result = await model.generateContent(prompt);
-        const insights: CoachingInsight[] = JSON.parse(result.response.text());
+        let lastError = null;
+        let insights: CoachingInsight[] | null = null;
+
+        for (const modelName of MODELS_TO_TRY) {
+            try {
+                console.log(`Trying Gemini Model: ${modelName}`);
+                const model = genAI.getGenerativeModel({ model: modelName, generationConfig: { responseMimeType: "application/json" } });
+                const result = await model.generateContent(prompt);
+                const text = result.response.text();
+                if (!text) throw new Error("Empty response");
+                
+                insights = JSON.parse(text);
+                console.log(`Success with model: ${modelName}`);
+                break; // Success!
+            } catch (e: any) {
+                console.warn(`Model ${modelName} failed:`, e.message);
+                lastError = e;
+                // If it's a rate limit (429), we might want to stop or continue? 
+                // Usually retry with different model is okay if quota is separate.
+                continue;
+            }
+        }
+
+        if (!insights) {
+            throw lastError || new Error("All AI models failed to generate content.");
+        }
 
         // --- Update Usage Limits (DB) ---
         if (shouldIncrementCount) {
