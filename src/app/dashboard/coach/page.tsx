@@ -21,12 +21,15 @@ export default function CoachPage() {
     const { activeSummoner, loading: summonerLoading } = useSummoner();
 
     // State
-    // State
     const [matches, setMatches] = useState<MatchSummary[]>([]);
     const [loadingIds, setLoadingIds] = useState(true);
     const [selectedMatch, setSelectedMatch] = useState<MatchSummary | null>(null);
     const [insights, setInsights] = useState<CoachingInsight[] | null>(null);
     const [isAnalyzing, startTransition] = useTransition();
+
+    // Progress State
+    const [loading, setLoading] = useState(false);
+    const [progress, setProgress] = useState(0);
 
     // Video State
     const [videoSourceType, setVideoSourceType] = useState<"YOUTUBE" | "LOCAL">("YOUTUBE");
@@ -37,10 +40,6 @@ export default function CoachPage() {
     // Players
     const [ytPlayer, setYtPlayer] = useState<any>(null); 
     const localVideoRef = useRef<HTMLVideoElement>(null);
-
-    // Debug State
-    const [showDebugModal, setShowDebugModal] = useState(false);
-    const [debugLog, setDebugLog] = useState("");
 
     // Fetch Matches logic
     const loadMatches = useCallback(async () => {
