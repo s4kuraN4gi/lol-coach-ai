@@ -94,8 +94,8 @@ export async function analyzeMatchTimeline(matchId: string, puuid: string, userA
 
         // 4. Prompt Gemini (MACRO FOCUSED)
         const genAI = new GoogleGenerativeAI(apiKeyToUse);
-        // Downgraded to 1.5-flash for better stability and rate limits
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", generationConfig: { responseMimeType: "application/json" } });
+        // Using specific -001 version for maximum stability
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-001", generationConfig: { responseMimeType: "application/json" } });
 
         const prompt = `
         あなたはプロのLoLコーチ（日本の高レートプレイヤー）です。
