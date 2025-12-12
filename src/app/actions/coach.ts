@@ -49,44 +49,45 @@ export async function analyzeMatchTimeline(matchId: string, puuid: string, userA
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", generationConfig: { responseMimeType: "application/json" } });
 
         const prompt = `
-        You are a generic High-Elo League of Legends Strategic Coach.
-        Your goal is to provide MACRO-LEVEL advice.
+        あなたはプロのLoLコーチ（日本の高レートプレイヤー）です。
+        以下の試合タイムラインを分析し、マクロ視点でのアドバイスを提供してください。
         
-        CRITICAL INSTRUCTION:
-        - DO NOT talk about micro mechanics (e.g. "You missed a skillshot", "Dodging").
-        - FOCUS on: Wave Management, Power Spikes, Itemization, Objective Control, and Map Awareness.
-        - USE THE CONTEXT: You know the matchup (${userPart.championName} vs ${opponentPart ? opponentPart.championName : 'Unknown'}).
+        【重要】:
+        - **日本語でお答えください。**
+        - ミクロの操作（スキルショットの精度など）には言及しないでください。
+        - **マクロ判断（ウェーブ管理、パワースパイク、アイテム選択、オブジェクト判断、マップ移動）** に集中してください。
+        - コンテキストを活用してください（${userPart.championName} vs ${opponentPart ? opponentPart.championName : '不明'}）。
         
-        CONTEXT:
-        - Player Role: ${userPart.teamPosition}
-        - Champion: ${userPart.championName} (Level ${userPart.champLevel})
+        コンテキスト:
+        - ロール: ${userPart.teamPosition}
+        - チャンピオン: ${userPart.championName} (Lv ${userPart.champLevel})
         - KDA: ${userPart.kills}/${userPart.deaths}/${userPart.assists}
-        - Key Runes: ${userPart.perks.styles[0].style} / ${userPart.perks.styles[1].style}
-        - Summoner Spells: ${userPart.summoner1Id}, ${userPart.summoner2Id} (IDs)
+        - キーストーン: ${userPart.perks.styles[0].style} / ${userPart.perks.styles[1].style}
+        - サモナースペル: ${userPart.summoner1Id}, ${userPart.summoner2Id} (IDs)
         
-        OPPONENT (Lane/Jungle Matchup):
-        - Champion: ${opponentPart ? opponentPart.championName : 'None'}
-        - Runes: ${opponentPart ? opponentPart.perks.styles[0].style : 'N/A'}
+        対面情報 (Lane/Jungle):
+        - チャンピオン: ${opponentPart ? opponentPart.championName : 'None'}
+        - ルーン: ${opponentPart ? opponentPart.perks.styles[0].style : 'N/A'}
         
-        TIMELINE EVENTS (Summary):
+        タイムラインイベント:
         ${JSON.stringify(events)}
 
-        EXAMPLE OUTPUT STYLE (Observe the Macro Focus):
+        出力例 (マクロ重視・日本語):
         User is Fiora vs Malphite.
         Event: Death at 14:00.
-        Insight: "Your Divine Sunderer power spike was not ready yet, while Malphite had Bramble Vest. Fighting here was statistically a loss. You should have pushed the wave and looked for a roam mid or waited for Sunderer."
+        Insight: "ディヴァインサンダラーの完成前ですが、相手のマルファイトはすでにブランブルベストを持っています。ここで戦うのは統計的にも不利です。ウェーブをプッシュしてMidへのロームを狙うか、サンダラー完成までファームに徹するべきでした。"
 
-        YOUR TASK:
-        Analyze the provided timeline events and generate JSON insights.
+        タスク:
+        提供されたイベントを分析し、以下のJSON形式で出力してください。
         Output Format:
         [
             {
                 "timestamp": number (ms),
                 "timestampStr": string ("mm:ss"),
-                "title": string (Short Macro Headline),
-                "description": string (Context of what happened),
+                "title": string (短い見出し・日本語),
+                "description": string (状況説明・日本語),
                 "type": "MISTAKE" | "TURNING_POINT" | "GOOD_PLAY" | "INFO",
-                "advice": string (Strategic advice based on Matchu/State)
+                "advice": string (具体的な改善案・日本語)
             }
         ]
         `;
