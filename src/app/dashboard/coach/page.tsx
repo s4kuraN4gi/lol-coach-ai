@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition, useCallback } from "react";
 import DashboardLayout from "../../Components/layout/DashboardLayout";
 import { fetchMatchIds, fetchMatchDetail } from "@/app/actions/riot";
 import { analyzeMatchTimeline, CoachingInsight } from "@/app/actions/coach";
-import { createClient } from "@/utils/supabase/client";
+import { useSummoner } from "../../Providers/SummonerProvider";
 
 // Types
 type MatchSummary = {
@@ -17,6 +17,9 @@ type MatchSummary = {
 };
 
 export default function CoachPage() {
+    // Context
+    const { activeSummoner, loading: summonerLoading } = useSummoner();
+
     // State
     const [matches, setMatches] = useState<MatchSummary[]>([]);
     const [loadingIds, setLoadingIds] = useState(true);
@@ -26,46 +29,21 @@ export default function CoachPage() {
     const [player, setPlayer] = useState<any>(null); // YouTube Player Instance
     const [insights, setInsights] = useState<CoachingInsight[] | null>(null);
     const [isAnalyzing, startTransition] = useTransition();
-    const [puuid, setPuuid] = useState<string | null>(null);
-    
-    // Manual Input State
-    const [riotId, setRiotId] = useState("");
-    const [tagLine, setTagLine] = useState("");
-    const [showManualInput, setShowManualInput] = useState(false);
 
-    // Initial Load
-    useEffect(() => {
-        async function loadMatches() {
-            setLoadingIds(true);
-            const supabase = createClient();
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return; 
-
-            // 1. Try to Get User Config from Supabase
-            const { data: profile, error } = await supabase.from('user_configs').select('puuid').eq('user_id', user.id).single();
-            
-            if (profile?.puuid) {
-                await fetchMatchesForPuuid(profile.puuid);
-            } else {
-                console.warn("User config not found or empty:", error);
-                setShowManualInput(true);
-                setLoadingIds(false);
-            }
-        }
-        loadMatches();
-    }, []);
-
-    async function fetchMatchesForPuuid(targetPuuid: string) {
-        setPuuid(targetPuuid);
+    // Fetch Matches logic
+    const loadMatches = useCallback(async () => {
+        if (!activeSummoner?.puuid) return;
+        
         setLoadingIds(true);
-        const idsRes = await fetchMatchIds(targetPuuid, 10);
+        const puuid = activeSummoner.puuid;
+        const idsRes = await fetchMatchIds(puuid, 10);
         
         if (idsRes.success && idsRes.data) {
             const summaries = await Promise.all(idsRes.data.map(async (id) => {
                  const detail = await fetchMatchDetail(id);
                  if (!detail.success || !detail.data) return null;
                  const m = detail.data;
-                 const p = m.info.participants.find((p: any) => p.puuid === targetPuuid);
+                 const p = m.info.participants.find((p: any) => p.puuid === puuid);
                  if (!p) return null;
                  return {
                      matchId: id,
@@ -77,27 +55,18 @@ export default function CoachPage() {
                  } as MatchSummary;
             }));
             setMatches(summaries.filter(Boolean) as MatchSummary[]);
-            setShowManualInput(false);
-        } else {
-             // If fetch fails (e.g. wrong region or API error), show manual input
-             setShowManualInput(true);
         }
         setLoadingIds(false);
-    }
+    }, [activeSummoner]);
 
-    const handleManualSubmit = async () => {
-         if (!riotId || !tagLine) return;
-         setLoadingIds(true);
-         // Import action dynamically to avoid top-level issues
-         const { fetchRiotAccount } = await import("@/app/actions/riot");
-         const account = await fetchRiotAccount(riotId, tagLine);
-         if (account && account.puuid) {
-             await fetchMatchesForPuuid(account.puuid);
-         } else {
-             alert("Summoner not found. Please check Game Name + Tag Line.");
-             setLoadingIds(false);
-         }
-    };
+    useEffect(() => {
+        if (activeSummoner) {
+            loadMatches();
+        } else if (!summonerLoading) {
+            setLoadingIds(false);
+        }
+    }, [activeSummoner, summonerLoading, loadMatches]);
+
 
     // YouTube Embed Logic
     useEffect(() => {
@@ -144,9 +113,9 @@ export default function CoachPage() {
     };
 
     const runAnalysis = () => {
-        if (!selectedMatch || !puuid) return;
+        if (!selectedMatch || !activeSummoner?.puuid) return;
         startTransition(async () => {
-            const res = await analyzeMatchTimeline(selectedMatch.matchId, puuid);
+            const res = await analyzeMatchTimeline(selectedMatch.matchId, activeSummoner.puuid);
             if (res.success && res.insights) {
                 setInsights(res.insights);
             } else {
@@ -181,42 +150,19 @@ export default function CoachPage() {
                     {/* Left: Match Selection & Video (8 Cols) */}
                     <div className="col-span-8 flex flex-col gap-4 h-full overflow-y-auto pr-2">
                         
-                        {/* Step 0: Manual Input (If Profile Missing) */}
-                        {showManualInput && !selectedMatch && (
-                            <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 mb-4">
-                                <h2 className="text-xl font-bold text-slate-200 mb-4">Search Summoner</h2>
-                                <div className="flex gap-4">
-                                    <input 
-                                        type="text" 
-                                        placeholder="Game Name" 
-                                        className="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
-                                        value={riotId}
-                                        onChange={e => setRiotId(e.target.value)}
-                                    />
-                                    <input 
-                                        type="text" 
-                                        placeholder="#TAG" 
-                                        className="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white w-24"
-                                        value={tagLine}
-                                        onChange={e => setTagLine(e.target.value.replace('#',''))}
-                                    />
-                                    <button 
-                                        onClick={handleManualSubmit}
-                                        disabled={loadingIds}
-                                        className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded font-bold transition disabled:opacity-50"
-                                    >
-                                        {loadingIds ? "Searching..." : "Search"}
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
                         {/* Step 1: Select Match (If none selected) */}
-                        {!selectedMatch && !showManualInput && (
+                        {!selectedMatch && (
                             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
                                 <h2 className="text-xl font-bold text-slate-200 mb-4">Select a Match to Analyze</h2>
-                                {loadingIds ? (
-                                     <div className="text-slate-500">Loading recent matches...</div>
+                                
+                                {summonerLoading ? (
+                                    <div className="text-slate-500 animate-pulse">Checking Account...</div>
+                                ) : !activeSummoner ? (
+                                    <div className="text-red-400">
+                                        Account not linked. Please go to Account Settings to link your Riot Account.
+                                    </div>
+                                ) : loadingIds ? (
+                                     <div className="text-slate-500">Loading recent matches for {activeSummoner.summoner_name}...</div>
                                 ) : (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {matches.map(m => (
