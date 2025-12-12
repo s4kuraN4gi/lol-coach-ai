@@ -42,6 +42,9 @@ export default function CoachPage() {
     const [localVideoUrl, setLocalVideoUrl] = useState<string | null>(null);
     const [videoReady, setVideoReady] = useState(false);
     
+    // Error State
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    
     // Players
     const [ytPlayer, setYtPlayer] = useState<any>(null); 
     const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -157,7 +160,7 @@ export default function CoachPage() {
             if (res.success && res.insights) {
                 setInsights(res.insights);
             } else {
-                alert("Analysis failed: " + res.error);
+                setErrorMsg(res.error || "Unknown error occurred.");
             }
         });
     }
@@ -176,7 +179,7 @@ export default function CoachPage() {
 
     return (
         <DashboardLayout>
-            <div className="max-w-7xl mx-auto h-[calc(100vh-100px)] flex flex-col animate-fadeIn">
+            <div className="max-w-7xl mx-auto h-[calc(100vh-100px)] flex flex-col animate-fadeIn relative">
                 <header className="mb-6 flex justify-between items-center">
                      <div>
                         <h1 className="text-3xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-300">
@@ -426,6 +429,51 @@ export default function CoachPage() {
                         </div>
                     </div>
                 </div>
+
+                {/* Error Dialog Modal */}
+                {errorMsg && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                        <div className="bg-slate-900 border border-red-500/50 rounded-xl p-6 w-full max-w-lg shadow-[0_0_50px_rgba(239,68,68,0.2)]">
+                            <h3 className="text-xl font-bold text-red-400 mb-4 flex items-center gap-2">
+                                <span>⚠️</span> Analysis Error
+                            </h3>
+                            <p className="text-slate-400 text-sm mb-2">
+                                以下のエラーメッセージをコピーして、サポートにお問い合わせください。
+                            </p>
+                            <div className="relative mb-6">
+                                <textarea
+                                    readOnly
+                                    value={errorMsg}
+                                    className="w-full h-32 bg-slate-950 border border-slate-700 rounded p-3 text-xs font-mono text-slate-300 resize-none focus:outline-none focus:border-red-500/50"
+                                    onClick={(e) => e.currentTarget.select()}
+                                />
+                                <button
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(errorMsg);
+                                        const btn = document.getElementById('copy-btn');
+                                        if (btn) {
+                                            const originalText = btn.innerText;
+                                            btn.innerText = "Copied!";
+                                            setTimeout(() => btn.innerText = originalText, 2000);
+                                        }
+                                    }}
+                                    id="copy-btn"
+                                    className="absolute bottom-2 right-2 bg-slate-800 hover:bg-slate-700 text-white text-xs px-3 py-1 rounded border border-slate-600 transition"
+                                >
+                                    📋 Copy
+                                </button>
+                            </div>
+                            <div className="flex justify-end gap-2">
+                                <button
+                                    onClick={() => setErrorMsg(null)}
+                                    className="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded font-bold transition border border-slate-700"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
             {/* YouTube API Type Declaration */}
             <script dangerouslySetInnerHTML={{__html: `
