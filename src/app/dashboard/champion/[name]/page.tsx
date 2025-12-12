@@ -3,7 +3,8 @@ import { getChampionStats } from "@/app/actions/champion";
 import { getActiveSummoner } from "@/app/actions/profile";
 import { redirect } from "next/navigation";
 
-export default async function ChampionPage({ params }: { params: { name: string } }) {
+export default async function ChampionPage({ params }: { params: Promise<{ name: string }> }) {
+    const { name } = await params;
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -27,12 +28,12 @@ export default async function ChampionPage({ params }: { params: { name: string 
          );
     }
 
-    const stats = await getChampionStats(puuid, decodeURIComponent(params.name));
+    const stats = await getChampionStats(puuid, decodeURIComponent(name));
 
     if (!stats) {
         return (
             <div className="p-8">
-                <h1 className="text-3xl font-bold text-slate-100 mb-4">{decodeURIComponent(params.name)}</h1>
+                <h1 className="text-3xl font-bold text-slate-100 mb-4">{decodeURIComponent(name)}</h1>
                 <div className="p-4 bg-slate-900/50 border border-slate-700 rounded-lg text-slate-400">
                     No recent data found for this champion in the last 50 matches.
                 </div>
