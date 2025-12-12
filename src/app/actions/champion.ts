@@ -37,9 +37,9 @@ export type ChampionDetailsDTO = {
         damagePerDeath: number;
     };
     spikes: {
-        earlyGame: number; // Winrate 0-25 min
-        midGame: number; // Winrate 25-35 min
-        lateGame: number; // Winrate 35+ min
+        earlyGame: { winRate: number, games: number };
+        midGame: { winRate: number, games: number };
+        lateGame: { winRate: number, games: number };
     };
     matchups: MatchupStat[];
 }
@@ -196,9 +196,18 @@ export async function getChampionStats(puuid: string, championName: string): Pro
             damagePerDeath: 0 
         },
         spikes: {
-            earlyGame: spikes.early.games ? Math.round((spikes.early.wins / spikes.early.games) * 100) : 0,
-            midGame: spikes.mid.games ? Math.round((spikes.mid.wins / spikes.mid.games) * 100) : 0,
-            lateGame: spikes.late.games ? Math.round((spikes.late.wins / spikes.late.games) * 100) : 0,
+            earlyGame: {
+                winRate: spikes.early.games ? Math.round((spikes.early.wins / spikes.early.games) * 100) : 0,
+                games: spikes.early.games
+            },
+            midGame: {
+                winRate: spikes.mid.games ? Math.round((spikes.mid.wins / spikes.mid.games) * 100) : 0,
+                games: spikes.mid.games
+            },
+            lateGame: {
+                winRate: spikes.late.games ? Math.round((spikes.late.wins / spikes.late.games) * 100) : 0,
+                games: spikes.late.games
+            },
         },
         matchups: matchups
     };
