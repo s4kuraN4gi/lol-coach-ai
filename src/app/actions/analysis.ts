@@ -127,7 +127,7 @@ export async function downgradeToFree() {
 
   if (error) return { error: "Failed to cancel subscription" };
 
-  revalidatePath("/dashboard/replay");
+  revalidatePath("/dashboard", "layout");
   return { success: true };
 }
 

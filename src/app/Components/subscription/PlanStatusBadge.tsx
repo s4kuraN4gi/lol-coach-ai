@@ -61,9 +61,10 @@ export default function PlanStatusBadge({ initialStatus, onStatusUpdate }: Props
               <button
                 onClick={handleUpgrade}
                 disabled={isPending}
-                className="ml-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold px-3 py-1 text-sm rounded hover:opacity-90 transition shadow-[0_0_10px_rgba(245,158,11,0.3)] disabled:opacity-50"
+                className="ml-4 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-white font-black px-6 py-2 rounded-full hover:scale-105 transition-all shadow-[0_0_20px_rgba(245,158,11,0.5)] border border-amber-300/50 flex items-center gap-2 group disabled:opacity-50 disabled:grayscale"
               >
-                {isPending ? "UPGRADING..." : "UPGRADE"}
+                <span className="text-lg group-hover:rotate-12 transition-transform">👑</span>
+                {isPending ? "UPGRADING..." : "UPGRADE TO PREMIUM"}
               </button>
             )}
         </div>
