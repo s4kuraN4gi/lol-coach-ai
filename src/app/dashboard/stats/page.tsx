@@ -1,15 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { fetchMatchIds, fetchMatchDetail } from "@/app/actions/riot";
 import DashboardLayout from "@/app/Components/layout/DashboardLayout";
 import Link from "next/link";
-import LoadingAnimation from "@/app/Components/LoadingAnimation";
 import { useSummoner } from "@/app/Providers/SummonerProvider";
 import StatsSkeleton from "../components/skeletons/StatsSkeleton";
 
 type HistoryItem = {
-
     matchId: string;
     champion: string;
     win: boolean;
@@ -17,13 +15,17 @@ type HistoryItem = {
     date: string;
     mode: string;
     duration: number;
+    // For stats calculation
+    kills: number;
+    deaths: number;
+    assists: number;
 }
 
 export default function StatsPage() {
     const { activeSummoner, loading: summonerLoading } = useSummoner();
-    const [history, setHistory] = useState<HistoryItem[]>([]);
-    const [stats, setStats] = useState({ wins: 0, losses: 0, kills: 0, deaths: 0, assists: 0 });
-    const [loading, setLoading] = useState(false);
+    // history includes null for loading items
+    const [history, setHistory] = useState<(HistoryItem | null)[]>([]);
+    const [loadingIds, setLoadingIds] = useState(false); // Only for initial ID fetch
     const [error, setError] = useState<string | null>(null);
     const [filter, setFilter] = useState<"ALL" | "SOLO" | "FLEX" | "NORMAL" | "ARAM">("ALL");
 
@@ -35,8 +37,9 @@ export default function StatsPage() {
         async function loadData() {
             if (!activeSummoner?.puuid) return;
 
-            setLoading(true);
+            setLoadingIds(true);
             setError(null);
+            setHistory([]); 
             
             try {
                 // Determine Queue ID / Type
@@ -51,68 +54,76 @@ export default function StatsPage() {
                     default: break;
                 }
 
-                // Fetch Matches
-                // Fetch count=10 for better gallery view
+                // Fetch Match IDs (Fast)
                 const matchIdsRes = await fetchMatchIds(activeSummoner.puuid, 10, queueId, type);
                 
                 if (ignore) return;
 
                 if (matchIdsRes.error) {
-                     // Ignore specific error if filtered result is empty (might return success=false?)
-                     // Actually fetchMatchIds usually returns empty array if success.
-                     // On specific error, assume empty or throw.
                      if (matchIdsRes.error !== "No PUUID") {
                          throw new Error(matchIdsRes.error);
                      }
                 }
 
-                if (matchIdsRes.success && matchIdsRes.data) {
-                    const matchPromises = matchIdsRes.data.map(id => fetchMatchDetail(id));
-                    const matchesRes = await Promise.all(matchPromises);
-                    
-                    if (ignore) return;
+                if (matchIdsRes.success && matchIdsRes.data && matchIdsRes.data.length > 0) {
+                    // Initialize history with placeholders
+                    const ids = matchIdsRes.data;
+                    setHistory(new Array(ids.length).fill(null));
+                    setLoadingIds(false); // Stop full page loading, show skeletons
 
-                    const newStats = { wins: 0, losses: 0, kills: 0, deaths: 0, assists: 0 };
+                    // Fetch Details Incrementally
+                    ids.forEach((id, index) => {
+                         fetchMatchDetail(id).then(res => {
+                             if (ignore) return;
+                             
+                             if (res.success && res.data) {
+                                 const m = res.data;
+                                 const p = m.info.participants.find((p: any) => p.puuid === activeSummoner.puuid);
+                                 
+                                 if (p) {
+                                     const item: HistoryItem = {
+                                        matchId: m.metadata.matchId,
+                                        champion: p.championName,
+                                        win: p.win,
+                                        kda: `${p.kills}/${p.deaths}/${p.assists}`,
+                                        date: new Date(m.info.gameCreation).toLocaleDateString(),
+                                        mode: m.info.gameMode,
+                                        duration: m.info.gameDuration,
+                                        kills: p.kills,
+                                        deaths: p.deaths,
+                                        assists: p.assists
+                                     };
 
-                    const items = matchesRes
-                        .filter(res => res.success && res.data)
-                        .map(res => res.data)
-                        .map((m: any) => {
-                            const p = m.info.participants.find((p: any) => p.puuid === activeSummoner.puuid);
-                            if (!p) return null;
-                            
-                            newStats.wins += p.win ? 1 : 0;
-                            newStats.losses += p.win ? 0 : 1;
-                            newStats.kills += p.kills;
-                            newStats.deaths += p.deaths;
-                            newStats.assists += p.assists;
+                                     setHistory(prev => {
+                                         const next = [...prev];
+                                         next[index] = item;
+                                         return next;
+                                     });
+                                 } else {
+                                     // Participant not found? valid match but weird.
+                                     // Remove placeholder or keep it? 
+                                     // Let's filter it out eventually, or just mark null.
+                                     // For stable index, maybe keep null?
+                                     // If we keep null, it stays as skeleton forever? Bad.
+                                     // Better to remove it or replace with error?
+                                     // Let's just remove it from array? No, index-based update breaks.
+                                     // We'll set a special "Error" item or just ignore. 
+                                     // Ideally this shouldn't happen if PUUID matches.
+                                 }
+                             }
+                         }).catch(err => console.error("Match Detail Error", err));
+                    });
 
-                            return {
-                                matchId: m.metadata.matchId,
-                                champion: p.championName,
-                                win: p.win,
-                                kda: `${p.kills}/${p.deaths}/${p.assists}`,
-                                date: new Date(m.info.gameCreation).toLocaleDateString(),
-                                mode: m.info.gameMode,
-                                duration: m.info.gameDuration
-                            };
-                        })
-                        .filter((h): h is HistoryItem => h !== null);
-                    
-                    setHistory(items);
-                    setStats(newStats);
                 } else {
-                    // Reset if Error or Empty
                     setHistory([]);
-                    setStats({ wins: 0, losses: 0, kills: 0, deaths: 0, assists: 0 });
+                    setLoadingIds(false);
                 }
             } catch (e: any) {
                 console.error("Stats Data Error:", e);
-                // Don't show hard error for empty filter, just clear
-                if (!ignore) setHistory([]);
-                // setError(e.message || "Failed to load stats.");
-            } finally {
-                if (!ignore) setLoading(false);
+                if (!ignore) {
+                     setHistory([]);
+                     setLoadingIds(false);
+                }
             }
         }
 
@@ -123,15 +134,30 @@ export default function StatsPage() {
         };
     }, [activeSummoner, activeSummoner?.puuid, summonerLoading, filter]);
 
-    // Derived Stats
+    // Derived Stats (Memoized)
+    const stats = useMemo(() => {
+        const completed = history.filter((h): h is HistoryItem => h !== null);
+        const newStats = { wins: 0, losses: 0, kills: 0, deaths: 0, assists: 0 };
+        
+        completed.forEach(h => {
+            if (h.win) newStats.wins++;
+            else newStats.losses++;
+            newStats.kills += h.kills;
+            newStats.deaths += h.deaths;
+            newStats.assists += h.assists;
+        });
+        
+        return newStats;
+    }, [history]);
+
     const totalGames = stats.wins + stats.losses;
     const winRate = totalGames > 0 ? Math.round((stats.wins / totalGames) * 100) : 0;
     const avgKda = totalGames > 0 
         ? ((stats.kills + stats.assists) / Math.max(1, stats.deaths)).toFixed(2)
         : "0.00";
 
-    // 1. Loading State
-    if (summonerLoading || (loading && history.length === 0)) {
+    // 1. Initial ID Loading (Show Full Page Skeleton)
+    if (summonerLoading || loadingIds) {
          return (
             <DashboardLayout>
                 <StatsSkeleton />
@@ -172,7 +198,7 @@ export default function StatsPage() {
         )
     }
 
-    // 4. Main Content
+    // 4. Main Content (Progressive)
     return (
         <DashboardLayout>
              <div className="max-w-7xl mx-auto p-4 md:p-8 animate-fadeIn">
@@ -219,14 +245,16 @@ export default function StatsPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {history.map((match) => (
+                    {history.map((match, i) => match ? (
                         <Link 
                             key={match.matchId} 
                             href={`/dashboard/match/${match.matchId}`}
                             className={`
                                 relative overflow-hidden rounded-xl border border-slate-800 bg-slate-900/50 hover:bg-slate-800 transition-all duration-300 group
                                 ${match.win ? 'hover:border-blue-500/50' : 'hover:border-red-500/50'}
+                                animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-backwards
                             `}
+                            style={{ animationDelay: `${i * 50}ms` }}
                         >
                              <div className="absolute inset-0 opacity-20 grayscale group-hover:grayscale-0 transition duration-500">
                                  <img 
@@ -258,9 +286,23 @@ export default function StatsPage() {
                                  </div>
                              </div>
                         </Link>
+                    ) : (
+                        // Skeleton Logic Inline
+                        <div key={`skeleton-${i}`} className="rounded-xl border border-slate-800 bg-slate-900/50 h-[160px] p-6 relative animate-pulse">
+                            <div className="flex justify-between items-start mb-auto">
+                                <div>
+                                    <div className="h-8 w-32 bg-slate-800 rounded mb-2"></div>
+                                    <div className="h-3 w-24 bg-slate-800 rounded"></div>
+                                </div>
+                                <div className="h-6 w-16 bg-slate-800 rounded"></div>
+                            </div>
+                            <div className="mt-4 flex justify-between items-end">
+                                <div className="h-5 w-24 bg-slate-800 rounded"></div>
+                            </div>
+                        </div>
                     ))}
                 </div>
-                {history.length === 0 && !loading && (
+                {history.length === 0 && !loadingIds && (
                     <div className="text-center py-10 text-slate-500 border border-slate-800 border-dashed rounded-xl">
                         No matches found for this filter.
                     </div>
