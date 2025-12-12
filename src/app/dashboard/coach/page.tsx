@@ -113,9 +113,11 @@ export default function CoachPage() {
     };
 
     const runAnalysis = () => {
-        if (!selectedMatch || !activeSummoner?.puuid) return;
+        const currentPuuid = activeSummoner?.puuid;
+        if (!selectedMatch || !currentPuuid) return;
+        
         startTransition(async () => {
-            const res = await analyzeMatchTimeline(selectedMatch.matchId, activeSummoner.puuid);
+            const res = await analyzeMatchTimeline(selectedMatch.matchId, currentPuuid);
             if (res.success && res.insights) {
                 setInsights(res.insights);
             } else {
