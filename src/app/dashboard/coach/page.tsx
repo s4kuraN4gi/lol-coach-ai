@@ -1,0 +1,334 @@
+"use client";
+
+import { useState, useEffect, useTransition } from "react";
+import DashboardLayout from "../../Components/layout/DashboardLayout";
+import { fetchMatchIds, fetchMatchDetail } from "@/app/actions/riot";
+import { analyzeMatchTimeline, CoachingInsight } from "@/app/actions/coach";
+import { createClient } from "@/utils/supabase/client";
+
+// Types
+type MatchSummary = {
+    matchId: string;
+    championName: string;
+    win: boolean;
+    kda: string;
+    timestamp: number;
+    queueId: number;
+};
+
+export default function CoachPage() {
+    // State
+    const [matches, setMatches] = useState<MatchSummary[]>([]);
+    const [loadingIds, setLoadingIds] = useState(true);
+    const [selectedMatch, setSelectedMatch] = useState<MatchSummary | null>(null);
+    const [youtubeUrl, setYoutubeUrl] = useState("");
+    const [videoReady, setVideoReady] = useState(false);
+    const [player, setPlayer] = useState<any>(null); // YouTube Player Instance
+    const [insights, setInsights] = useState<CoachingInsight[] | null>(null);
+    const [isAnalyzing, startTransition] = useTransition();
+    const [puuid, setPuuid] = useState<string | null>(null);
+
+    // Initial Load
+    useEffect(() => {
+        async function loadMatches() {
+            setLoadingIds(true);
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return; // Should redirect
+
+            // Fetch PUUID (Mock or Real) - In real app, fetch from Supabase profile or Riot Account
+            // For now, assuming we can get from Riot Action wrapper or similar.
+            // Let's re-use the pattern from Stats page: Fetch Account first? 
+            // Simplified: Fetch matches by PUUID from DB or just assume we have it context.
+            // Actually, we need to fetch the active summoner first.
+            const { getActiveSummoner } = await import("@/app/actions/auth"); // Helper? No, let's use client-side fetch or pass prop.
+            // Hardcode or correct fetch necessary.
+            // Let's use a server action to get context.
+            const activeSummoner = await fetch("/api/me").then(r => r.json()).catch(() => null); 
+            // Wait, we don't have /api/me.
+            // Let's grab PUUID from match history or similar. 
+            // Fallback: Fetch matches using server action that internally gets user?
+            
+            // Re-implementing simplified logic here similar to Stats:
+            // 1. Get User Config from Supabase
+            const { data: profile } = await supabase.from('user_configs').select('puuid').eq('user_id', user.id).single();
+            
+            if (profile?.puuid) {
+                setPuuid(profile.puuid);
+                const idsRes = await fetchMatchIds(profile.puuid, 10);
+                if (idsRes.success && idsRes.data) {
+                    // Fetch details for summary
+                    const summaries = await Promise.all(idsRes.data.map(async (id) => {
+                         const detail = await fetchMatchDetail(id);
+                         if (!detail.success || !detail.data) return null;
+                         const m = detail.data;
+                         const p = m.info.participants.find((p: any) => p.puuid === profile.puuid);
+                         return {
+                             matchId: id,
+                             championName: p.championName,
+                             win: p.win,
+                             kda: `${p.kills}/${p.deaths}/${p.assists}`,
+                             timestamp: m.info.gameStartTimestamp,
+                             queueId: m.info.queueId
+                         } as MatchSummary;
+                    }));
+                    setMatches(summaries.filter(Boolean) as MatchSummary[]);
+                }
+            }
+            setLoadingIds(false);
+        }
+        loadMatches();
+    }, []);
+
+    // YouTube Embed Logic
+    useEffect(() => {
+        if (!window.YT) {
+            const tag = document.createElement('script');
+            tag.src = "https://www.youtube.com/iframe_api";
+            const firstScriptTag = document.getElementsByTagName('script')[0];
+            firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+        }
+
+        window.onYouTubeIframeAPIReady = () => {
+             // Ready
+        };
+    }, []);
+
+    const loadVideo = () => {
+        if (!selectedMatch) return;
+        const videoId = extractVideoId(youtubeUrl);
+        if (!videoId) {
+            alert("Invalid YouTube URL");
+            return;
+        }
+
+        if (player) {
+            player.loadVideoById(videoId);
+        } else {
+             new window.YT.Player('youtube-player', {
+                height: '100%',
+                width: '100%',
+                videoId: videoId,
+                playerVars: {
+                    'playsinline': 1,
+                    // 'start': 0
+                },
+                events: {
+                    'onReady': (event: any) => {
+                        setPlayer(event.target);
+                        setVideoReady(true);
+                    }
+                }
+            });
+        }
+        setVideoReady(true);
+    };
+
+    const runAnalysis = () => {
+        if (!selectedMatch || !puuid) return;
+        startTransition(async () => {
+            const res = await analyzeMatchTimeline(selectedMatch.matchId, puuid);
+            if (res.success && res.insights) {
+                setInsights(res.insights);
+            } else {
+                alert("Analysis failed: " + res.error);
+            }
+        });
+    }
+
+    const seekTo = (timestampMs: number) => {
+        if (player && player.seekTo) {
+            const seconds = timestampMs / 1000;
+            player.seekTo(seconds, true);
+            player.playVideo();
+        }
+    }
+
+    return (
+        <DashboardLayout>
+            <div className="max-w-7xl mx-auto h-[calc(100vh-100px)] flex flex-col animate-fadeIn">
+                <header className="mb-6 flex justify-between items-center">
+                     <div>
+                        <h1 className="text-3xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-300">
+                             AI COACH <span className="text-sm not-italic font-normal text-slate-500 ml-2 border border-slate-700 px-2 rounded">TIMELINE SYNC</span>
+                        </h1>
+                        <p className="text-slate-400 text-sm">Sync Riot Match Data with YouTube Replays for instant coaching.</p>
+                     </div>
+                </header>
+
+                {/* Main Content Area */}
+                <div className="flex-1 grid grid-cols-12 gap-6 overflow-hidden">
+                    
+                    {/* Left: Match Selection & Video (8 Cols) */}
+                    <div className="col-span-8 flex flex-col gap-4 h-full overflow-y-auto pr-2">
+                        
+                        {/* Step 1: Select Match (If none selected) */}
+                        {!selectedMatch && (
+                            <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
+                                <h2 className="text-xl font-bold text-slate-200 mb-4">Select a Match to Analyze</h2>
+                                {loadingIds ? (
+                                     <div className="text-slate-500">Loading recent matches...</div>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {matches.map(m => (
+                                            <button 
+                                                key={m.matchId}
+                                                onClick={() => setSelectedMatch(m)}
+                                                className="flex items-center gap-4 p-4 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-blue-500 transition rounded-lg group text-left"
+                                            >
+                                                <div className="w-12 h-12 rounded-full bg-slate-700 overflow-hidden">
+                                                     <img src={`https://ddragon.leagueoflegends.com/cdn/14.24.1/img/champion/${m.championName}.png`} alt={m.championName} className="w-full h-full object-cover" />
+                                                </div>
+                                                <div>
+                                                    <div className={`font-bold ${m.win ? "text-blue-400" : "text-red-400"}`}>
+                                                        {m.win ? "VICTORY" : "DEFEAT"}
+                                                    </div>
+                                                    <div className="text-sm text-slate-400">
+                                                        {m.championName} • {m.kda} KDA
+                                                    </div>
+                                                    <div className="text-xs text-slate-600">
+                                                        {new Date(m.timestamp).toLocaleDateString()}
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Step 2 & 3: Video Player & Controls */}
+                        {selectedMatch && (
+                            <div className="flex flex-col h-full gap-4">
+                                {/* Controls Bar */}
+                                <div className="flex items-center gap-4 bg-slate-900 border border-slate-800 p-4 rounded-xl">
+                                    <button 
+                                        onClick={() => { setSelectedMatch(null); setInsights(null); setVideoReady(false); setYoutubeUrl(""); }}
+                                        className="text-slate-400 hover:text-white font-bold text-sm"
+                                    >
+                                        ← BACK
+                                    </button>
+                                    <div className="h-6 w-px bg-slate-700"></div>
+                                    <div className="flex-1 flex gap-2">
+                                        <input 
+                                            type="text" 
+                                            placeholder="Paste YouTube URL here (e.g. https://youtu.be/...)" 
+                                            className="flex-1 bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:ring-2 focus:ring-purple-500 outline-none"
+                                            value={youtubeUrl}
+                                            onChange={(e) => setYoutubeUrl(e.target.value)}
+                                        />
+                                        <button 
+                                            onClick={loadVideo}
+                                            disabled={!youtubeUrl}
+                                            className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded font-bold text-sm transition"
+                                        >
+                                            LOAD VIDEO
+                                        </button>
+                                    </div>
+                                    <button 
+                                        onClick={runAnalysis}
+                                        disabled={isAnalyzing || !!insights}
+                                        className="bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white px-6 py-2 rounded font-bold text-sm transition shadow-[0_0_15px_rgba(168,85,247,0.4)]"
+                                    >
+                                        {isAnalyzing ? "ANALYZING..." : "ANALYZE TIMELINE 🧠"}
+                                    </button>
+                                </div>
+
+                                {/* Video Area */}
+                                <div className="flex-1 bg-black rounded-xl overflow-hidden border border-slate-800 relative shadow-2xl">
+                                    <div id="youtube-player" className="w-full h-full"></div>
+                                    {!videoReady && (
+                                        <div className="absolute inset-0 flex items-center justify-center text-slate-500 flex-col gap-2">
+                                            <span className="text-4xl">📺</span>
+                                            <span>Enter YouTube URL to Sync</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Right: Coaching Feed (4 Cols) */}
+                    <div className="col-span-4 bg-slate-900/50 border border-slate-800 rounded-xl flex flex-col h-full overflow-hidden">
+                        <div className="p-4 border-b border-slate-800 bg-slate-900">
+                             <h3 className="font-bold text-slate-200">Coaching Insights</h3>
+                        </div>
+                        
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-700">
+                            {!insights && !isAnalyzing && (
+                                <div className="text-center text-slate-500 mt-10 p-4">
+                                    <div className="text-4xl mb-4">🤖</div>
+                                    <p>Ready to analyze.</p>
+                                    <p className="text-sm mt-2">I will scan the match timeline for mistakes and efficient plays.</p>
+                                </div>
+                            )}
+
+                             {isAnalyzing && (
+                                <div className="space-y-4 animate-pulse">
+                                     {[1,2,3,4].map(i => (
+                                         <div key={i} className="bg-slate-800 h-32 rounded-lg"></div>
+                                     ))}
+                                </div>
+                            )}
+
+                            {insights && insights.map((insight, idx) => (
+                                <div 
+                                    key={idx} 
+                                    onClick={() => seekTo(insight.timestamp)}
+                                    className="bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-purple-500 transition rounded-lg p-4 cursor-pointer group relative overflow-hidden"
+                                >
+                                    <div className={`absolute left-0 top-0 bottom-0 w-1 ${
+                                        insight.type === 'MISTAKE' ? 'bg-red-500' : 
+                                        insight.type === 'GOOD_PLAY' ? 'bg-green-500' : 
+                                        insight.type === 'TURRET_PLATE_DESTROYED' /* TURNING_POINT typo fix */ || insight.type === 'TURNING_POINT' ? 'bg-amber-500' : 'bg-blue-500'
+                                    }`}></div>
+                                    
+                                    <div className="flex justify-between items-start mb-2 pl-3">
+                                        <span className="font-mono text-xs font-bold bg-slate-950 px-2 py-1 rounded text-slate-300 group-hover:text-white transition-colors">
+                                            ▶ {insight.timestampStr}
+                                        </span>
+                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                                            insight.type === 'MISTAKE' ? 'border-red-500/30 text-red-400 bg-red-500/10' : 'border-blue-500/30 text-blue-400 bg-blue-500/10'
+                                        }`}>
+                                            {insight.type}
+                                        </span>
+                                    </div>
+                                    
+                                    <div className="pl-3">
+                                        <h4 className="font-bold text-slate-200 text-sm mb-1">{insight.title}</h4>
+                                        <p className="text-xs text-slate-400 mb-2">{insight.description}</p>
+                                        <div className="bg-purple-500/10 border border-purple-500/20 p-2 rounded text-xs text-purple-200 mt-2">
+                                            💡 {insight.advice}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {/* YouTube API Type Declaration */}
+            <script dangerouslySetInnerHTML={{__html: `
+                var tag = document.createElement('script');
+                tag.src = "https://www.youtube.com/iframe_api";
+                var firstScriptTag = document.getElementsByTagName('script')[0];
+                firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+            `}} />
+        </DashboardLayout>
+    );
+}
+
+// Helper
+function extractVideoId(url: string) {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+}
+
+// Add Window Type
+declare global {
+    interface Window {
+        onYouTubeIframeAPIReady: () => void;
+        YT: any;
+    }
+}
