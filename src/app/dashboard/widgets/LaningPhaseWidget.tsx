@@ -2,7 +2,7 @@ import { UniqueStats } from "@/app/actions/stats";
 import DashboardCard from "../components/DashboardCard";
 import InfoTooltip from "../components/InfoTooltip";
 
-export default function LaningPhaseWidget({ stats }: { stats: UniqueStats | null }) {
+export default function LaningPhaseWidget({ stats, matchCount }: { stats: UniqueStats | null, matchCount: number }) {
     if (!stats) return <DashboardCard><div className="animate-pulse h-32 bg-slate-800 rounded"></div></DashboardCard>;
 
     // Solo Death Rate (Lower is Better)
@@ -16,7 +16,12 @@ export default function LaningPhaseWidget({ stats }: { stats: UniqueStats | null
                         ⚔️
                     </div>
                     <div>
-                        <h3 className="text-xs font-bold text-slate-400 tracking-wider">LANING PHASE</h3>
+                        <div className="flex items-center gap-2">
+                            <h3 className="text-xs font-bold text-slate-400 tracking-wider">LANING PHASE</h3>
+                            <span className="text-[9px] px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 text-slate-400 font-mono">
+                                Last {matchCount}
+                            </span>
+                        </div>
                         <p className="text-[10px] text-slate-500 font-mono">Early Game Stability</p>
                     </div>
                 </div>

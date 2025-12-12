@@ -93,27 +93,16 @@ export default function SkillRadar({ stats }: { stats: RadarStats | null }) {
                          </radialGradient>
                     </defs>
 
-                    {/* Labels & Points */}
+                    {/* Points & Values only (Labels moved to HTML) */}
                     {axes.map(axis => {
-                        const { x, y } = getCoord(115, axis.angle); // Label pos
                         const val = stats[axis.key as keyof RadarStats];
                         const point = getCoord(val, axis.angle);
 
                         return (
                             <g key={axis.name}>
-                                {/* Axis Label */}
-                                <text 
-                                    x={x} 
-                                    y={y + 4} // Adjust vertical alignment
-                                    textAnchor="middle" 
-                                    className="text-[10px] font-bold fill-slate-400"
-                                    style={{ fontSize: 10 }}
-                                >
-                                    {axis.name}
-                                </text>
                                 {/* Value Point Dot */}
                                 <circle cx={point.x} cy={point.y} r="3" fill={axis.color} stroke="#0f172a" strokeWidth="1" />
-                                {/* Value Label (on hover?) -> Just static for now */}
+                                {/* Value Label */}
                                 <text
                                     x={point.x}
                                     y={point.y - 6}
@@ -126,6 +115,36 @@ export default function SkillRadar({ stats }: { stats: RadarStats | null }) {
                         );
                     })}
                 </svg>
+
+                {/* HTML Overlay Labels with Tooltips */}
+                {axes.map(axis => {
+                    const { x, y } = getCoord(118, axis.angle);
+                    const descriptions: Record<string, string> = {
+                        combat: "KDA (キル/デス/アシスト) のバランス",
+                        objective: "タワーやドラゴンへのダメージ関与量",
+                        farming: "1分間あたりのCS (ミニオン討伐数)",
+                        vision: "1分間あたりの視界スコア (ワード設置/破壊)",
+                        survival: "デスの少なさ (生存リスク管理)"
+                    };
+
+                    return (
+                        <div 
+                            key={axis.name}
+                            className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center group cursor-help z-20"
+                            style={{ left: `${(x/200)*100}%`, top: `${(y/200)*100}%` }}
+                        >
+                            <span className="text-[10px] font-bold text-slate-400 group-hover:text-blue-400 transition-colors bg-slate-900/80 px-1 rounded backdrop-blur-sm">
+                                {axis.name}
+                            </span>
+                            
+                            {/* Tooltip */}
+                            <div className="absolute w-max max-w-[120px] bg-slate-800 text-[10px] text-slate-200 p-2 rounded border border-slate-700 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 bottom-full mb-1 text-center hidden group-hover:block">
+                                <div className="font-bold text-white mb-0.5">{axis.name}</div>
+                                {descriptions[axis.key]}
+                            </div>
+                        </div>
+                    )
+                })}
             </div>
             
             {/* Insight Text */}

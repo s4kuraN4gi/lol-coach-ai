@@ -231,7 +231,7 @@ export default function DashboardPage() {
         {/* Row 3: Unique Analysis (A, B, C, D) */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
              <WinConditionWidget stats={stats?.uniqueStats || null} />
-             <LaningPhaseWidget stats={stats?.uniqueStats || null} />
+             <LaningPhaseWidget stats={stats?.uniqueStats || null} matchCount={stats?.recentMatches.length || 0} />
              <NemesisWidget stats={stats?.uniqueStats || null} />
              <ClutchWidget stats={stats?.uniqueStats || null} />
         </div>
