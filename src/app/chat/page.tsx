@@ -24,6 +24,8 @@ type ChatSession = {
 
 export default function ChatPage() {
   const {activeSummoner, loading} = useSummoner();
+  const router = useRouter();
+
   // user又はaiがロールのメッセージの状態管理
   const [message, setMessage] = useState<
     { role: "user" | "ai"; text: string }[]
@@ -41,27 +43,6 @@ export default function ChatPage() {
   );
 //   自動スクロール用
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-
-  const router = useRouter();
-
-  if (loading) {
-     return (
-        <DashboardLayout>
-            <div className="flex items-center justify-center min-h-[60vh]">
-                <LoadingAnimation />
-            </div>
-        </DashboardLayout>
-     )
-  }
-
-
-  // Layout側でリダイレクト制御されているため、ここでは削除
-  // useEffect(() => {
-  //   if(loading) return;
-  //   if(!activeSummoner) {
-  //     router.push("/account");
-  //   }
-  // },[activeSummoner, router, loading]);
 
   // 初期表示時
   useEffect(() => {
@@ -82,6 +63,17 @@ export default function ChatPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth"})
   },[selectedSession?.message])
+
+  // NOTE: Early return must be AFTER all hooks are defined to avoid React Error #310
+  if (loading) {
+     return (
+        <DashboardLayout>
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <LoadingAnimation />
+            </div>
+        </DashboardLayout>
+     )
+  }
 
   // 送信ボタン押下処理
   const handleSubmit = async (e: React.FormEvent) => {
@@ -145,8 +137,11 @@ export default function ChatPage() {
         body: JSON.stringify({ message: input }),
       });
 
-      if (!res.ok) throw new Error(`AIエラー: ${res.status}`);
       const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || `AIエラー: ${res.status}`);
+      }
 
       const aiMsg = {
         role: "ai" as const,
@@ -178,11 +173,12 @@ export default function ChatPage() {
       setSessions(updatedSessions);
       setSelectedSession(updatedSession);
       setMessage(updatedSession.message);
-    } catch (err) {
+    } catch (err: any) {
       console.log("AI接続エラー:", err);
+      const errMsg = err.message || "AIとの通信に失敗しました。";
       setMessage((prev) => [
         ...prev,
-        { role: "ai", text: "⚠️ AIとの通信に失敗しました。" },
+        { role: "ai", text: `⚠️ ${errMsg}` },
       ]);
     } finally {
       setLoadingAI(false);
