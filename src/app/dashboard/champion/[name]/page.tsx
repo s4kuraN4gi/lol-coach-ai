@@ -214,6 +214,7 @@ export default async function ChampionPage({ params }: { params: Promise<{ name:
                                 <th className="px-4 py-3 rounded-l-lg">Opponent</th>
                                 <th className="px-4 py-3">Games</th>
                                 <th className="px-4 py-3">Win Rate</th>
+                                <th className="px-4 py-3">Key Items</th>
                                 <th className="px-4 py-3">Gold Diff</th>
                                 <th className="px-4 py-3">CS Diff</th>
                                 <th className="px-4 py-3 text-right rounded-r-lg">Kill Diff</th>
@@ -234,6 +235,15 @@ export default async function ChampionPage({ params }: { params: Promise<{ name:
                                     <td className={`px-4 py-3 font-bold ${matchup.winRate >= 50 ? 'text-green-400' : 'text-red-400'}`}>
                                         {matchup.winRate}%
                                     </td>
+                                    <td className="px-4 py-3">
+                                        <div className="flex gap-1">
+                                            {matchup.keyItems.map(itemId => (
+                                                 <div key={itemId} className="w-8 h-8 rounded border border-slate-700 bg-slate-800 overflow-hidden" title={`Item ${itemId}`}>
+                                                     <img src={`https://ddragon.leagueoflegends.com/cdn/14.24.1/img/item/${itemId}.png`} alt={`Item ${itemId}`} className="w-full h-full object-cover" />
+                                                 </div>
+                                            ))}
+                                        </div>
+                                    </td>
                                     <td className={`px-4 py-3 ${matchup.goldDiff > 0 ? 'text-green-400' : 'text-red-400'}`}>
                                         {matchup.goldDiff > 0 ? '+' : ''}{matchup.goldDiff}
                                     </td>
@@ -247,7 +257,7 @@ export default async function ChampionPage({ params }: { params: Promise<{ name:
                             ))}
                             {stats.matchups.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                                    <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                                         No matchup data available yet.
                                     </td>
                                 </tr>
