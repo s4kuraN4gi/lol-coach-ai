@@ -37,19 +37,6 @@ export default function CoachPage() {
             if (!user) return; // Should redirect
 
             // Fetch PUUID (Mock or Real) - In real app, fetch from Supabase profile or Riot Account
-            // For now, assuming we can get from Riot Action wrapper or similar.
-            // Let's re-use the pattern from Stats page: Fetch Account first? 
-            // Simplified: Fetch matches by PUUID from DB or just assume we have it context.
-            // Actually, we need to fetch the active summoner first.
-            const { getActiveSummoner } = await import("@/app/actions/auth"); // Helper? No, let's use client-side fetch or pass prop.
-            // Hardcode or correct fetch necessary.
-            // Let's use a server action to get context.
-            const activeSummoner = await fetch("/api/me").then(r => r.json()).catch(() => null); 
-            // Wait, we don't have /api/me.
-            // Let's grab PUUID from match history or similar. 
-            // Fallback: Fetch matches using server action that internally gets user?
-            
-            // Re-implementing simplified logic here similar to Stats:
             // 1. Get User Config from Supabase
             const { data: profile } = await supabase.from('user_configs').select('puuid').eq('user_id', user.id).single();
             
