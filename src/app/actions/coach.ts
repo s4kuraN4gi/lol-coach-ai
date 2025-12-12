@@ -16,11 +16,52 @@ export type CoachingInsight = {
 };
 
 export async function analyzeMatchTimeline(matchId: string, puuid: string, userApiKey?: string): Promise<{ success: boolean, insights?: CoachingInsight[], error?: string }> {
-    const apiKeyToUse = userApiKey || GEMINI_API_KEY_ENV;
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) return { success: false, error: "Not authenticated" };
+
+    // --- Logic for Limits & Keys (Shared with analyzeVideo/analyzeMatch) ---
+    const { getAnalysisStatus } = await import("./analysis");
+    const status = await getAnalysisStatus();
+    if (!status) return { success: false, error: "User profile not found." };
+
+    let useEnvKey = false;
+    let shouldIncrementCount = false;
+
+    if (status.is_premium) {
+        // 1. Premium User
+        const today = new Date().toISOString().split('T')[0];
+        const lastDate = status.last_analysis_date ? status.last_analysis_date.split('T')[0] : null;
+        let currentCount = status.daily_analysis_count;
+        if (lastDate !== today) currentCount = 0;
+
+        if (currentCount >= 50) return { success: false, error: "Daily limit reached (50/50). Try again tomorrow." };
+        
+        useEnvKey = true;
+        shouldIncrementCount = true;
+    } else {
+        // 2. Free User
+        if (userApiKey) {
+            useEnvKey = false; // Use provided key
+        } else {
+            // Fallback: Check for legacy credits or deny
+            if (status.analysis_credits > 0) {
+                useEnvKey = true;
+                // Will decrement later
+            } else {
+                return { success: false, error: "API Key required. Please upgrade or enter your own Gemini API Key." };
+            }
+        }
+    }
+
+    const apiKeyToUse = useEnvKey ? GEMINI_API_KEY_ENV : userApiKey;
 
     if (!apiKeyToUse) {
         return { success: false, error: "API Key Not Found" };
     }
+    
+    // --- End Limit Logic ---
 
     try {
         // 1. Fetch Data (Timeline + Match Details for Context)
@@ -46,7 +87,7 @@ export async function analyzeMatchTimeline(matchId: string, puuid: string, userA
 
         // 4. Prompt Gemini (MACRO FOCUSED)
         const genAI = new GoogleGenerativeAI(apiKeyToUse);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", generationConfig: { responseMimeType: "application/json" } });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp", generationConfig: { responseMimeType: "application/json" } });
 
         const prompt = `
         あなたはプロのLoLコーチ（日本の高レートプレイヤー）です。
@@ -76,7 +117,7 @@ export async function analyzeMatchTimeline(matchId: string, puuid: string, userA
         User is Fiora vs Malphite.
         Event: Death at 14:00.
         Insight: "ディヴァインサンダラーの完成前ですが、相手のマルファイトはすでにブランブルベストを持っています。ここで戦うのは統計的にも不利です。ウェーブをプッシュしてMidへのロームを狙うか、サンダラー完成までファームに徹するべきでした。"
-
+        
         タスク:
         提供されたイベントを分析し、以下のJSON形式で出力してください。
         Output Format:
@@ -94,6 +135,21 @@ export async function analyzeMatchTimeline(matchId: string, puuid: string, userA
 
         const result = await model.generateContent(prompt);
         const insights: CoachingInsight[] = JSON.parse(result.response.text());
+
+        // --- Update Usage Limits (DB) ---
+        if (shouldIncrementCount) {
+            const today = new Date().toISOString();
+            const todayDateStr = today.split('T')[0];
+            const lastDateStr = status.last_analysis_date ? status.last_analysis_date.split('T')[0] : null;
+            let newCount = status.daily_analysis_count + 1;
+            if (lastDateStr !== todayDateStr) newCount = 1;
+      
+            await supabase.from("profiles").update({ daily_analysis_count: newCount, last_analysis_date: today }).eq("id", user.id);
+        } else if (!userApiKey && useEnvKey && !status.is_premium) {
+            // Consume Credit
+            await supabase.from("profiles").update({ analysis_credits: status.analysis_credits - 1 }).eq("id", user.id);
+        }
+        // -------------------------------
 
         return { success: true, insights };
 
