@@ -9,6 +9,7 @@ import { getAnalysisStatus, type AnalysisStatus, upgradeToPremium } from "@/app/
 import PlanStatusBadge from "../../Components/subscription/PlanStatusBadge";
 import PremiumPromoCard from "../../Components/subscription/PremiumPromoCard";
 import PremiumFeatureGate from "../../Components/subscription/PremiumFeatureGate";
+import AdSenseBanner from "../../Components/ads/AdSenseBanner";
 
 // Types
 type MatchSummary = {
@@ -171,6 +172,9 @@ export default function CoachPage() {
 
             if (res.success && res.insights) {
                 setInsights(res.insights);
+                // Refresh status to update credits
+                const newStatus = await getAnalysisStatus();
+                if (newStatus) setStatus(newStatus);
             } else {
                 setErrorMsg(res.error || "Unknown error occurred.");
             }
@@ -188,14 +192,6 @@ export default function CoachPage() {
             localVideoRef.current.play();
         }
     }
-
-    // New logic for checking access rights purely on frontend
-    const hasAccess = status ? (status.is_premium || status.analysis_credits > 0) : true; // Default true while loading to avoid flash, or false?
-    // Let's handle loading state carefully. If status is null, maybe just disable or show loading.
-    // For now assuming status loads fast or defaults to "safe" behavior. But here we want to block if definitely NO access.
-    // If status is null, effectively we don't know yet, maybe treat as NO access until loaded? 
-    // PlanStatusBadge handles null by fetching. 
-    // Let's defer to content render.
 
     return (
         <DashboardLayout>
@@ -338,9 +334,13 @@ export default function CoachPage() {
                                             </div>
                                         ) : (
                                             (() => {
-                                                // Access Logic: Strictly Premium ONLY (Credits ignored to prevent abuse/deficit)
-                                                // const canAnalyze = status?.is_premium || (status?.analysis_credits ?? 0) > 0;
-                                                const canAnalyze = status?.is_premium;
+                                                // Access Logic: Premium OR has credits
+                                                // If Premium: status.is_premium (True)
+                                                // If Free: status.analysis_credits > 0
+                                                const isPremium = status?.is_premium;
+                                                const credits = status?.analysis_credits ?? 0;
+                                                const hasCredits = credits > 0;
+                                                const canAnalyze = isPremium || hasCredits;
                                                 
                                                 return (
                                                     <button 
@@ -366,15 +366,22 @@ export default function CoachPage() {
                                                             ${!videoReady 
                                                                 ? "bg-slate-800 text-slate-500 cursor-not-allowed"
                                                                 : canAnalyze
-                                                                    ? "bg-purple-600 hover:bg-purple-500 text-white shadow-purple-500/20"
-                                                                    : "bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:scale-105 shadow-orange-500/20"
+                                                                    ? isPremium 
+                                                                        ? "bg-purple-600 hover:bg-purple-500 text-white shadow-purple-500/20"
+                                                                        : "bg-gradient-to-r from-blue-600 to-cyan-500 text-white hover:scale-105 shadow-cyan-500/20"
+                                                                    : "bg-slate-700 text-slate-400 cursor-not-allowed border border-slate-600"
                                                             }
                                                         `}
                                                     >
-                                                        {canAnalyze ? (
+                                                        {isPremium ? (
                                                             <>
                                                                 <span>🧠</span> 
                                                                 動画分析開始
+                                                            </>
+                                                        ) : hasCredits ? (
+                                                            <>
+                                                                <span>🎫</span> 
+                                                                動画分析 (残り: {credits}/3)
                                                             </>
                                                         ) : (
                                                             <>
@@ -390,7 +397,7 @@ export default function CoachPage() {
                                     </div>
                                 </div>
 
-                                {/* Video Area */}
+                                {/* Video Area & Ad Interstitial */}
                                 <div className="flex-1 bg-black rounded-xl overflow-hidden border border-slate-800 relative shadow-2xl">
                                     {/* YouTube Player Container */}
                                     <div 
@@ -414,6 +421,28 @@ export default function CoachPage() {
                                             <span>動画ファイルを選択するか、YouTube URLを入力してください</span>
                                         </div>
                                     )}
+
+                                    {/* AdSense Interstitial (Overlay during Analysis) */}
+                                    {isAnalyzing && (
+                                        <div className="absolute inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500">
+                                            <div className="mb-4">
+                                                <h3 className="text-2xl font-black text-white mb-2 animate-bounce">AI分析中...</h3>
+                                                <p className="text-slate-400 text-sm">広告の後に結果が表示されます</p>
+                                            </div>
+                                            
+                                            {/* Rectangle Ad */}
+                                            <div className="w-[300px] h-[250px] bg-slate-800 rounded flex items-center justify-center overflow-hidden border border-slate-700 shadow-2xl">
+                                                <AdSenseBanner style={{ display: 'block', width: '300px', height: '250px' }} format="rectangle" />
+                                            </div>
+                                            
+                                            <div className="mt-8 w-64 h-2 bg-slate-800 rounded-full overflow-hidden">
+                                                <div 
+                                                    className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-300"
+                                                    style={{ width: `${progress}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -431,6 +460,14 @@ export default function CoachPage() {
                         </div>
                         
                         <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-700">
+                            {/* Result Ad Placement (Top of results) */}
+                            {insights && (
+                                <div className="mb-4">
+                                    <p className="text-[10px] text-slate-500 mb-1 text-center">- SPONSORED -</p>
+                                    <AdSenseBanner className="min-h-[100px] w-full bg-slate-800/50 rounded" />
+                                </div>
+                            )}
+
                             {!insights && !isAnalyzing && (
                                 <div className="text-center text-slate-500 mt-10 p-4">
                                     <div className="text-4xl mb-4">🤖</div>
@@ -558,5 +595,6 @@ declare global {
     interface Window {
         onYouTubeIframeAPIReady: () => void;
         YT: any;
+        adsbygoogle: any[]; // Google AdSense
     }
 }

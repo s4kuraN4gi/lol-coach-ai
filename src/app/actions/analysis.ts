@@ -11,6 +11,7 @@ export type AnalysisStatus = {
   last_analysis_date: string;
   subscription_end_date?: string | null;
   auto_renew?: boolean;
+  last_credit_update?: string;
 };
 
 // ユーザーのクレジット情報などを取得
@@ -21,9 +22,11 @@ export async function getAnalysisStatus(): Promise<AnalysisStatus | null> {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
+  // Note: We select last_credit_update. If it doesn't exist in DB yet, it might be ignored or return null depending on Supabase leniency.
+  // The migration SQL provided should be run by the user to add this column.
   const { data } = await supabase
     .from("profiles")
-    .select("is_premium, analysis_credits, subscription_tier, daily_analysis_count, last_analysis_date, subscription_end_date, auto_renew")
+    .select("is_premium, analysis_credits, subscription_tier, daily_analysis_count, last_analysis_date, subscription_end_date, auto_renew, last_credit_update")
     .eq("id", user.id)
     .single();
 
@@ -44,6 +47,53 @@ export async function getAnalysisStatus(): Promise<AnalysisStatus | null> {
       // Update local data object
       data.subscription_end_date = nextMonth.toISOString();
       data.auto_renew = true;
+  }
+
+  // --- WEEKLY CREDIT REPLENISHMENT LOGIC ---
+  if (!data.is_premium) {
+      const now = new Date();
+      // default to now if null (for new migration) so we don't grant immediately on first load unless intended.
+      const lastUpdate = data.last_credit_update ? new Date(data.last_credit_update) : now; 
+      
+      const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
+      const timeDiff = now.getTime() - lastUpdate.getTime();
+
+      // If last_credit_update is missing (null), we set it to NOW to start the timer.
+      // If it exists, we check if 1 week has passed.
+      if (!data.last_credit_update) {
+          await supabase.from("profiles").update({ last_credit_update: now.toISOString() }).eq("id", user.id);
+          data.last_credit_update = now.toISOString();
+      } else if (timeDiff >= oneWeekMs) {
+          // Calculate how many weeks passed (e.g. 2 weeks = 2 credits)
+          const weeksPassed = Math.floor(timeDiff / oneWeekMs);
+          const currentCredits = data.analysis_credits || 0;
+          
+          if (currentCredits < 3) {
+             const newCredits = Math.min(currentCredits + weeksPassed, 3);
+             
+             // Update Date: Move forward by EXACT weeks to keep cycle consistent
+             const newLastUpdate = new Date(lastUpdate.getTime() + (weeksPassed * oneWeekMs));
+
+             await supabase.from("profiles").update({
+                 analysis_credits: newCredits,
+                 last_credit_update: newLastUpdate.toISOString()
+             }).eq("id", user.id);
+
+             data.analysis_credits = newCredits;
+             data.last_credit_update = newLastUpdate.toISOString();
+          } else {
+             // Already at max, update timestamp to now to reset 'idle' timer or keep it? 
+             // Logic: If user uses credit tomorrow, they should wait 1 week from tomorrow? 
+             // OR 1 week from 'last schedule'? 
+             // Typically in these systems, if you are full, the timer stops.
+             // When you use a credit, the timer starts.
+             // So if full, we set last_credit_update to NOW.
+             await supabase.from("profiles").update({
+                 last_credit_update: now.toISOString()
+             }).eq("id", user.id);
+             data.last_credit_update = now.toISOString();
+          }
+      }
   }
 
   // Lazy Expiry Check (有効期限切れチェック)
@@ -104,7 +154,7 @@ export async function upgradeToPremium() {
 
   if (error) return { error: "Failed to upgrade" };
 
-  revalidatePath("/dashboard/replay");
+  revalidatePath("/dashboard", "layout");
   return { success: true };
 }
 
@@ -166,22 +216,16 @@ export async function analyzeVideo(formData: FormData, userApiKey?: string) {
       shouldIncrementCount = true;
 
   } else {
-      // Free Plan: Require User API Key (OR Credits? - Plan says BYOK for free)
-      // If user provides Key, use it. If not, try credits? 
-      // Current design: Free = BYOK.
-      if (!userApiKey) {
-          // Fallback legacy credit check? Or strict BYOK?
-          // User said "Basic plan is not unlimited... (Google limits)".
-          // Implies BYOK is the main way.
-          if (status.analysis_credits > 0) {
-              // Legacy credit system fallback
-              useEnvKey = true; 
-              // Credits will be consumed later if we go this route.
-          } else {
-              return { error: "API Key required. Please upgrade to Premium or enter your Gemini API Key." };
-          }
+      // Free User Logic
+      if (userApiKey) {
+          useEnvKey = false; // Use provided key
       } else {
-          useEnvKey = false;
+          // Check Credits
+          if (status.analysis_credits > 0) {
+              useEnvKey = true;
+          } else {
+              return { error: "API Key required or Credits exhausted. Please upgrade to Premium." };
+          }
       }
   }
 
@@ -200,7 +244,7 @@ export async function analyzeVideo(formData: FormData, userApiKey?: string) {
     // Dynamic import to avoid build-time resolution issues
     const { GoogleGenerativeAI } = await import("@google/generative-ai");
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     // 1. 動画ファイルがある場合の処理
     if (videoFile && videoFile.size > 0) {
@@ -209,12 +253,10 @@ export async function analyzeVideo(formData: FormData, userApiKey?: string) {
       const { join } = await import("path");
       const { tmpdir } = await import("os");
 
-      // ファイルサイズチェック
+      // ファイルサイズチェック (4.5MB)
       if (videoFile.size > 4.5 * 1024 * 1024) { 
            return { error: "File too large. Please upload video smaller than 4.5MB." };
       }
-
-      console.log("Processing video upload:", videoFile.name, videoFile.size);
 
       // (1) 一時ファイルに保存
       const buffer = Buffer.from(await videoFile.arrayBuffer());
@@ -229,13 +271,10 @@ export async function analyzeVideo(formData: FormData, userApiKey?: string) {
           displayName: videoFile.name,
         });
 
-        console.log(`Uploaded file ${uploadResponse.file.displayName} as: ${uploadResponse.file.uri}`);
-
-        // (3) ファイル処理待ち (ACTIVEになるまで待機)
+        // (3) ファイル処理待ち
         let file = await fileManager.getFile(uploadResponse.file.name);
         while (file.state === "PROCESSING") {
-          console.log("Waiting for video processing...");
-          await new Promise((resolve) => setTimeout(resolve, 2000)); // 2秒待機
+          await new Promise((resolve) => setTimeout(resolve, 2000));
           file = await fileManager.getFile(uploadResponse.file.name);
         }
 
@@ -272,7 +311,6 @@ export async function analyzeVideo(formData: FormData, userApiKey?: string) {
         await fileManager.deleteFile(uploadResponse.file.name);
 
       } finally {
-        // 一時ファイルの削除
         await unlink(tempFilePath).catch((err) => console.error("Failed to delete temp file:", err));
       }
 
@@ -288,7 +326,6 @@ export async function analyzeVideo(formData: FormData, userApiKey?: string) {
 内容: "${description}"
 
 この情報から推測できる範囲で、プレイヤーへのアドバイスを300文字以内で作成してください。
-URLが含まれている場合は、そのURLの内容（YouTubeであれば一般的なLoL動画の文脈）を考慮して回答してください。
 `;
         const result = await model.generateContent(prompt);
         resultAdvice = result.response.text();
@@ -300,11 +337,9 @@ URLが含まれている場合は、そのURLの内容（YouTubeであれば一�
     return { error: `Gemini API Error: ${errorMessage}` };
   }
 
-  // 利用状況の更新 (Premium: Count, Legacy Free: Credits)
+  // 利用状況の更新
   if (shouldIncrementCount) {
-      // Reset logic handled by SQL or here? logic:
-      // If today != last_date, new count is 1. Else count + 1.
-      const today = new Date().toISOString(); // Full timestamp for last_analysis_date
+      const today = new Date().toISOString();
       const todayDateStr = today.split('T')[0];
       const lastDateStr = status.last_analysis_date ? status.last_analysis_date.split('T')[0] : null;
       
@@ -321,14 +356,14 @@ URLが含まれている場合は、そのURLの内容（YouTubeであれば一�
         })
         .eq("id", user.id);
   } else if (!userApiKey && useEnvKey && !status.is_premium) {
-      // Legacy Credit Consumption (Only if using Env Key AND not premium)
-      const { error } = await supabase
+      // Consume Credit
+      await supabase
       .from("profiles")
       .update({ analysis_credits: status.analysis_credits - 1 })
       .eq("id", user.id);
   }
 
-  revalidatePath("/dashboard/replay");
+  revalidatePath("/dashboard", "layout");
 
   return {
     success: true,
@@ -352,8 +387,7 @@ export async function analyzeMatch(
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
-  // まずDBに既存の解析があるか確認 (節約のため)
-  // 保存済みがあれば、API呼び出し不要なのでBYOKチェックもスキップして返す
+  // まずDBに既存の解析があるか確認
   const { data: existing } = await supabase
     .from("match_analyses")
     .select("analysis_text")
@@ -365,7 +399,7 @@ export async function analyzeMatch(
     return { success: true, advice: existing.analysis_text, cached: true };
   }
 
-  // --- Logic for Limits & Keys (Shared with analyzeVideo) ---
+  // --- Logic for Limits & Keys ---
   const status = await getAnalysisStatus();
   if (!status) return { error: "User profile not found." };
 
@@ -388,12 +422,11 @@ export async function analyzeMatch(
       if (userApiKey) {
           useEnvKey = false; // Use provided key
       } else {
-          // Fallback: Check for legacy credits or deny
+          // Check Credits
           if (status.analysis_credits > 0) {
               useEnvKey = true;
-              // Will decrement later
           } else {
-              return { error: "API Key required. Please upgrade or enter your own Gemini API Key." };
+              return { error: "API Key required or Credits exhausted." };
           }
       }
   }
@@ -403,7 +436,6 @@ export async function analyzeMatch(
 
   if (!apiKey) {
       if (!useEnvKey && !userApiKey) return { error: "Configuration Error: API Key missing." };
-      // If server key missing but supposed to use it...
        console.warn("GEMINI_API_KEY is missing via Env. Using Mock.");
        await new Promise((resolve) => setTimeout(resolve, 1500));
        resultAdvice = `【Mock】${championName}での${kda}は見事ですが、APIキーが設定されていません。`;
@@ -412,7 +444,7 @@ export async function analyzeMatch(
       try {
         const { GoogleGenerativeAI } = await import("@google/generative-ai");
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); // Use explicit model name
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         const prompt = `
 あなたはLeague of Legendsのプロコーチです。
@@ -465,9 +497,7 @@ KDA: ${kda}
   }
 
   revalidatePath("/dashboard");
-  revalidatePath(`/dashboard/match/${matchId}`); // Also revalidate specific page
+  revalidatePath(`/dashboard/match/${matchId}`); 
 
   return { success: true, advice: resultAdvice };
 }
-
-
