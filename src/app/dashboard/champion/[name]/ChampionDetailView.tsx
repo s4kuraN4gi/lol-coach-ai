@@ -11,6 +11,7 @@ type Match = any; // We can use strict type if available
 export default function ChampionDetailView({ puuid, championName }: { puuid: string, championName: string }) {
     const [loadingIds, setLoadingIds] = useState(true);
     const [matchDetails, setMatchDetails] = useState<Match[]>([]);
+    const [totalMatches, setTotalMatches] = useState<number>(0);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -43,6 +44,7 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                 // 3. Stream Details
                 // We fetch in chunks or parallel
                 const ids = idsRes.data;
+                setTotalMatches(ids.length);
                 
                 // Fetch in batches of 5 to allow progressive update without network hammering
                 // Actually parallel logic in StatsPage was good. 
@@ -214,6 +216,11 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
     }, [matchDetails, championName, puuid]);
 
 
+    // Progress Calculation
+    const loadedCount = matchDetails.length;
+    const progress = totalMatches > 0 ? Math.round((loadedCount / totalMatches) * 100) : 0;
+    const isComplete = totalMatches > 0 && loadedCount >= totalMatches;
+
     // --- RENDER ---
 
     if (error) {
@@ -271,7 +278,7 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                         <h1 className="text-4xl font-black text-white tracking-tighter uppercase mb-2">
                             {decodeURIComponent(stats.championName)}
                         </h1>
-                        <div className="flex items-center gap-3 text-sm font-medium text-slate-400">
+                        <div className="flex items-center gap-3 text-sm font-medium text-slate-400 mb-4">
                             <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
                                 {stats.summary.games} Games
                             </span>
@@ -283,6 +290,25 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                              <span className="text-slate-300">
                                 {stats.summary.kda} KDA
                              </span>
+                        </div>
+                        
+                        {/* Progress Indicator */}
+                        <div className="flex items-center gap-4">
+                             <div className="flex-1 max-w-xs bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                 <div 
+                                    className={`h-full rounded-full transition-all duration-300 ${isComplete ? 'bg-green-500' : 'bg-blue-500 animate-pulse'}`}
+                                    style={{ width: `${progress}%` }}
+                                 />
+                             </div>
+                             <div className="text-xs font-mono text-slate-500 min-w-[80px]">
+                                 {isComplete ? (
+                                     <span className="text-green-400 flex items-center gap-1">
+                                         ✓ Ready
+                                     </span>
+                                 ) : (
+                                     <span>Loading {loadedCount}/{totalMatches}</span>
+                                 )}
+                             </div>
                         </div>
                     </div>
                     
