@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import DashboardLayout from "../Components/layout/DashboardLayout";
 import LoadingAnimation from "../Components/LoadingAnimation";
 import ProfileCard from "./components/ProfileCard";
+import RankCard from "./components/RankCard";
 import LPWidget from "./widgets/LPWidget";
 import ChampionPerformance from "./widgets/ChampionPerformance";
 import SkillRadar from "./widgets/SkillRadar"; 
@@ -11,12 +12,13 @@ import WinConditionWidget from "./widgets/WinConditionWidget";
 import NemesisWidget from "./widgets/NemesisWidget";
 import LaningPhaseWidget from "./widgets/LaningPhaseWidget";
 import ClutchWidget from "./widgets/ClutchWidget";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 
 import { useSummoner } from "../Providers/SummonerProvider";
 import { useAuth } from "../Providers/AuthProvider";
-import { fetchDashboardStats, type DashboardStatsDTO } from "../actions/stats";
+import { fetchBasicStats, fetchMatchStats, type DashboardStatsDTO } from "@/app/actions/stats";
 import DashboardSkeleton from "./components/skeletons/DashboardSkeleton";
 
 
@@ -68,7 +70,7 @@ export default function DashboardPage() {
 
         setIsFetching(true);
         setError(null);
-        setDebugLogs(["[Client] Starting Refresh...", `[Client] PUUID: ${activeSummoner.puuid?.slice(0,10)}...`]);
+        setDebugLogs(["[Client] Starting Progressive Refresh...", `[Client] PUUID: ${activeSummoner.puuid?.slice(0,10)}...`]);
         console.log("Start Dashboard Refresh...");
 
         const { puuid, summoner_id } = activeSummoner;
@@ -84,19 +86,33 @@ export default function DashboardPage() {
         }
 
         try {
-            console.log("Fetching stats for", puuid);
-            if (isMounted.current) setDebugLogs(prev => [...prev, "[Client] Requesting Server Action..."]);
+            console.log("Fetching basic stats for", puuid);
+            if (isMounted.current) setDebugLogs(prev => [...prev, "[Client] Requesting Server Action (Basic Stats)..."]);
             
-            const data = await fetchDashboardStats(puuid, summoner_id);
-            
+            // Start both fetches in parallel
+            const basicPromise = fetchBasicStats(puuid, summoner_id);
+            const matchPromise = fetchMatchStats(puuid);
+
+            // Await basic stats first
+            const basicData = await basicPromise;
             if (!isMounted.current) return; // Cleanup Check
 
-            console.log("Fetched Stats Result:", JSON.stringify(data, null, 2));
-            setStats(data);
-
-            // Auto-select Queue based on available ranks
-            const hasSolo = data.ranks.some((r: any) => r.queueType === "RANKED_SOLO_5x5");
-            const hasFlex = data.ranks.some((r: any) => r.queueType === "RANKED_FLEX_SR");
+            console.log("Fetched Basic Stats Result:", JSON.stringify(basicData, null, 2));
+            
+            // Construct partial state for immediate rendering of profile/rank
+            const partialStats: DashboardStatsDTO = {
+                ranks: basicData.ranks,
+                recentMatches: [], // Empty until match data arrives
+                championStats: [],
+                radarStats: null,
+                uniqueStats: null,
+                debugLog: basicData.debugLog || []
+            };
+            setStats(partialStats); // Update state to show basic info
+            
+            // Auto-select Queue based on available ranks from basicData
+            const hasSolo = basicData.ranks.some((r: any) => r.queueType === "RANKED_SOLO_5x5");
+            const hasFlex = basicData.ranks.some((r: any) => r.queueType === "RANKED_FLEX_SR");
             
             if (!hasSolo && hasFlex) {
                  setCurrentQueue("FLEX");
@@ -104,14 +120,34 @@ export default function DashboardPage() {
             } else if (hasSolo) {
                  setCurrentQueue("SOLO");
             }
-            
+
             setDebugLogs(prev => [
                 ...prev, 
-                `[Client] Response Received. matches=${data.recentMatches.length}`,
-                ...(data.debugLog || ["[Client] Warn: stats.debugLog is missing/empty"])
+                `[Client] Basic Stats Received. Ranks: ${basicData.ranks.length}`,
+            ]);
+
+            // Now await match stats
+            console.log("Fetching match stats for", puuid);
+            if (isMounted.current) setDebugLogs(prev => [...prev, "[Client] Requesting Server Action (Match Stats)..."]);
+            const matchData = await matchPromise;
+            if (!isMounted.current) return; // Cleanup Check
+
+            console.log("Fetched Match Stats Result:", JSON.stringify(matchData, null, 2));
+            
+            // Merge match data into existing stats
+            setStats(prev => prev ? {
+                ...prev,
+                ...matchData,
+                debugLog: [...prev.debugLog, ...(matchData.debugLog || [])]
+            } : null);
+
+            setDebugLogs(prev => [
+                ...prev, 
+                `[Client] Match Stats Received. matches=${matchData.recentMatches.length}`,
+                ...(matchData.debugLog || ["[Client] Warn: matchData.debugLog is missing/empty"])
             ]);
             
-            if (data.recentMatches.length === 0) {
+            if (matchData.recentMatches.length === 0) {
                 setError("直近の対戦データが見つかりませんでした。(JPサーバーでプレイしていますか？)");
             }
 
@@ -137,6 +173,9 @@ export default function DashboardPage() {
         currentQueue === "SOLO" ? r.queueType === "RANKED_SOLO_5x5" : r.queueType === "RANKED_FLEX_SR"
     ) || null;
 
+    // Determine if match-related data has loaded
+    const matchesLoaded = stats?.radarStats !== null;
+
     if (authLoading || summonerLoading || (!stats && isFetching)) {
          return (
             <DashboardLayout>
@@ -145,7 +184,7 @@ export default function DashboardPage() {
          )
     }
 
-    if (stats && stats.recentMatches.length === 0) {
+    if (stats && matchesLoaded && stats.recentMatches.length === 0) {
         return (
             <DashboardLayout>
                 <div className="flex flex-col items-center justify-center p-12 text-center h-[60vh]">
@@ -226,21 +265,44 @@ export default function DashboardPage() {
                 onQueueChange={(q) => setCurrentQueue(q as "SOLO" | "FLEX")}
             />
 
-            <LPWidget rank={displayedRank} recentMatches={stats?.recentMatches || []} />
+            {matchesLoaded ? (
+                <LPWidget rank={displayedRank} recentMatches={stats?.recentMatches || []} />
+            ) : (
+                <div className="bg-slate-900/50 rounded-2xl p-6 border border-slate-800 h-48 animate-pulse"></div>
+            )}
         </div>
 
         {/* Row 2: Champion Performance & Skill Radar */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-            <ChampionPerformance stats={stats?.championStats || []} />
-            <SkillRadar stats={stats?.radarStats || null} />
+            {matchesLoaded ? (
+                <ChampionPerformance stats={stats?.championStats || []} />
+            ) : (
+                <div className="bg-slate-900/50 rounded-2xl p-6 border border-slate-800 h-72 animate-pulse"></div>
+            )}
+            {matchesLoaded ? (
+                <SkillRadar stats={stats?.radarStats || null} />
+            ) : (
+                <div className="bg-slate-900/50 rounded-2xl p-6 border border-slate-800 h-72 animate-pulse"></div>
+            )}
         </div>
 
         {/* Row 3: Unique Analysis (A, B, C, D) */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-             <WinConditionWidget stats={stats?.uniqueStats || null} />
-             <LaningPhaseWidget stats={stats?.uniqueStats || null} matchCount={stats?.recentMatches.length || 0} />
-             <NemesisWidget stats={stats?.uniqueStats || null} />
-             <ClutchWidget stats={stats?.uniqueStats || null} />
+            {matchesLoaded ? (
+                <>
+                    <WinConditionWidget stats={stats?.uniqueStats || null} />
+                    <LaningPhaseWidget stats={stats?.uniqueStats || null} matchCount={stats?.recentMatches.length || 0} />
+                    <NemesisWidget stats={stats?.uniqueStats || null} />
+                    <ClutchWidget stats={stats?.uniqueStats || null} />
+                </>
+            ) : (
+                <>
+                    <div className="bg-slate-900/50 rounded-2xl p-6 border border-slate-800 h-48 animate-pulse"></div>
+                    <div className="bg-slate-900/50 rounded-2xl p-6 border border-slate-800 h-48 animate-pulse"></div>
+                    <div className="bg-slate-900/50 rounded-2xl p-6 border border-slate-800 h-48 animate-pulse"></div>
+                    <div className="bg-slate-900/50 rounded-2xl p-6 border border-slate-800 h-48 animate-pulse"></div>
+                </>
+            )}
         </div>
       </DashboardLayout>
     </>

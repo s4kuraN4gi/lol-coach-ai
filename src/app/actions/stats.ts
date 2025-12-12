@@ -48,31 +48,27 @@ export type DashboardStatsDTO = {
 // Rate limit safe fetcher
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-export async function fetchDashboardStats(puuid: string, summonerId?: string | null): Promise<DashboardStatsDTO> {
+// --- Split Actions for Progressive Loading ---
+
+export type BasicStatsDTO = {
+    ranks: LeagueEntryDTO[];
+    debugLog: string[];
+}
+
+export async function fetchBasicStats(puuid: string, summonerId?: string | null): Promise<BasicStatsDTO> {
     const logs: string[] = [];
     const log = (msg: string) => { console.log(msg); logs.push(msg); };
-
-    const stats: DashboardStatsDTO = {
-        ranks: [],
-        recentMatches: [],
-        championStats: [],
-        radarStats: null,
-        uniqueStats: null,
-        debugLog: []
-    };
-
+    
     try {
-        const supabase = await createClient();
-
         // 0. Self-Heal: Recover SummonerID if missing
         let validSummonerId = summonerId;
         if (!validSummonerId) {
              const { fetchSummonerByPuuid } = await import('./riot');
-             log(`[Stats] SummonerID missing. Recovering from Riot...`);
+             log(`[BasicStats] SummonerID missing. Recovering from Riot...`);
              const summonerData = await fetchSummonerByPuuid(puuid);
              if (summonerData) {
                  validSummonerId = summonerData.id;
-                 log(`[Stats] Recovered SummonerID: ${validSummonerId}`);
+                 log(`[BasicStats] Recovered SummonerID: ${validSummonerId}`);
              } else {
                  throw new Error("Failed to recover SummonerID from PUUID");
              }
@@ -84,38 +80,60 @@ export async function fetchDashboardStats(puuid: string, summonerId?: string | n
         // Self-heal: If NO ranks found, SummonerID might be stale. Re-fetch ID from Riot.
         if (ranks.length === 0 && validSummonerId) {
              const { fetchSummonerByPuuid } = await import('./riot');
-             log(`[Stats] No ranks found. Verifying SummonerID...`);
+             log(`[BasicStats] No ranks found. Verifying SummonerID...`);
              const freshSummoner = await fetchSummonerByPuuid(puuid, true); // noCache=true
              
              if (freshSummoner && freshSummoner.id !== validSummonerId) {
-                 log(`[Stats] SummonerID mismatch! Updating to: ${freshSummoner.id}`);
+                 log(`[BasicStats] SummonerID mismatch! Updating to: ${freshSummoner.id}`);
                  validSummonerId = freshSummoner.id;
                  ranks = await fetchRank(validSummonerId);
-                 log(`[Stats] Retry Rank Fetch found: ${ranks.length}`);
+                 log(`[BasicStats] Retry Rank Fetch found: ${ranks.length}`);
              } else {
-                 log(`[Stats] SummonerID is valid (unchanged). User is likely truly Unranked.`);
+                 log(`[BasicStats] SummonerID is valid (unchanged). User is likely truly Unranked.`);
              }
         }
 
-        stats.ranks = ranks;
-        log(`[Stats] Ranks fetched: ${ranks.length}`);
-        if(ranks.length > 0) {
-            log(`[Stats] Queues: ${ranks.map(r => r.queueType).join(', ')}`);
-        } else {
-             log(`[Stats] No ranks found for ID: ${validSummonerId}`);
-        }
+        log(`[BasicStats] Ranks fetched: ${ranks.length}`);
+        return { ranks, debugLog: logs };
 
+    } catch (e: any) {
+        const errorMsg = `[BasicStats] Critical Error: ${e.message || e}`;
+        console.error("fetchBasicStats Error:", errorMsg);
+        logs.push(errorMsg);
+        return { ranks: [], debugLog: logs };
+    }
+}
 
+export type MatchStatsDTO = {
+    recentMatches: { win: boolean; timestamp: number }[];
+    championStats: ChampionStat[];
+    radarStats: RadarStats | null;
+    uniqueStats: UniqueStats | null;
+    debugLog: string[];
+}
+
+export async function fetchMatchStats(puuid: string): Promise<MatchStatsDTO> {
+    const logs: string[] = [];
+    const log = (msg: string) => { console.log(msg); logs.push(msg); };
+
+    const result: MatchStatsDTO = {
+        recentMatches: [],
+        championStats: [],
+        radarStats: null,
+        uniqueStats: null,
+        debugLog: []
+    };
+
+    try {
         // 2. Fetch Matches (Delegated to Service)
         const { fetchAndCacheMatches } = await import('@/services/matchService');
         const { matches, logs: serviceLogs } = await fetchAndCacheMatches(puuid, 50);
         serviceLogs.forEach(l => log(l));
         
-        log(`[Stats] Processing ${matches.length} matches...`);
+        log(`[MatchStats] Processing ${matches.length} matches...`);
         
         const championMap = new Map<string, { wins: number, games: number, k: number, d: number, a: number, cs: number }>();
 
-        
         // Radar aggregators
         let totalK = 0, totalD = 0, totalA = 0;
         let totalDmgObj = 0;
@@ -143,15 +161,12 @@ export async function fetchDashboardStats(puuid: string, summonerId?: string | n
 
             const p = m.info.participants.find((p: any) => p.puuid === puuid);
             if (!p) {
-                 log(`[Stats] WAITING PUUID Match Fail: ${m.metadata.matchId}`);
-                 // Log first few chars to compare
-                 const participants = m.info.participants.map((px: any) => px.puuid.slice(0, 10)).join(', ');
-                 log(`[Stats] Wanted: ${puuid.slice(0, 10)}... Found: ${participants}`);
+                 log(`[MatchStats] WAITING PUUID Match Fail: ${m.metadata.matchId}`);
                  return;
             }
 
             // Recent Matches (Win/Loss Trend)
-            stats.recentMatches.push({
+            result.recentMatches.push({
                 win: p.win,
                 timestamp: m.info.gameCreation
             });
@@ -219,7 +234,7 @@ export async function fetchDashboardStats(puuid: string, summonerId?: string | n
         });
 
         // Format Champion Stats
-        stats.championStats = Array.from(championMap.entries()).map(([name, data]) => {
+        result.championStats = Array.from(championMap.entries()).map(([name, data]) => {
             const avgDeaths = data.d / data.games;
             return {
                 name,
@@ -242,7 +257,7 @@ export async function fetchDashboardStats(puuid: string, summonerId?: string | n
             const avgCsPerMin = totalCS / totalDuration;
             const avgDeaths = totalD / gameCount;
 
-            stats.radarStats = {
+            result.radarStats = {
                 combat: Math.min(100, Math.round(avgKda * 20)), // 5.0 KDA = 100
                 objective: Math.min(100, Math.round((avgDmgObj / 15000) * 100)), // 15k Dmg = 100
                 vision: Math.min(100, Math.round((avgVisionPerMin / 2.0) * 100)), // 2.0/min = 100
@@ -258,7 +273,7 @@ export async function fetchDashboardStats(puuid: string, summonerId?: string | n
                 winRate: Math.round((data.wins / data.total) * 100)
             }));
             
-            stats.uniqueStats = {
+            result.uniqueStats = {
                 winConditions: [
                     { label: "Gets First Blood", count: winCondTracker.firstBlood.total, winRate: winCondTracker.firstBlood.total ? Math.round((winCondTracker.firstBlood.wins/winCondTracker.firstBlood.total)*100) : 0 },
                     { label: "Gets First Tower", count: winCondTracker.firstTower.total, winRate: winCondTracker.firstTower.total ? Math.round((winCondTracker.firstTower.wins/winCondTracker.firstTower.total)*100) : 0 },
@@ -282,13 +297,14 @@ export async function fetchDashboardStats(puuid: string, summonerId?: string | n
             };
         }
 
-        return stats;
+        result.debugLog = logs;
+        return result;
 
     } catch (e: any) {
-        const errorMsg = `[Stats] Critical Error: ${e.message || e}`;
-        console.error("fetchDashboardStats Error:", errorMsg);
+        const errorMsg = `[MatchStats] Critical Error: ${e.message || e}`;
+        console.error("fetchMatchStats Error:", errorMsg);
         logs.push(errorMsg);
-        stats.debugLog = logs;
-        return stats;
+        result.debugLog = logs;
+        return result;
     }
 }
