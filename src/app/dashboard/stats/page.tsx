@@ -30,6 +30,8 @@ export default function StatsPage() {
     useEffect(() => {
         if (summonerLoading) return;
         
+        let ignore = false;
+
         async function loadData() {
             if (!activeSummoner?.puuid) return;
 
@@ -53,6 +55,8 @@ export default function StatsPage() {
                 // Fetch count=10 for better gallery view
                 const matchIdsRes = await fetchMatchIds(activeSummoner.puuid, 10, queueId, type);
                 
+                if (ignore) return;
+
                 if (matchIdsRes.error) {
                      // Ignore specific error if filtered result is empty (might return success=false?)
                      // Actually fetchMatchIds usually returns empty array if success.
@@ -66,6 +70,8 @@ export default function StatsPage() {
                     const matchPromises = matchIdsRes.data.map(id => fetchMatchDetail(id));
                     const matchesRes = await Promise.all(matchPromises);
                     
+                    if (ignore) return;
+
                     const newStats = { wins: 0, losses: 0, kills: 0, deaths: 0, assists: 0 };
 
                     const items = matchesRes
@@ -103,14 +109,18 @@ export default function StatsPage() {
             } catch (e: any) {
                 console.error("Stats Data Error:", e);
                 // Don't show hard error for empty filter, just clear
-                setHistory([]);
+                if (!ignore) setHistory([]);
                 // setError(e.message || "Failed to load stats.");
             } finally {
-                setLoading(false);
+                if (!ignore) setLoading(false);
             }
         }
 
         loadData();
+
+        return () => {
+            ignore = true;
+        };
     }, [activeSummoner, activeSummoner?.puuid, summonerLoading, filter]);
 
     // Derived Stats

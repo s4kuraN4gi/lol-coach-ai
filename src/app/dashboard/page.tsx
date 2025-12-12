@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import DashboardLayout from "../Components/layout/DashboardLayout";
 import LoadingAnimation from "../Components/LoadingAnimation";
 import ProfileCard from "./components/ProfileCard";
@@ -50,9 +50,22 @@ export default function DashboardPage() {
     const router = useRouter();
     const {user, loading: authLoading} = useAuth();
 
+    const isMounted = useRef(true);
+
+    useEffect(() => {
+        isMounted.current = true;
+        return () => {
+            isMounted.current = false;
+        };
+    }, []);
+
     // データ取得
     const fetchData = useCallback(async () => {
         if (!activeSummoner) return;
+        
+        // Don't set state if unmounted (though this check is early, the updates later matter more)
+        if (!isMounted.current) return;
+
         setIsFetching(true);
         setError(null);
         setDebugLogs(["[Client] Starting Refresh...", `[Client] PUUID: ${activeSummoner.puuid?.slice(0,10)}...`]);
@@ -60,20 +73,24 @@ export default function DashboardPage() {
 
         const { puuid, summoner_id } = activeSummoner;
         
-        // Only checking PUUID now (Server will recover SummonerID)
         if (!puuid) {
             console.warn("[Dashboard] Active Summoner Incomplete:", activeSummoner);
-            setError("アカウント情報が不完全です（PUUID欠落）。アカウントを再連携してください。");
-            setDebugLogs(prev => [...prev, "[Client] Error: Missing PUUID"]);
-            setIsFetching(false);
+            if (isMounted.current) {
+                setError("アカウント情報が不完全です（PUUID欠落）。アカウントを再連携してください。");
+                setDebugLogs(prev => [...prev, "[Client] Error: Missing PUUID"]);
+                setIsFetching(false);
+            }
             return;
         }
 
         try {
             console.log("Fetching stats for", puuid);
-            setDebugLogs(prev => [...prev, "[Client] Requesting Server Action..."]);
+            if (isMounted.current) setDebugLogs(prev => [...prev, "[Client] Requesting Server Action..."]);
             
             const data = await fetchDashboardStats(puuid, summoner_id);
+            
+            if (!isMounted.current) return; // Cleanup Check
+
             console.log("Fetched Stats Result:", JSON.stringify(data, null, 2));
             setStats(data);
 
@@ -100,18 +117,20 @@ export default function DashboardPage() {
 
         } catch (error: any) {
             console.error("Failed to fetch dashboard stats", error);
-            setError("データの取得に失敗しました。時間をおいて再試行してください。");
-            setDebugLogs(prev => [...prev, `[Client] Exception: ${error.message || error}`]);
+            if (isMounted.current) {
+                setError("データの取得に失敗しました。時間をおいて再試行してください。");
+                setDebugLogs(prev => [...prev, `[Client] Exception: ${error.message || error}`]);
+            }
         }
         
-        setIsFetching(false);
+        if (isMounted.current) setIsFetching(false);
     }, [activeSummoner]);
 
     useEffect(() => {
-        if(activeSummoner && !stats) { // Only fetch if not already fetched? Or always on mount?
+        if(activeSummoner && !stats) { 
             fetchData();
         }
-    }, [activeSummoner]); // removed fetchData from dep array to avoid loops, though useCallback handles it.
+    }, [activeSummoner]); 
 
     // Filter Rank based on Queue Selection
     const displayedRank = stats?.ranks?.find(r => 
@@ -137,15 +156,6 @@ export default function DashboardPage() {
                             連携されたアカウントの直近の対戦履歴（過去10戦）が存在しないか、取得できませんでした。
                         </p>
                         
-                        <div className="text-left bg-slate-950 p-4 rounded mb-6 border border-slate-800">
-                             <p className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">Troubleshooting Log</p>
-                             <div className="max-h-32 overflow-y-auto space-y-1">
-                                {debugLogs.length > 0 ? debugLogs.map((log, i) => (
-                                    <div key={i} className="text-[10px] font-mono text-slate-500 whitespace-pre-wrap leading-tight border-b border-slate-900 pb-1">{log}</div>
-                                )) : <div className="text-xs text-slate-600 italic">No logs available.</div>}
-                             </div>
-                        </div>
-
                          <button 
                             onClick={fetchData} 
                             className="bg-primary-500 hover:bg-primary-600 px-6 py-2 rounded-lg text-white font-bold transition-colors w-full"
