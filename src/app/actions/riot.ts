@@ -113,7 +113,7 @@ export async function fetchRank(summonerId: string): Promise<LeagueEntryDTO[]> {
 }
 
 // 4. Get Match IDs by PUUID
-export async function fetchMatchIds(puuid: string, count: number = 20, queue?: number, type?: string): Promise<{ success: boolean, data?: string[], error?: string }> {
+export async function fetchMatchIds(puuid: string, count: number = 20, queue?: number, type?: string, championId?: number): Promise<{ success: boolean, data?: string[], error?: string }> {
     if (!RIOT_API_KEY) return { success: false, error: "Server Configuration Error: RIOT_API_KEY is missing" };
     
     // Ensure region is correct. JP1 -> asia
@@ -121,6 +121,7 @@ export async function fetchMatchIds(puuid: string, count: number = 20, queue?: n
     
     if (queue) url += `&queue=${queue}`;
     if (type) url += `&type=${type}`;
+    if (championId) url += `&champion=${championId}`;
 
     try {
         const res = await fetch(url, {

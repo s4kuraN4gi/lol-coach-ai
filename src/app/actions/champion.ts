@@ -241,3 +241,11 @@ export async function getChampionStats(puuid: string, championName: string): Pro
         matchups: matchups
     };
 }
+
+// Wrapper for client to get ID
+import { getChampionData } from "@/utils/champion";
+
+export async function resolveChampionId(name: string): Promise<string | null> {
+    const data = await getChampionData(name);
+    return data ? data.key : null;
+} 
