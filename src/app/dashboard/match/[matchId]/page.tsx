@@ -11,6 +11,8 @@ import MatchAnalysisPanel from "./components/MatchAnalysisPanel";
 import TeamOverviewCard from "./components/TeamOverviewCard"; // Import New Component
 import LoadingAnimation from "@/app/Components/LoadingAnimation";
 import { useSummoner } from "@/app/Providers/SummonerProvider";
+import MatchSkeleton from "../../components/skeletons/MatchSkeleton";
+
 
 export default function MatchDetailsPage() {
     const params = useParams();
@@ -65,10 +67,7 @@ export default function MatchDetailsPage() {
     if (loading || summonerLoading) {
          return (
             <DashboardLayout>
-                <div className="flex flex-col items-center justify-center min-h-[60vh]">
-                    <LoadingAnimation />
-                    <p className="mt-4 text-slate-400 animate-pulse">Analyzing Match Data...</p>
-                </div>
+                <MatchSkeleton />
             </DashboardLayout>
          );
     }
