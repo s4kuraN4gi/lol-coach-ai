@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState, useTransition, useEffect } from "react";
 import { upgradeToPremium, type AnalysisStatus, getAnalysisStatus } from "@/app/actions/analysis";
 
 type Props = {
@@ -11,6 +11,10 @@ type Props = {
 export default function PlanStatusBadge({ initialStatus, onStatusUpdate }: Props) {
     const [status, setStatus] = useState<AnalysisStatus | null>(initialStatus);
     const [isPending, startTransition] = useTransition();
+
+    useEffect(() => {
+        setStatus(initialStatus);
+    }, [initialStatus]);
 
     const isPremium = status?.is_premium;
     const credits = status?.analysis_credits ?? 0;
@@ -31,7 +35,16 @@ export default function PlanStatusBadge({ initialStatus, onStatusUpdate }: Props
         });
     };
 
-    if (!status) return null;
+    if (!status) {
+        return (
+            <div className="glass-panel px-4 py-2 rounded-lg flex items-center gap-4 border border-slate-700/50 bg-slate-900/50 animate-pulse">
+                <div>
+                   <div className="h-3 w-16 bg-slate-700 rounded mb-1"></div>
+                   <div className="h-5 w-24 bg-slate-700 rounded"></div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="glass-panel px-4 py-2 rounded-lg flex items-center gap-4 border border-slate-700/50 bg-slate-900/50">

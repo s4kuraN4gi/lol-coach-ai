@@ -26,6 +26,13 @@ export async function analyzeMatchTimeline(matchId: string, puuid: string, userA
     const status = await getAnalysisStatus();
     if (!status) return { success: false, error: "User profile not found." };
 
+    console.log("DEBUG_AI_COACH_LIMITS:", { 
+        userId: user.id, 
+        isPremium: status.is_premium, 
+        credits: status.analysis_credits, 
+        hasUserKey: !!userApiKey 
+    });
+
     let useEnvKey = false;
     let shouldIncrementCount = false;
 
@@ -50,7 +57,7 @@ export async function analyzeMatchTimeline(matchId: string, puuid: string, userA
                 useEnvKey = true;
                 // Will decrement later
             } else {
-                return { success: false, error: "API Key required. Please upgrade or enter your own Gemini API Key." };
+                return { success: false, error: "Upgrade required. Please upgrade to Premium or enter your API Key." };
             }
         }
     }
