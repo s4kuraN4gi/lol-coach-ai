@@ -421,27 +421,7 @@ export default function CoachPage() {
                                         </div>
                                     )}
 
-                                    {/* AdSense Interstitial (Overlay during Analysis) */}
-                                    {isAnalyzing && (
-                                        <div className="absolute inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500">
-                                            <div className="mb-4">
-                                                <h3 className="text-2xl font-black text-white mb-2 animate-bounce">AI分析中...</h3>
-                                                <p className="text-slate-400 text-sm">広告の後に結果が表示されます</p>
-                                            </div>
-                                            
-                                            {/* Rectangle Ad */}
-                                            <div className="w-[300px] h-[250px] bg-slate-800 rounded flex items-center justify-center overflow-hidden border border-slate-700 shadow-2xl">
-                                                <AdSenseBanner style={{ display: 'block', width: '300px', height: '250px' }} format="rectangle" />
-                                            </div>
-                                            
-                                            <div className="mt-8 w-64 h-2 bg-slate-800 rounded-full overflow-hidden">
-                                                <div 
-                                                    className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-300"
-                                                    style={{ width: `${progress}%` }}
-                                                ></div>
-                                            </div>
-                                        </div>
-                                    )}
+                                    {/* AdSense Interstitial removed from here */}
                                 </div>
                             </div>
                         )}
@@ -569,6 +549,35 @@ export default function CoachPage() {
                     </div>
                 )}
             </div>
+            {/* Full Screen AdSense Interstitial (Overlay during Analysis) */}
+            {isAnalyzing && (
+                <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500">
+                    <div className="mb-6">
+                        <div className="text-6xl mb-4 animate-bounce">🤖</div>
+                        <h3 className="text-3xl font-black text-white mb-2 tracking-tight">AI COACH ANALYZING...</h3>
+                        <p className="text-slate-400">最適なアドバイスを生成しています。広告の後に結果が表示されます。</p>
+                    </div>
+                    
+                    {/* Rectangle Ad */}
+                    <div className="w-[336px] h-[280px] bg-slate-800 rounded-lg flex items-center justify-center overflow-hidden border border-slate-700 shadow-[0_0_50px_rgba(168,85,247,0.2)] mb-8">
+                        <AdSenseBanner style={{ display: 'block', width: '336px', height: '280px' }} format="rectangle" />
+                    </div>
+                    
+                    <div className="w-80">
+                         <div className="flex justify-between text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">
+                             <span>Processing Match Data</span>
+                             <span>{progress}%</span>
+                         </div>
+                        <div className="h-4 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                            <div 
+                                className="h-full bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 transition-all duration-300 ease-out shadow-[0_0_20px_rgba(168,85,247,0.5)]"
+                                style={{ width: `${progress}%` }}
+                            ></div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* YouTube API Type Declaration */}
             <script dangerouslySetInnerHTML={{__html: `
                 var tag = document.createElement('script');
