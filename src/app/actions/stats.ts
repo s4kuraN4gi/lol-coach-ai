@@ -284,10 +284,11 @@ export async function fetchDashboardStats(puuid: string, summonerId?: string | n
 
         return stats;
 
-    } catch (e) {
-
-        console.error("fetchDashboardStats Error:", e);
-        // Return partial if fail
+    } catch (e: any) {
+        const errorMsg = `[Stats] Critical Error: ${e.message || e}`;
+        console.error("fetchDashboardStats Error:", errorMsg);
+        logs.push(errorMsg);
+        stats.debugLog = logs;
         return stats;
     }
 }
