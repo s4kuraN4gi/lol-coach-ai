@@ -10,6 +10,7 @@ export type MatchupStat = {
     goldDiff: number;
     csDiff: number;
     killDiff: number;
+    keyItems: number[];
 }
 
 export type ChampionDetailsDTO = {
@@ -49,10 +50,12 @@ export async function getChampionStats(puuid: string, championName: string): Pro
 
     console.log(`[ChampionStats] Fetching for PUUID: ${puuid?.slice(0, 10)}..., Champion: ${championName}`);
 
+    // Fetch matches (limit 50, same as dashboard for consistency)
     const { matches } = await fetchAndCacheMatches(puuid, 50);
     console.log(`[ChampionStats] Matches Fetched: ${matches.length}`);
 
     // Filter for specific champion
+    // Normalize championName comparison (case-insensitive)
     const championMatches = matches.filter(m => {
         const p = m.info.participants.find((p: any) => p.puuid === puuid);
         if (!p) return false;
@@ -82,6 +85,7 @@ export async function getChampionStats(puuid: string, championName: string): Pro
 
     // Matchup Map
     const matchupMap = new Map<string, { games: number, wins: number, goldDiff: number, csDiff: number, killDiff: number }>();
+    const matchupItemsMap = new Map<string, Map<number, number>>();
 
     championMatches.forEach(m => {
         const p = m.info.participants.find((p: any) => p.puuid === puuid);
@@ -142,6 +146,18 @@ export async function getChampionStats(puuid: string, championName: string): Pro
             current.killDiff += (p.kills - opponent.kills);
             
             matchupMap.set(opponentName, current);
+
+            // Item Collection
+             if (!matchupItemsMap.has(opponentName)) {
+                 matchupItemsMap.set(opponentName, new Map());
+             }
+             const itemCounts = matchupItemsMap.get(opponentName)!;
+             
+             [p.item0, p.item1, p.item2, p.item3, p.item4, p.item5].forEach(itemId => {
+                 if (itemId > 0) {
+                     itemCounts.set(itemId, (itemCounts.get(itemId) || 0) + 1);
+                 }
+             });
         }
 
         // Power Spikes
@@ -161,15 +177,28 @@ export async function getChampionStats(puuid: string, championName: string): Pro
     const games = championMatches.length;
     
     // Process Matchups
-    const matchups: MatchupStat[] = Array.from(matchupMap.entries()).map(([name, data]) => ({
-        opponentChampion: name,
-        games: data.games,
-        wins: data.wins,
-        winRate: Math.round((data.wins / data.games) * 100),
-        goldDiff: Math.round(data.goldDiff / data.games),
-        csDiff: Math.round(data.csDiff / data.games),
-        killDiff: parseFloat((data.killDiff / data.games).toFixed(1))
-    })).sort((a, b) => b.games - a.games);
+    const matchups: MatchupStat[] = Array.from(matchupMap.entries()).map(([name, data]) => {
+        // Top 3 items
+        const itemMap = matchupItemsMap.get(name);
+        let keyItems: number[] = [];
+        if (itemMap) {
+            keyItems = Array.from(itemMap.entries())
+                .sort((a, b) => b[1] - a[1]) // Sort by frequency
+                .slice(0, 3) // Top 3
+                .map(entry => entry[0]);
+        }
+        
+        return {
+            opponentChampion: name,
+            games: data.games,
+            wins: data.wins,
+            winRate: Math.round((data.wins / data.games) * 100),
+            goldDiff: Math.round(data.goldDiff / data.games),
+            csDiff: Math.round(data.csDiff / data.games),
+            killDiff: parseFloat((data.killDiff / data.games).toFixed(1)),
+            keyItems: keyItems
+        };
+    }).sort((a, b) => b.games - a.games);
 
     return {
         championName: championName,
