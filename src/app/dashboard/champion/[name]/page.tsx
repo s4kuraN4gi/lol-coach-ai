@@ -2,6 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { getChampionStats } from "@/app/actions/champion";
 import { getActiveSummoner } from "@/app/actions/profile";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 export default async function ChampionPage({ params }: { params: Promise<{ name: string }> }) {
     const { name } = await params;
@@ -33,6 +34,10 @@ export default async function ChampionPage({ params }: { params: Promise<{ name:
     if (!stats) {
         return (
             <div className="p-8">
+                <Link href="/dashboard" className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-4 group">
+                    <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                    Back to Dashboard
+                </Link>
                 <h1 className="text-3xl font-bold text-slate-100 mb-4">{decodeURIComponent(name)}</h1>
                 <div className="p-4 bg-slate-900/50 border border-slate-700 rounded-lg text-slate-400">
                     No recent data found for this champion in the last 50 matches.
@@ -43,6 +48,14 @@ export default async function ChampionPage({ params }: { params: Promise<{ name:
 
     return (
         <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-6">
+            {/* Navigation */}
+            <div>
+                <Link href="/dashboard" className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors group">
+                    <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                    Back to Dashboard
+                </Link>
+            </div>
+
             {/* Header / Summary */}
             <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-6 relative overflow-hidden group">
                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
@@ -143,26 +156,49 @@ export default async function ChampionPage({ params }: { params: Promise<{ name:
                          <h3 className="font-bold text-slate-100">Power Spikes</h3>
                     </div>
                     <div className="flex items-end justify-between h-32 gap-2 mt-2">
-                        {/* Early */}
-                         <div className="flex flex-col items-center gap-1 w-1/3 group">
-                            <div className="relative w-full bg-slate-800 rounded-t-lg transition-all group-hover:bg-slate-700" style={{ height: `${stats.spikes.earlyGame}%` }}>
-                                <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-300 opacity-0 group-hover:opacity-100">{stats.spikes.earlyGame}%</div>
+                         {/* Early */}
+                         <div className="flex flex-col items-center gap-1 w-1/3 group h-full justify-end">
+                            <div className="relative w-full bg-slate-800/50 rounded-t-lg transition-all" style={{ height: '100%' }}>
+                                <div className="absolute bottom-0 w-full bg-blue-500/50 rounded-t-lg transition-all group-hover:bg-blue-400/60" style={{ height: `${stats.spikes.earlyGame.winRate}%` }}>
+                                     <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-300 opacity-0 group-hover:opacity-100 whitespace-nowrap z-20">
+                                         {stats.spikes.earlyGame.winRate}% ({stats.spikes.earlyGame.games}G)
+                                     </div>
+                                </div>
+                                {stats.spikes.earlyGame.games === 0 && (
+                                    <div className="absolute inset-0 flex items-center justify-center text-[10px] text-slate-600">No Data</div>
+                                )}
                             </div>
-                            <span className="text-xs text-slate-500 font-medium">0-25m</span>
+                            <span className="text-xs text-slate-500 font-medium mt-1">0-25m</span>
                          </div>
+
                          {/* Mid */}
-                         <div className="flex flex-col items-center gap-1 w-1/3 group">
-                             <div className="relative w-full bg-slate-800 rounded-t-lg transition-all group-hover:bg-slate-700" style={{ height: `${stats.spikes.midGame}%` }}>
-                                 <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-300 opacity-0 group-hover:opacity-100">{stats.spikes.midGame}%</div>
+                         <div className="flex flex-col items-center gap-1 w-1/3 group h-full justify-end">
+                             <div className="relative w-full bg-slate-800/50 rounded-t-lg transition-all" style={{ height: '100%' }}>
+                                <div className="absolute bottom-0 w-full bg-purple-500/50 rounded-t-lg transition-all group-hover:bg-purple-400/60" style={{ height: `${stats.spikes.midGame.winRate}%` }}>
+                                     <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-300 opacity-0 group-hover:opacity-100 whitespace-nowrap z-20">
+                                         {stats.spikes.midGame.winRate}% ({stats.spikes.midGame.games}G)
+                                     </div>
+                                </div>
+                                {stats.spikes.midGame.games === 0 && (
+                                    <div className="absolute inset-0 flex items-center justify-center text-[10px] text-slate-600">No Data</div>
+                                )}
                              </div>
-                            <span className="text-xs text-slate-500 font-medium">25-35m</span>
+                            <span className="text-xs text-slate-500 font-medium mt-1">25-35m</span>
                          </div>
+
                          {/* Late */}
-                         <div className="flex flex-col items-center gap-1 w-1/3 group">
-                             <div className="relative w-full bg-slate-800 rounded-t-lg transition-all group-hover:bg-slate-700" style={{ height: `${stats.spikes.lateGame}%` }}>
-                                 <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-300 opacity-0 group-hover:opacity-100">{stats.spikes.lateGame}%</div>
+                         <div className="flex flex-col items-center gap-1 w-1/3 group h-full justify-end">
+                             <div className="relative w-full bg-slate-800/50 rounded-t-lg transition-all" style={{ height: '100%' }}>
+                                <div className="absolute bottom-0 w-full bg-red-500/50 rounded-t-lg transition-all group-hover:bg-red-400/60" style={{ height: `${stats.spikes.lateGame.winRate}%` }}>
+                                     <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-300 opacity-0 group-hover:opacity-100 whitespace-nowrap z-20">
+                                         {stats.spikes.lateGame.winRate}% ({stats.spikes.lateGame.games}G)
+                                     </div>
+                                </div>
+                                {stats.spikes.lateGame.games === 0 && (
+                                    <div className="absolute inset-0 flex items-center justify-center text-[10px] text-slate-600">No Data</div>
+                                )}
                              </div>
-                            <span className="text-xs text-slate-500 font-medium">35m+</span>
+                            <span className="text-xs text-slate-500 font-medium mt-1">35m+</span>
                          </div>
                     </div>
                 </div>
