@@ -59,6 +59,22 @@ export default function SurvivalWidget({ stats }: { stats: UniqueStats | null })
                      </div>
                 </div>
             </div>
+
+            {/* CS @ 10 Min */}
+            <div className="mt-2 pt-2 border-t border-slate-700/50">
+                <div className="flex justify-between items-end mb-1">
+                    <span className="text-[10px] uppercase font-bold text-slate-400">CS @ 10min</span>
+                    <span className="text-xs font-mono text-slate-300">
+                        Avg: <span className="font-bold text-white">{stats.survival.csAt10}</span> <span className="text-[10px] text-slate-500">/ Ideal 80</span>
+                    </span>
+                </div>
+                <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                    <div 
+                        className="bg-blue-500 h-full rounded-full" 
+                        style={{ width: `${Math.min(100, (stats.survival.csAt10 / 80) * 100)}%` }}
+                    ></div>
+                </div>
+            </div>
         </DashboardCard>
     );
 }
