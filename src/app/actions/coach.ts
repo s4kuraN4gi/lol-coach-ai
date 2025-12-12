@@ -15,8 +15,8 @@ export type CoachingInsight = {
     advice: string;
 };
 
-// Fallback sequence: Most standard -> Legacy standard -> Experimental
-const MODELS_TO_TRY = ["gemini-1.5-flash", "gemini-1.5-flash-001", "gemini-pro", "gemini-2.0-flash-exp"];
+// Fallback sequence: Stable 2.0 -> New 2.5 -> Legacy Standard
+const MODELS_TO_TRY = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash", "gemini-pro"];
 
 export async function analyzeMatchTimeline(matchId: string, puuid: string, userApiKey?: string): Promise<{ success: boolean, insights?: CoachingInsight[], error?: string }> {
     const supabase = await createClient();
@@ -145,6 +145,9 @@ export async function analyzeMatchTimeline(matchId: string, puuid: string, userA
         let lastError = null;
         let insights: CoachingInsight[] | null = null;
 
+        // Try primary model first (manually instantiated for clarity in loop)
+        // Actually, the loop handles everything.
+        
         for (const modelName of MODELS_TO_TRY) {
             try {
                 console.log(`Trying Gemini Model: ${modelName}`);
@@ -159,8 +162,6 @@ export async function analyzeMatchTimeline(matchId: string, puuid: string, userA
             } catch (e: any) {
                 console.warn(`Model ${modelName} failed:`, e.message);
                 lastError = e;
-                // If it's a rate limit (429), we might want to stop or continue? 
-                // Usually retry with different model is okay if quota is separate.
                 continue;
             }
         }
