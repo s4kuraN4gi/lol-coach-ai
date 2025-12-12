@@ -27,6 +27,11 @@ export default function CoachPage() {
     const [insights, setInsights] = useState<CoachingInsight[] | null>(null);
     const [isAnalyzing, startTransition] = useTransition();
     const [puuid, setPuuid] = useState<string | null>(null);
+    
+    // Manual Input State
+    const [riotId, setRiotId] = useState("");
+    const [tagLine, setTagLine] = useState("");
+    const [showManualInput, setShowManualInput] = useState(false);
 
     // Initial Load
     useEffect(() => {
@@ -34,38 +39,65 @@ export default function CoachPage() {
             setLoadingIds(true);
             const supabase = createClient();
             const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return; // Should redirect
+            if (!user) return; 
 
-            // Fetch PUUID (Mock or Real) - In real app, fetch from Supabase profile or Riot Account
-            // 1. Get User Config from Supabase
-            const { data: profile } = await supabase.from('user_configs').select('puuid').eq('user_id', user.id).single();
+            // 1. Try to Get User Config from Supabase
+            const { data: profile, error } = await supabase.from('user_configs').select('puuid').eq('user_id', user.id).single();
             
             if (profile?.puuid) {
-                setPuuid(profile.puuid);
-                const idsRes = await fetchMatchIds(profile.puuid, 10);
-                if (idsRes.success && idsRes.data) {
-                    // Fetch details for summary
-                    const summaries = await Promise.all(idsRes.data.map(async (id) => {
-                         const detail = await fetchMatchDetail(id);
-                         if (!detail.success || !detail.data) return null;
-                         const m = detail.data;
-                         const p = m.info.participants.find((p: any) => p.puuid === profile.puuid);
-                         return {
-                             matchId: id,
-                             championName: p.championName,
-                             win: p.win,
-                             kda: `${p.kills}/${p.deaths}/${p.assists}`,
-                             timestamp: m.info.gameStartTimestamp,
-                             queueId: m.info.queueId
-                         } as MatchSummary;
-                    }));
-                    setMatches(summaries.filter(Boolean) as MatchSummary[]);
-                }
+                await fetchMatchesForPuuid(profile.puuid);
+            } else {
+                console.warn("User config not found or empty:", error);
+                setShowManualInput(true);
+                setLoadingIds(false);
             }
-            setLoadingIds(false);
         }
         loadMatches();
     }, []);
+
+    async function fetchMatchesForPuuid(targetPuuid: string) {
+        setPuuid(targetPuuid);
+        setLoadingIds(true);
+        const idsRes = await fetchMatchIds(targetPuuid, 10);
+        
+        if (idsRes.success && idsRes.data) {
+            const summaries = await Promise.all(idsRes.data.map(async (id) => {
+                 const detail = await fetchMatchDetail(id);
+                 if (!detail.success || !detail.data) return null;
+                 const m = detail.data;
+                 const p = m.info.participants.find((p: any) => p.puuid === targetPuuid);
+                 if (!p) return null;
+                 return {
+                     matchId: id,
+                     championName: p.championName,
+                     win: p.win,
+                     kda: `${p.kills}/${p.deaths}/${p.assists}`,
+                     timestamp: m.info.gameStartTimestamp,
+                     queueId: m.info.queueId
+                 } as MatchSummary;
+            }));
+            setMatches(summaries.filter(Boolean) as MatchSummary[]);
+            setShowManualInput(false);
+        } else {
+             // If fetch fails (e.g. wrong region or API error), show manual input
+             setShowManualInput(true);
+        }
+        setLoadingIds(false);
+    }
+
+    const handleManualSubmit = async () => {
+         if (!riotId || !tagLine) return;
+         setLoadingIds(true);
+         // Import action dynamically to avoid top-level issues
+         const { fetchRiotAccount } = await import("@/app/actions/riot");
+         const account = await fetchRiotAccount(riotId, tagLine);
+         if (account && account.puuid) {
+             await fetchMatchesForPuuid(account.puuid);
+         } else {
+             alert("Summoner not found. Please check Game Name + Tag Line.");
+             setLoadingIds(false);
+         }
+    };
 
     // YouTube Embed Logic
     useEffect(() => {
@@ -149,8 +181,38 @@ export default function CoachPage() {
                     {/* Left: Match Selection & Video (8 Cols) */}
                     <div className="col-span-8 flex flex-col gap-4 h-full overflow-y-auto pr-2">
                         
+                        {/* Step 0: Manual Input (If Profile Missing) */}
+                        {showManualInput && !selectedMatch && (
+                            <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 mb-4">
+                                <h2 className="text-xl font-bold text-slate-200 mb-4">Search Summoner</h2>
+                                <div className="flex gap-4">
+                                    <input 
+                                        type="text" 
+                                        placeholder="Game Name" 
+                                        className="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white"
+                                        value={riotId}
+                                        onChange={e => setRiotId(e.target.value)}
+                                    />
+                                    <input 
+                                        type="text" 
+                                        placeholder="#TAG" 
+                                        className="bg-slate-950 border border-slate-700 rounded px-3 py-2 text-white w-24"
+                                        value={tagLine}
+                                        onChange={e => setTagLine(e.target.value.replace('#',''))}
+                                    />
+                                    <button 
+                                        onClick={handleManualSubmit}
+                                        disabled={loadingIds}
+                                        className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded font-bold transition disabled:opacity-50"
+                                    >
+                                        {loadingIds ? "Searching..." : "Search"}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Step 1: Select Match (If none selected) */}
-                        {!selectedMatch && (
+                        {!selectedMatch && !showManualInput && (
                             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
                                 <h2 className="text-xl font-bold text-slate-200 mb-4">Select a Match to Analyze</h2>
                                 {loadingIds ? (
