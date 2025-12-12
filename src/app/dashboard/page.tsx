@@ -251,7 +251,12 @@ export default function DashboardPage() {
 
         {/* Row 1: Profile & LP Widget */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-            <ProfileCard summoner={activeSummoner} />
+            <ProfileCard summoner={{
+                name: activeSummoner.summoner_name,
+                tagLine: activeSummoner.tag_line,
+                profileIconId: activeSummoner.profile_icon_id || 29,
+                summonerLevel: activeSummoner.summoner_level || 0
+            }} />
 
             {matchesLoaded ? (
                 <LPWidget rank={displayedRank} recentMatches={stats?.recentMatches || []} />
