@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { getChampionStats } from "@/app/actions/champion";
+import { getActiveSummoner } from "@/app/actions/profile";
 import { redirect } from "next/navigation";
 
 export default async function ChampionPage({ params }: { params: { name: string } }) {
@@ -10,14 +11,9 @@ export default async function ChampionPage({ params }: { params: { name: string 
         redirect("/login");
     }
 
-    // Attempt to get PUUID from DB (Primary Source)
-    const { data: summoner } = await supabase
-        .from('summoner_accounts')
-        .select('puuid')
-        .eq('user_id', user.id)
-        .single();
-
-    const puuid = summoner?.puuid || user.user_metadata?.puuid;
+    // Use centralized logic to get the active summoner
+    const activeSummoner = await getActiveSummoner();
+    const puuid = activeSummoner?.puuid;
 
     if (!puuid) {
          return (
