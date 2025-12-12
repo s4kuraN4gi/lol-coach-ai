@@ -38,6 +38,10 @@ export default function CoachPage() {
     const [ytPlayer, setYtPlayer] = useState<any>(null); 
     const localVideoRef = useRef<HTMLVideoElement>(null);
 
+    // Debug State
+    const [showDebugModal, setShowDebugModal] = useState(false);
+    const [debugLog, setDebugLog] = useState("");
+
     // Fetch Matches logic
     const loadMatches = useCallback(async () => {
         if (!activeSummoner?.puuid) return;
@@ -47,6 +51,7 @@ export default function CoachPage() {
         const idsRes = await fetchMatchIds(puuid, 10);
         
         if (idsRes.success && idsRes.data) {
+            // ... existing match logic ...
             const summaries = await Promise.all(idsRes.data.map(async (id) => {
                  const detail = await fetchMatchDetail(id);
                  if (!detail.success || !detail.data) return null;
@@ -237,11 +242,12 @@ export default function CoachPage() {
                                                 const { listAvailableModels } = await import("@/app/actions/debug_gemini");
                                                 const res = await listAvailableModels();
                                                 if (res.error) {
-                                                    alert("Error: " + res.error);
+                                                    setDebugLog("Error: " + res.error);
                                                 } else {
                                                     const names = res.models.map((m: any) => m.name).join("\n");
-                                                    alert("Available Models:\n" + names);
+                                                    setDebugLog("Available Models:\n" + names);
                                                 }
+                                                setShowDebugModal(true);
                                             }}
                                             className="text-[10px] text-slate-600 hover:text-slate-400 underline"
                                         >
@@ -383,6 +389,37 @@ export default function CoachPage() {
                     </div>
                 </div>
             </div>
+            {/* Debug Modal */}
+            {showDebugModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+                    <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 max-w-lg w-full shadow-2xl">
+                        <h3 className="text-xl font-bold text-white mb-4">Available Gemini Models</h3>
+                        <textarea 
+                            className="w-full h-64 bg-slate-950 text-slate-300 font-mono text-xs p-4 rounded border border-slate-800 focus:outline-none mb-4"
+                            readOnly
+                            value={debugLog}
+                        />
+                        <div className="flex justify-end gap-2">
+                             <button 
+                                onClick={() => {
+                                    navigator.clipboard.writeText(debugLog);
+                                    alert("Copied to clipboard!");
+                                }}
+                                className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded font-bold text-sm"
+                            >
+                                Copy All
+                            </button>
+                            <button 
+                                onClick={() => setShowDebugModal(false)}
+                                className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded font-bold text-sm"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* YouTube API Type Declaration */}
             <script dangerouslySetInnerHTML={{__html: `
                 var tag = document.createElement('script');
