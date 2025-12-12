@@ -68,12 +68,11 @@ export default function CoachPage() {
     }, [activeSummoner]);
 
     useEffect(() => {
-        if (activeSummoner) {
-            loadMatches();
-        } else if (!summonerLoading) {
-            setLoadingIds(false);
-        }
-    }, [activeSummoner, summonerLoading, loadMatches]);
+        // DEBUG: List models
+        import("@/app/actions/debug_gemini").then(mod => mod.listAvailableModels());
+
+        async function loadMatches() {
+            setLoadingIds(true);
 
 
     // YouTube Embed Logic
