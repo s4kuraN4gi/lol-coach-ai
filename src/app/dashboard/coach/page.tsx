@@ -267,7 +267,7 @@ export default function CoachPage() {
                                     <div className={`absolute left-0 top-0 bottom-0 w-1 ${
                                         insight.type === 'MISTAKE' ? 'bg-red-500' : 
                                         insight.type === 'GOOD_PLAY' ? 'bg-green-500' : 
-                                        insight.type === 'TURRET_PLATE_DESTROYED' /* TURNING_POINT typo fix */ || insight.type === 'TURNING_POINT' ? 'bg-amber-500' : 'bg-blue-500'
+                                        insight.type === 'TURNING_POINT' ? 'bg-amber-500' : 'bg-blue-500'
                                     }`}></div>
                                     
                                     <div className="flex justify-between items-start mb-2 pl-3">
