@@ -14,7 +14,7 @@ import LaningPhaseWidget from "./widgets/LaningPhaseWidget";
 import ClutchWidget from "./widgets/ClutchWidget";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-
+import AdSenseBanner from "../Components/ads/AdSenseBanner";
 
 import { useSummoner } from "../Providers/SummonerProvider";
 import { useAuth } from "../Providers/AuthProvider";
@@ -248,6 +248,10 @@ export default function DashboardPage() {
             </div>
         </div>
 
+        {/* AdSense Top Banner */}
+        <div className="mb-6 flex justify-center">
+             <AdSenseBanner className="w-full max-w-[728px] h-[90px] bg-slate-800/30 rounded" />
+        </div>
 
         {/* Row 1: Profile & LP Widget */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
@@ -297,6 +301,12 @@ export default function DashboardPage() {
                 </>
             )}
         </div>
+
+        {/* AdSense Bottom Banner */}
+        <div className="mt-8 flex justify-center">
+             <AdSenseBanner className="w-full max-w-[728px] h-[90px] bg-slate-800/30 rounded" />
+        </div>
+
       </DashboardLayout>
     </>
   );

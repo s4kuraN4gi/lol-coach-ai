@@ -10,6 +10,7 @@ import StatsSkeleton from "../components/skeletons/StatsSkeleton";
 import PlanStatusBadge from "@/app/Components/subscription/PlanStatusBadge";
 import PremiumFeatureGate from "@/app/Components/subscription/PremiumFeatureGate";
 import { getAnalysisStatus, type AnalysisStatus } from "@/app/actions/analysis";
+import AdSenseBanner from "@/app/Components/ads/AdSenseBanner";
 
 type HistoryItem = {
     matchId: string;
@@ -218,6 +219,11 @@ export default function StatsPage() {
                      />
                  </div>
 
+                 {/* AdSense Top Banner */}
+                 <div className="mb-6 flex justify-center">
+                      <AdSenseBanner className="w-full max-w-[728px] h-[90px] bg-slate-800/30 rounded" />
+                 </div>
+
                 {/* Premium Gated Stats */}
                 <PremiumFeatureGate
                     isPremium={isPremium}
@@ -341,6 +347,11 @@ export default function StatsPage() {
                         No matches found for this filter.
                     </div>
                 )}
+                
+                {/* AdSense Bottom Banner */}
+                <div className="mt-8 flex justify-center">
+                     <AdSenseBanner className="w-full max-w-[728px] h-[90px] bg-slate-800/30 rounded" />
+                </div>
              </div>
         </DashboardLayout>
     )
