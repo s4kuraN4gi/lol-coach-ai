@@ -389,37 +389,6 @@ export default function CoachPage() {
                     </div>
                 </div>
             </div>
-            {/* Debug Modal */}
-            {showDebugModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-                    <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 max-w-lg w-full shadow-2xl">
-                        <h3 className="text-xl font-bold text-white mb-4">Available Gemini Models</h3>
-                        <textarea 
-                            className="w-full h-64 bg-slate-950 text-slate-300 font-mono text-xs p-4 rounded border border-slate-800 focus:outline-none mb-4"
-                            readOnly
-                            value={debugLog}
-                        />
-                        <div className="flex justify-end gap-2">
-                             <button 
-                                onClick={() => {
-                                    navigator.clipboard.writeText(debugLog);
-                                    alert("Copied to clipboard!");
-                                }}
-                                className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded font-bold text-sm"
-                            >
-                                Copy All
-                            </button>
-                            <button 
-                                onClick={() => setShowDebugModal(false)}
-                                className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded font-bold text-sm"
-                            >
-                                Close
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
             {/* YouTube API Type Declaration */}
             <script dangerouslySetInnerHTML={{__html: `
                 var tag = document.createElement('script');
