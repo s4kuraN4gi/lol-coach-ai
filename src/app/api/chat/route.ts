@@ -29,7 +29,12 @@ export async function POST(req: Request) {
             return Response.json({ error: "Profile not found" }, { status: 404 });
         }
 
-        // Limit Logic
+        // 1. Strict Premium Check (Pattern A: Block completely if not premium)
+        if (!profile.is_premium) {
+             return Response.json({ error: "Chat feature is locked for Free Tier users." }, { status: 403 });
+        }
+
+        // 2. Limit Logic (Even for Premium Users to prevent abuse)
         const today = new Date().toISOString().split('T')[0];
         const lastReset = profile.last_chat_reset ? profile.last_chat_reset.split('T')[0] : null;
 
@@ -39,7 +44,7 @@ export async function POST(req: Request) {
             currentCount = 0;
         }
 
-        // Check Limit (50/day)
+        // Check Limit (50/day) - Can be increased for Premium if needed, but keeping safe for now
         const DAILY_LIMIT = 50;
         if (currentCount >= DAILY_LIMIT) {
              return Response.json({ 
@@ -48,7 +53,7 @@ export async function POST(req: Request) {
              }, { status: 429 });
         }
 
-        // 2. Call Gemini API
+        // 3. Call Gemini API
         const systemPrompt = `
 あなたはLeague of Legendsの上位プレイヤー兼プロコーチ「Rion」です。
 対象プレイヤーはゴールド〜ダイヤ帯。
@@ -83,7 +88,7 @@ export async function POST(req: Request) {
         const response = result.response;
         const advice = response.text();
 
-        // 3. Increment Limit in Background (Non-blocking usually, but await for safety here)
+        // 4. Increment Limit in Background
         await supabase.from("profiles").update({
             daily_chat_count: currentCount + 1,
             last_chat_reset: new Date().toISOString()

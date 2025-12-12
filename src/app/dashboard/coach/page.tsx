@@ -3,9 +3,9 @@
 import { useState, useEffect, useTransition, useCallback, useRef } from "react";
 import DashboardLayout from "../../Components/layout/DashboardLayout";
 import { fetchMatchIds, fetchMatchDetail } from "@/app/actions/riot";
-import { analyzeMatchTimeline, CoachingInsight } from "@/app/actions/coach";
+import { analyzeMatchTimeline, CoachingInsight, AnalysisFocus } from "@/app/actions/coach";
 import { useSummoner } from "../../Providers/SummonerProvider";
-import { getAnalysisStatus, type AnalysisStatus, upgradeToPremium } from "@/app/actions/analysis";
+import { getAnalysisStatus, type AnalysisStatus, upgradeToPremium, claimDailyReward } from "@/app/actions/analysis";
 import PlanStatusBadge from "../../Components/subscription/PlanStatusBadge";
 import PremiumPromoCard from "../../Components/subscription/PremiumPromoCard";
 import AdSenseBanner from "../../Components/ads/AdSenseBanner";
@@ -31,6 +31,15 @@ export default function CoachPage() {
     const [insights, setInsights] = useState<CoachingInsight[] | null>(null);
     const [status, setStatus] = useState<AnalysisStatus | null>(null); // Premium Status
     const [isAnalyzing, startTransition] = useTransition();
+
+    // Analysis Focus State
+    const [focusArea, setFocusArea] = useState<string>("MACRO");
+    const [focusTime, setFocusTime] = useState<string>("");
+    const [specificQuestion, setSpecificQuestion] = useState<string>("");
+
+    // Reward Ad State
+    const [rewardAdOpen, setRewardAdOpen] = useState(false);
+    const [rewardLoading, setRewardLoading] = useState(false);
 
     // Progress State
     const [loading, setLoading] = useState(false);
@@ -164,7 +173,13 @@ export default function CoachPage() {
                 setProgress(prev => Math.min(prev + 5, 90));
             }, 500);
 
-            const res = await analyzeMatchTimeline(selectedMatch.matchId, currentPuuid);
+            const focus: AnalysisFocus = {
+                focusArea,
+                focusTime,
+                specificQuestion
+            };
+
+            const res = await analyzeMatchTimeline(selectedMatch.matchId, currentPuuid, undefined, focus);
             
             clearInterval(interval);
             setProgress(100);
@@ -317,82 +332,128 @@ export default function CoachPage() {
                                             </label>
                                         )}
                                     </div>
+                                </div>
 
-                                    <div className="h-6 w-px bg-slate-700"></div>
-                                    
-                                    <div className="w-56">
-                                        {isAnalyzing ? (
-                                            <div className="relative w-full h-10 bg-slate-800 rounded overflow-hidden border border-slate-700 transition">
-                                                <div 
-                                                    className="absolute top-0 left-0 h-full bg-blue-600/50 transition-all duration-300 ease-out"
-                                                    style={{ width: `${progress}%` }}
-                                                ></div>
-                                                <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white z-10">
-                                                    AI分析中... {progress}%
-                                                </div>
+                                {/* Analysis Setup Panel (Structured Prompt) */}
+                                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+                                    <div className="flex flex-col md:flex-row gap-4">
+                                        {/* Left: Inputs */}
+                                        <div className="flex-1 grid grid-cols-2 gap-4">
+                                            <div className="col-span-2 md:col-span-1">
+                                                <label className="text-xs text-slate-400 font-bold block mb-1">注目エリア (Focus Area)</label>
+                                                <select
+                                                    value={focusArea}
+                                                    onChange={(e) => setFocusArea(e.target.value)}
+                                                    className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-blue-500 outline-none"
+                                                >
+                                                    <option value="MACRO">🗺 マクロ (運営・判断)</option>
+                                                    <option value="LANING">⚔️ レーニング (対面意識)</option>
+                                                    <option value="TEAMFIGHT">💥 集団戦 (立ち位置)</option>
+                                                    <option value="BUILD">🛡 ビルド・アイテム選択</option>
+                                                    <option value="VISION">👁 視界・ワード</option>
+                                                </select>
                                             </div>
-                                        ) : (
-                                            (() => {
-                                                // Access Logic: Premium OR has credits
-                                                // If Premium: status.is_premium (True)
-                                                // If Free: status.analysis_credits > 0
-                                                const isPremium = status?.is_premium;
-                                                const credits = status?.analysis_credits ?? 0;
-                                                const hasCredits = credits > 0;
-                                                const canAnalyze = isPremium || hasCredits;
-                                                
-                                                return (
-                                                    <button 
-                                                        onClick={() => {
-                                                            if (canAnalyze) {
-                                                                runAnalysis();
-                                                            } else {
-                                                                // Upgrade Flow
-                                                                if (confirm("【モック】プレミアムプラン(月額980円)に登録して、無制限のAIコーチングを解除しますか？")) {
-                                                                    startTransition(async () => {
-                                                                        const res = await upgradeToPremium();
-                                                                        if (res.success) {
-                                                                            alert("プレミアムプランに登録しました！");
-                                                                            const newStatus = await getAnalysisStatus();
-                                                                            if (newStatus) setStatus(newStatus);
+                                            <div className="col-span-2 md:col-span-1">
+                                                <label className="text-xs text-slate-400 font-bold block mb-1">時間 (任意)</label>
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="例: 12:30" 
+                                                    className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-blue-500 outline-none"
+                                                    value={focusTime}
+                                                    onChange={(e) => setFocusTime(e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="col-span-2">
+                                                <label className="text-xs text-slate-400 font-bold block mb-1">具体的な悩み・質問 (任意)</label>
+                                                <input 
+                                                    type="text"
+                                                    placeholder={
+                                                        focusArea === 'LANING' ? "例: 相手のガンクが多すぎて勝てなかった..." :
+                                                        focusArea === 'TEAMFIGHT' ? "例: ADCとしての立ち位置がわからなかった..." :
+                                                        "例: 相手の構成に対してどうビルドすべきだった？"
+                                                    }
+                                                    className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-blue-500 outline-none"
+                                                    value={specificQuestion}
+                                                    onChange={(e) => setSpecificQuestion(e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Right: Action Button (Preserving Logic) */}
+                                        <div className="w-full md:w-56 flex flex-col justify-end">
+                                            {isAnalyzing ? (
+                                                <div className="relative w-full h-10 bg-slate-800 rounded overflow-hidden border border-slate-700 transition">
+                                                    <div 
+                                                        className="absolute top-0 left-0 h-full bg-blue-600/50 transition-all duration-300 ease-out"
+                                                        style={{ width: `${progress}%` }}
+                                                    ></div>
+                                                    <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white z-10">
+                                                        AI分析中... {progress}%
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                (() => {
+                                                    const isPremium = status?.is_premium;
+                                                    const credits = status?.analysis_credits ?? 0;
+                                                    const hasCredits = credits > 0;
+                                                    const canAnalyze = isPremium || hasCredits;
+                                                    
+                                                    const canClaimReward = !!status && !status.is_premium && 
+                                                        (!status.last_reward_ad_date || new Date().toDateString() !== new Date(status.last_reward_ad_date).toDateString());
+
+                                                    return (
+                                                        <div className="flex flex-col gap-2 w-full">
+                                                            <button 
+                                                                onClick={() => {
+                                                                    if (canAnalyze) {
+                                                                        runAnalysis();
+                                                                    } else {
+                                                                        if (confirm("【モック】プレミアムプラン(月額980円)に登録しますか？")) {
+                                                                            startTransition(async () => {
+                                                                                const res = await upgradeToPremium();
+                                                                                if (res.success) {
+                                                                                    alert("プレミアムプランに登録しました！");
+                                                                                    const newStatus = await getAnalysisStatus();
+                                                                                    if (newStatus) setStatus(newStatus);
+                                                                                }
+                                                                            });
                                                                         }
-                                                                    });
-                                                                }
-                                                            }
-                                                        }}
-                                                        disabled={isAnalyzing || !videoReady}
-                                                        className={`w-full px-4 py-2.5 rounded font-bold text-sm transition shadow-lg whitespace-nowrap flex items-center justify-center gap-2 group
-                                                            ${!videoReady 
-                                                                ? "bg-slate-800 text-slate-500 cursor-not-allowed"
-                                                                : canAnalyze
-                                                                    ? isPremium 
-                                                                        ? "bg-purple-600 hover:bg-purple-500 text-white shadow-purple-500/20"
-                                                                        : "bg-gradient-to-r from-blue-600 to-cyan-500 text-white hover:scale-105 shadow-cyan-500/20"
-                                                                    : "bg-slate-700 text-slate-400 cursor-not-allowed border border-slate-600"
-                                                            }
-                                                        `}
-                                                    >
-                                                        {isPremium ? (
-                                                            <>
-                                                                <span>🧠</span> 
-                                                                動画分析開始
-                                                            </>
-                                                        ) : hasCredits ? (
-                                                            <>
-                                                                <span>🎫</span> 
-                                                                動画分析 (残り: {credits}/3)
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <span className="text-lg group-hover:rotate-12 transition-transform">💎</span> 
-                                                                PREMIUMで分析 
-                                                                <span className="text-xs bg-black/20 px-1.5 py-0.5 rounded ml-1">LOCK</span>
-                                                            </>
-                                                        )}
-                                                    </button>
-                                                );
-                                            })()
-                                        )}
+                                                                    }
+                                                                }}
+                                                                disabled={!videoReady}
+                                                                className={`w-full px-4 py-2.5 rounded font-bold text-sm transition shadow-lg whitespace-nowrap flex items-center justify-center gap-2 group h-10
+                                                                    ${!videoReady 
+                                                                        ? "bg-slate-800 text-slate-500 cursor-not-allowed"
+                                                                        : canAnalyze
+                                                                            ? isPremium 
+                                                                                ? "bg-purple-600 hover:bg-purple-500 text-white shadow-purple-500/20"
+                                                                                : "bg-gradient-to-r from-blue-600 to-cyan-500 text-white hover:scale-105 shadow-cyan-500/20"
+                                                                            : "bg-slate-700 text-slate-400 cursor-not-allowed border border-slate-600"
+                                                                    }
+                                                                `}
+                                                            >
+                                                                {isPremium ? (
+                                                                    <span>🧠 分析開始</span>
+                                                                ) : hasCredits ? (
+                                                                    <span>🎫 分析 (残: {credits}/3)</span>
+                                                                ) : (
+                                                                    <span>🔒 PREMIUMで分析</span>
+                                                                )}
+                                                            </button>
+
+                                                            {canClaimReward && (
+                                                                <button
+                                                                    onClick={() => setRewardAdOpen(true)}
+                                                                    className="text-xs text-amber-400 hover:text-amber-300 underline text-center"
+                                                                >
+                                                                    🎥 広告で回復 (+1)
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })()
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
 
@@ -574,6 +635,72 @@ export default function CoachPage() {
                                 style={{ width: `${progress}%` }}
                             ></div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Daily Reward Ad Modal */}
+            {rewardAdOpen && (
+                <div className="fixed inset-0 z-[110] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
+                    <div className="relative w-full max-w-sm bg-slate-900 border border-amber-500/50 rounded-2xl p-6 shadow-[0_0_100px_rgba(245,158,11,0.2)] text-center">
+                        <button 
+                            onClick={() => setRewardAdOpen(false)}
+                            className="absolute top-4 right-4 text-slate-500 hover:text-white"
+                        >
+                            ✕
+                        </button>
+
+                        <div className="mb-6">
+                            <div className="text-5xl mb-2 animate-bounce">🎁</div>
+                            <h3 className="text-2xl font-black text-white italic">DAILY BONUS</h3>
+                            <p className="text-amber-400 text-sm font-bold uppercase tracking-widest">クレジット回復 (+1)</p>
+                        </div>
+
+                        <div className="bg-black/50 rounded-xl p-4 mb-6 border border-slate-800">
+                           <p className="text-slate-400 text-xs mb-2">SPONSORED AD</p>
+                           {/* Mock Ad Image or Banner */}
+                           <div className="w-full aspect-video bg-slate-800 rounded flex items-center justify-center relative overflow-hidden group cursor-pointer">
+                                <img src="/reward_ad_mock.png" alt="Ad" className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-100 transition" />
+                                <div className="absolute bottom-2 right-2 bg-black/60 px-2 py-1 text-[10px] text-white rounded">
+                                    Ad 0:15
+                                </div>
+                           </div>
+                        </div>
+
+                        <button 
+                            onClick={async () => {
+                                setRewardLoading(true);
+                                // Simulation of Ad Watch
+                                await new Promise(r => setTimeout(r, 2000));
+                                
+                                const res = await claimDailyReward();
+                                setRewardLoading(false);
+                                
+                                if (res.success) {
+                                    alert(`クレジットを獲得しました！ (残り: ${res.newCredits})`);
+                                    setRewardAdOpen(false);
+                                    // Refresh status
+                                    getAnalysisStatus().then(setStatus);
+                                } else {
+                                    alert(res.error || "エラーが発生しました。");
+                                }
+                            }}
+                            disabled={rewardLoading}
+                            className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-orange-500/20 active:scale-95 transition flex items-center justify-center gap-2"
+                        >
+                            {rewardLoading ? (
+                                <>
+                                    <span className="animate-spin">↻</span> 処理中...
+                                </>
+                            ) : (
+                                <>
+                                    <span>▶</span> 広告を見て獲得
+                                </>
+                            )}
+                        </button>
+                        <p className="text-[10px] text-slate-500 mt-4">
+                            ※1日1回限定です。広告ブロックが有効な場合、正しく動作しない可能性があります。
+                        </p>
                     </div>
                 </div>
             )}

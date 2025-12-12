@@ -19,6 +19,18 @@ export default function PremiumPromoCard({ initialStatus, onStatusUpdate }: Prop
 
     const isPremium = status?.is_premium;
 
+    // Loading State (Skeleton) - Prevents "Free" flicker
+    if (status === null) {
+        return (
+            <div className="p-6 rounded-xl bg-slate-900 border border-slate-800 animate-pulse relative overflow-hidden h-[200px]">
+                <div className="h-6 w-3/4 bg-slate-800 rounded mb-4"></div>
+                <div className="h-4 w-full bg-slate-800 rounded mb-2"></div>
+                <div className="h-4 w-5/6 bg-slate-800 rounded mb-6"></div>
+                <div className="h-10 w-full bg-slate-800 rounded"></div>
+            </div>
+        )
+    }
+
     const handleUpgrade = () => {
         if (!confirm("【モック】プレミアムプラン(月額980円)に登録しますか？")) return;
     

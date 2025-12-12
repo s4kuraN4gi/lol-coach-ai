@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { getAnalysisStatus, type AnalysisStatus } from "@/app/actions/analysis";
 import DashboardLayout from "../Components/layout/DashboardLayout";
 import LoadingAnimation from "../Components/LoadingAnimation";
+import PremiumFeatureGate from "../Components/subscription/PremiumFeatureGate";
 import { useSummoner } from "../Providers/SummonerProvider";
 import { useRouter } from "next/navigation";
 
@@ -26,6 +28,10 @@ export default function ChatPage() {
   const {activeSummoner, loading} = useSummoner();
   const router = useRouter();
 
+  // Premium Status State
+  const [analysisStatus, setAnalysisStatus] = useState<AnalysisStatus | null>(null);
+  const [loadingStatus, setLoadingStatus] = useState(true);
+
   // user又はaiがロールのメッセージの状態管理
   const [message, setMessage] = useState<
     { role: "user" | "ai"; text: string }[]
@@ -43,6 +49,14 @@ export default function ChatPage() {
   );
 //   自動スクロール用
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+  // Fetch Premium Status
+  useEffect(() => {
+    getAnalysisStatus().then((status) => {
+        setAnalysisStatus(status);
+        setLoadingStatus(false);
+    });
+  }, []);
 
   // 初期表示時
   useEffect(() => {
@@ -65,7 +79,7 @@ export default function ChatPage() {
   },[selectedSession?.message])
 
   // NOTE: Early return must be AFTER all hooks are defined to avoid React Error #310
-  if (loading) {
+  if (loading || loadingStatus) {
      return (
         <DashboardLayout>
             <div className="flex items-center justify-center min-h-[60vh]">
@@ -198,6 +212,11 @@ export default function ChatPage() {
   return (
     //{/* ナビゲーションエリア */}
     <DashboardLayout>
+      <PremiumFeatureGate
+        isPremium={analysisStatus?.is_premium ?? false}
+        title="AI Coaching Chat"
+        description="Chat with our advanced AI Coach to get personalized advice, build discussions, and improve your game knowledge."
+      >
       <div className="flex h-[85vh] gap-6">
         <aside className="w-72 glass-panel p-4 flex flex-col rounded-xl overflow-hidden border border-slate-700/50">
           <div className="flex items-center justify-between mb-4 px-2">
@@ -370,6 +389,7 @@ export default function ChatPage() {
           </div>
         </section>
       </div>
+      </PremiumFeatureGate>
     </DashboardLayout>
   );
 }
