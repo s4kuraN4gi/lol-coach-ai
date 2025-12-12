@@ -172,7 +172,7 @@ export default function CoachPage() {
                         <h1 className="text-3xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-300">
                              AI COACH <span className="text-sm not-italic font-normal text-slate-500 ml-2 border border-slate-700 px-2 rounded">TIMELINE SYNC</span>
                         </h1>
-                        <p className="text-slate-400 text-sm">Sync Riot Match Data with YouTube Replays for instant coaching.</p>
+                        <p className="text-slate-400 text-sm">Riotの試合データとリプレイ動画を同期し、AIが徹底コーチング。</p>
                      </div>
                 </header>
 
@@ -185,16 +185,16 @@ export default function CoachPage() {
                         {/* Step 1: Select Match (If none selected) */}
                         {!selectedMatch && (
                             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
-                                <h2 className="text-xl font-bold text-slate-200 mb-4">Select a Match to Analyze</h2>
+                                <h2 className="text-xl font-bold text-slate-200 mb-4">分析する試合を選択</h2>
                                 
                                 {summonerLoading ? (
-                                    <div className="text-slate-500 animate-pulse">Checking Account...</div>
+                                    <div className="text-slate-500 animate-pulse">アカウント確認中...</div>
                                 ) : !activeSummoner ? (
                                     <div className="text-red-400">
-                                        Account not linked. Please go to Account Settings to link your Riot Account.
+                                        アカウントが連携されていません。設定ページからRiotアカウントを連携してください。
                                     </div>
                                 ) : loadingIds ? (
-                                     <div className="text-slate-500">Loading recent matches for {activeSummoner.summoner_name}...</div>
+                                     <div className="text-slate-500">試合履歴を読み込み中 ({activeSummoner.summoner_name})...</div>
                                 ) : (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {matches.map(m => (
@@ -208,7 +208,7 @@ export default function CoachPage() {
                                                 </div>
                                                 <div>
                                                     <div className={`font-bold ${m.win ? "text-blue-400" : "text-red-400"}`}>
-                                                        {m.win ? "VICTORY" : "DEFEAT"}
+                                                        {m.win ? "勝利 (WIN)" : "敗北 (LOSE)"}
                                                     </div>
                                                     <div className="text-sm text-slate-400">
                                                         {m.championName} • {m.kda} KDA
@@ -234,70 +234,86 @@ export default function CoachPage() {
                                             onClick={() => { setSelectedMatch(null); setInsights(null); setVideoReady(false); setYoutubeUrl(""); setLocalVideoUrl(null); }}
                                             className="text-slate-400 hover:text-white font-bold text-sm"
                                         >
-                                            ← BACK
-                                        </button>
-                                        <button 
-                                            onClick={async () => {
-                                                const { listAvailableModels } = await import("@/app/actions/debug_gemini");
-                                                const res = await listAvailableModels();
-                                                if (res.error) {
-                                                    setDebugLog("Error: " + res.error);
-                                                } else {
-                                                    const names = res.models.map((m: any) => m.name).join("\n");
-                                                    setDebugLog("Available Models:\n" + names);
-                                                }
-                                                setShowDebugModal(true);
-                                            }}
-                                            className="text-[10px] text-slate-600 hover:text-slate-400 underline"
-                                        >
-                                            Debug Models
+                                            ← 戻る
                                         </button>
                                     </div>
                                     <div className="h-6 w-px bg-slate-700"></div>
                                     
                                     {/* Video Input Controls */}
-                                    <div className="flex-1 flex gap-2 overflow-x-auto">
-                                        {/* Option A: YouTube */}
-                                        <div className="flex items-center gap-2 bg-slate-950 rounded px-2 border border-slate-700">
-                                            <span className="text-red-500 text-lg">▶</span>
-                                            <input 
-                                                type="text" 
-                                                placeholder="YouTube URL..." 
-                                                className="bg-transparent text-white w-32 focus:w-64 transition-all outline-none text-sm py-2"
-                                                value={youtubeUrl}
-                                                onChange={(e) => setYoutubeUrl(e.target.value)}
-                                            />
+                                    <div className="flex-1 flex gap-2 overflow-x-auto items-center">
+                                        <div className="flex bg-slate-800 rounded p-1 mr-2">
                                             <button 
-                                                onClick={loadYoutubeVideo}
-                                                disabled={!youtubeUrl}
-                                                className="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded text-white"
+                                                onClick={() => setVideoSourceType("YOUTUBE")}
+                                                className={`px-3 py-1 rounded text-xs font-bold ${videoSourceType === "YOUTUBE" ? "bg-slate-600 text-white" : "text-slate-400"}`}
                                             >
-                                                LOAD
+                                                YouTube
+                                            </button>
+                                            <button 
+                                                onClick={() => setVideoSourceType("LOCAL")}
+                                                className={`px-3 py-1 rounded text-xs font-bold ${videoSourceType === "LOCAL" ? "bg-slate-600 text-white" : "text-slate-400"}`}
+                                            >
+                                                Local File
                                             </button>
                                         </div>
 
-                                        <span className="flex items-center text-slate-500 text-xs font-bold px-1">OR</span>
-
-                                        {/* Option B: Local File */}
-                                        <label className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded cursor-pointer transition whitespace-nowrap">
-                                            <span className="text-lg">📁</span>
-                                            <span className="text-sm font-bold">Select File</span>
-                                            <input 
-                                                type="file" 
-                                                accept="video/*" 
-                                                className="hidden" 
-                                                onChange={handleFileSelect}
-                                            />
-                                        </label>
+                                        {videoSourceType === 'YOUTUBE' ? (
+                                            <div className="flex items-center gap-2 bg-slate-950 rounded px-2 border border-slate-700 flex-1">
+                                                <span className="text-red-500 text-lg">▶</span>
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="YouTube URL..." 
+                                                    className="bg-transparent text-white w-full transition-all outline-none text-sm py-2"
+                                                    value={youtubeUrl}
+                                                    onChange={(e) => setYoutubeUrl(e.target.value)}
+                                                />
+                                                <button 
+                                                    onClick={loadYoutubeVideo}
+                                                    disabled={!youtubeUrl}
+                                                    className="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded text-white whitespace-nowrap"
+                                                >
+                                                    読込
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <label className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded cursor-pointer transition whitespace-nowrap flex-1">
+                                                <span className="text-lg">📁</span>
+                                                <span className="text-sm font-bold">動画ファイルを選択</span>
+                                                <input 
+                                                    type="file" 
+                                                    accept="video/*" 
+                                                    className="hidden" 
+                                                    onChange={handleFileSelect}
+                                                />
+                                                <span className="text-xs text-slate-500 ml-2">※アップロードはされません</span>
+                                            </label>
+                                        )}
                                     </div>
 
-                                    <button 
-                                        onClick={runAnalysis}
-                                        disabled={isAnalyzing || !!insights}
-                                        className="bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white px-6 py-2 rounded font-bold text-sm transition shadow-[0_0_15px_rgba(168,85,247,0.4)] whitespace-nowrap"
-                                    >
-                                        {isAnalyzing ? "ANALYZING..." : "ANALYZE TIMELINE 🧠"}
-                                    </button>
+                                    <div className="h-6 w-px bg-slate-700"></div>
+                                    
+                                    <div className="w-48">
+                                        {isAnalyzing ? (
+                                            <div className="relative w-full h-9 bg-slate-800 rounded overflow-hidden border border-slate-700">
+                                                <div 
+                                                    className="absolute top-0 left-0 h-full bg-blue-600 transition-all duration-300 ease-out"
+                                                    style={{ width: `${progress}%` }}
+                                                ></div>
+                                                <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white z-10 drop-shadow-md">
+                                                    AI分析中... {progress}%
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <button 
+                                                onClick={runAnalysis}
+                                                disabled={isAnalyzing || !videoReady}
+                                                className={`w-full px-4 py-2 rounded font-bold text-sm transition shadow-[0_0_15px_rgba(168,85,247,0.4)] whitespace-nowrap flex items-center justify-center gap-2
+                                                    ${videoReady ? "bg-purple-600 hover:bg-purple-500 text-white" : "bg-slate-800 text-slate-500 cursor-not-allowed"}
+                                                `}
+                                            >
+                                                <span>🧠</span> 動画分析開始
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
 
                                 {/* Video Area */}
@@ -321,7 +337,7 @@ export default function CoachPage() {
                                     {!videoReady && (
                                         <div className="absolute inset-0 flex items-center justify-center text-slate-500 flex-col gap-2 pointer-events-none bg-slate-950/80 z-10">
                                             <span className="text-4xl">📺</span>
-                                            <span>Select Local Video or Paste YouTube URL</span>
+                                            <span>動画ファイルを選択するか、YouTube URLを入力してください</span>
                                         </div>
                                     )}
                                 </div>
@@ -332,22 +348,23 @@ export default function CoachPage() {
                     {/* Right: Coaching Feed (4 Cols) */}
                     <div className="col-span-4 bg-slate-900/50 border border-slate-800 rounded-xl flex flex-col h-full overflow-hidden">
                         <div className="p-4 border-b border-slate-800 bg-slate-900">
-                             <h3 className="font-bold text-slate-200">Coaching Insights</h3>
+                             <h3 className="font-bold text-slate-200">コーチの分析結果 (AI Analysis)</h3>
                         </div>
                         
                         <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-700">
                             {!insights && !isAnalyzing && (
                                 <div className="text-center text-slate-500 mt-10 p-4">
                                     <div className="text-4xl mb-4">🤖</div>
-                                    <p>Ready to analyze.</p>
-                                    <p className="text-sm mt-2">I will scan the match timeline for mistakes and efficient plays.</p>
+                                    <p>準備完了 (Ready)</p>
+                                    <p className="text-sm mt-2">試合状況と動画を同期して、AIがマクロ視点でコーチングします。</p>
                                 </div>
                             )}
 
                              {isAnalyzing && (
                                 <div className="space-y-4 animate-pulse">
+                                     <div className="text-center text-blue-400 text-sm mb-4">試合データを解析中...</div>
                                      {[1,2,3,4].map(i => (
-                                         <div key={i} className="bg-slate-800 h-32 rounded-lg"></div>
+                                         <div key={i} className="bg-slate-800 h-24 rounded-lg"></div>
                                      ))}
                                 </div>
                             )}
