@@ -5,7 +5,7 @@ import DashboardLayout from "../../Components/layout/DashboardLayout";
 import { fetchMatchIds, fetchMatchDetail } from "@/app/actions/riot";
 import { analyzeMatchTimeline, CoachingInsight } from "@/app/actions/coach";
 import { useSummoner } from "../../Providers/SummonerProvider";
-import { getAnalysisStatus, type AnalysisStatus } from "@/app/actions/analysis";
+import { getAnalysisStatus, type AnalysisStatus, upgradeToPremium } from "@/app/actions/analysis";
 import PlanStatusBadge from "../../Components/subscription/PlanStatusBadge";
 import PremiumPromoCard from "../../Components/subscription/PremiumPromoCard";
 import PremiumFeatureGate from "../../Components/subscription/PremiumFeatureGate";
@@ -156,7 +156,19 @@ export default function CoachPage() {
         if (!selectedMatch || !currentPuuid) return;
         
         startTransition(async () => {
+            setErrorMsg(null);
+            setProgress(10);
+            
+            // Artificial progress simulation 
+            const interval = setInterval(() => {
+                setProgress(prev => Math.min(prev + 5, 90));
+            }, 500);
+
             const res = await analyzeMatchTimeline(selectedMatch.matchId, currentPuuid);
+            
+            clearInterval(interval);
+            setProgress(100);
+
             if (res.success && res.insights) {
                 setInsights(res.insights);
             } else {
@@ -176,6 +188,14 @@ export default function CoachPage() {
             localVideoRef.current.play();
         }
     }
+
+    // New logic for checking access rights purely on frontend
+    const hasAccess = status ? (status.is_premium || status.analysis_credits > 0) : true; // Default true while loading to avoid flash, or false?
+    // Let's handle loading state carefully. If status is null, maybe just disable or show loading.
+    // For now assuming status loads fast or defaults to "safe" behavior. But here we want to block if definitely NO access.
+    // If status is null, effectively we don't know yet, maybe treat as NO access until loaded? 
+    // PlanStatusBadge handles null by fetching. 
+    // Let's defer to content render.
 
     return (
         <DashboardLayout>
@@ -305,27 +325,66 @@ export default function CoachPage() {
 
                                     <div className="h-6 w-px bg-slate-700"></div>
                                     
-                                    <div className="w-48">
+                                    <div className="w-56">
                                         {isAnalyzing ? (
-                                            <div className="relative w-full h-9 bg-slate-800 rounded overflow-hidden border border-slate-700">
+                                            <div className="relative w-full h-10 bg-slate-800 rounded overflow-hidden border border-slate-700 transition">
                                                 <div 
-                                                    className="absolute top-0 left-0 h-full bg-blue-600 transition-all duration-300 ease-out"
+                                                    className="absolute top-0 left-0 h-full bg-blue-600/50 transition-all duration-300 ease-out"
                                                     style={{ width: `${progress}%` }}
                                                 ></div>
-                                                <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white z-10 drop-shadow-md">
+                                                <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white z-10">
                                                     AI分析中... {progress}%
                                                 </div>
                                             </div>
                                         ) : (
-                                            <button 
-                                                onClick={runAnalysis}
-                                                disabled={isAnalyzing || !videoReady}
-                                                className={`w-full px-4 py-2 rounded font-bold text-sm transition shadow-[0_0_15px_rgba(168,85,247,0.4)] whitespace-nowrap flex items-center justify-center gap-2
-                                                    ${videoReady ? "bg-purple-600 hover:bg-purple-500 text-white" : "bg-slate-800 text-slate-500 cursor-not-allowed"}
-                                                `}
-                                            >
-                                                <span>🧠</span> 動画分析開始
-                                            </button>
+                                            (() => {
+                                                // Access Logic: Premium OR has credits
+                                                const canAnalyze = status?.is_premium || (status?.analysis_credits ?? 0) > 0;
+                                                
+                                                return (
+                                                    <button 
+                                                        onClick={() => {
+                                                            if (canAnalyze) {
+                                                                runAnalysis();
+                                                            } else {
+                                                                // Upgrade Flow
+                                                                if (confirm("【モック】プレミアムプラン(月額980円)に登録して、無制限のAIコーチングを解除しますか？")) {
+                                                                    startTransition(async () => {
+                                                                        const res = await upgradeToPremium();
+                                                                        if (res.success) {
+                                                                            alert("プレミアムプランに登録しました！");
+                                                                            const newStatus = await getAnalysisStatus();
+                                                                            if (newStatus) setStatus(newStatus);
+                                                                        }
+                                                                    });
+                                                                }
+                                                            }
+                                                        }}
+                                                        disabled={isAnalyzing || !videoReady}
+                                                        className={`w-full px-4 py-2.5 rounded font-bold text-sm transition shadow-lg whitespace-nowrap flex items-center justify-center gap-2 group
+                                                            ${!videoReady 
+                                                                ? "bg-slate-800 text-slate-500 cursor-not-allowed"
+                                                                : canAnalyze
+                                                                    ? "bg-purple-600 hover:bg-purple-500 text-white shadow-purple-500/20"
+                                                                    : "bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:scale-105 shadow-orange-500/20"
+                                                            }
+                                                        `}
+                                                    >
+                                                        {canAnalyze ? (
+                                                            <>
+                                                                <span>🧠</span> 
+                                                                視頻分析開始
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <span className="text-lg group-hover:rotate-12 transition-transform">💎</span> 
+                                                                PREMIUMで分析 
+                                                                <span className="text-xs bg-black/20 px-1.5 py-0.5 rounded ml-1">LOCK</span>
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                );
+                                            })()
                                         )}
                                     </div>
                                 </div>
