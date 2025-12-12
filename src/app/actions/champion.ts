@@ -37,17 +37,32 @@ export type ChampionDetailsDTO = {
 export async function getChampionStats(puuid: string, championName: string): Promise<ChampionDetailsDTO | null> {
     if (!puuid || !championName) return null;
 
+    console.log(`[ChampionStats] Fetching for PUUID: ${puuid?.slice(0, 10)}..., Champion: ${championName}`);
+
     // Fetch matches (limit 50, same as dashboard for consistency)
     const { matches } = await fetchAndCacheMatches(puuid, 50);
+    console.log(`[ChampionStats] Matches Fetched: ${matches.length}`);
 
     // Filter for specific champion
     // Normalize championName comparison (case-insensitive)
     const championMatches = matches.filter(m => {
         const p = m.info.participants.find((p: any) => p.puuid === puuid);
-        return p && p.championName.toLowerCase() === championName.toLowerCase();
+        if (!p) return false;
+        return p.championName.toLowerCase() === championName.toLowerCase();
     });
 
-    if (championMatches.length === 0) return null;
+    console.log(`[ChampionStats] Filtered Matches: ${championMatches.length}`);
+
+    if (championMatches.length === 0) {
+        // Log distinct champion names found for debugging
+        const foundChamps = new Set(matches.map(m => {
+             const p = m.info.participants.find((p: any) => p.puuid === puuid);
+             return p?.championName;
+        }).filter(Boolean));
+        console.log(`[ChampionStats] Champions found in history: ${Array.from(foundChamps).join(', ')}`);
+        
+        return null;
+    }
 
     // Initialize accumulators
     let wins = 0;
