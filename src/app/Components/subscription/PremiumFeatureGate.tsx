@@ -6,18 +6,32 @@ import { upgradeToPremium } from "@/app/actions/analysis";
 type Props = {
     isPremium: boolean;
     children: React.ReactNode;
-    fallbackDescription?: string;
+    fallbackDescription?: string; // Legacy support
+    description?: string; // Preferred
+    title?: string;
     blurAmount?: "sm" | "md" | "lg";
+    onUpgrade?: () => Promise<void> | void;
 };
 
 export default function PremiumFeatureGate({ 
     isPremium, 
     children, 
-    fallbackDescription = "この機能を利用するにはプレミアムプランへのアップグレードが必要です。",
-    blurAmount = "md"
+    fallbackDescription,
+    description,
+    title = "PREMIUM FEATURE",
+    blurAmount = "md",
+    onUpgrade
 }: Props) {
     
+    // Use description if provided, otherwise fallback, otherwise default
+    const descText = description || fallbackDescription || "この機能を利用するにはプレミアムプランへのアップグレードが必要です。";
+
     const handleUpgrade = async () => {
+        if (onUpgrade) {
+            await onUpgrade();
+            return;
+        }
+
         if (!confirm("【モック】プレミアムプラン(月額980円)に登録しますか？")) return;
         const res = await upgradeToPremium();
         if (res.success) {
@@ -44,9 +58,9 @@ export default function PremiumFeatureGate({
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-6 bg-slate-900/60 backdrop-blur-[2px]">
                 <div className="bg-slate-900 border border-indigo-500/50 p-6 rounded-2xl shadow-2xl max-w-sm text-center transform transition-all hover:scale-105 duration-300">
                     <div className="mb-4 text-4xl animate-bounce">💎</div>
-                    <h3 className="text-xl font-black text-white mb-2 italic">PREMIUM FEATURE</h3>
+                    <h3 className="text-xl font-black text-white mb-2 italic">{title}</h3>
                     <p className="text-slate-300 text-sm mb-6 leading-relaxed">
-                        {fallbackDescription}
+                        {descText}
                     </p>
                     <button
                         onClick={handleUpgrade}
