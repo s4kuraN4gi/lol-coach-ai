@@ -12,7 +12,7 @@ export default async function ChampionPage({ params }: { params: { name: string 
 
     // Attempt to get PUUID from DB (Primary Source)
     const { data: summoner } = await supabase
-        .from('summoners')
+        .from('summoner_accounts')
         .select('puuid')
         .eq('user_id', user.id)
         .single();
