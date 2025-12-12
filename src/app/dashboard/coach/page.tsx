@@ -338,8 +338,9 @@ export default function CoachPage() {
                                             </div>
                                         ) : (
                                             (() => {
-                                                // Access Logic: Premium OR has credits
-                                                const canAnalyze = status?.is_premium || (status?.analysis_credits ?? 0) > 0;
+                                                // Access Logic: Strictly Premium ONLY (Credits ignored to prevent abuse/deficit)
+                                                // const canAnalyze = status?.is_premium || (status?.analysis_credits ?? 0) > 0;
+                                                const canAnalyze = status?.is_premium;
                                                 
                                                 return (
                                                     <button 
@@ -373,7 +374,7 @@ export default function CoachPage() {
                                                         {canAnalyze ? (
                                                             <>
                                                                 <span>🧠</span> 
-                                                                視頻分析開始
+                                                                動画分析開始
                                                             </>
                                                         ) : (
                                                             <>
