@@ -12,6 +12,7 @@ export type AnalysisStatus = {
   subscription_end_date?: string | null;
   auto_renew?: boolean;
   last_credit_update?: string;
+  last_reward_ad_date?: string; // Added this field
 };
 
 // ユーザーのクレジット情報などを取得
@@ -26,7 +27,7 @@ export async function getAnalysisStatus(): Promise<AnalysisStatus | null> {
   // The migration SQL provided should be run by the user to add this column.
   const { data } = await supabase
     .from("profiles")
-    .select("is_premium, analysis_credits, subscription_tier, daily_analysis_count, last_analysis_date, subscription_end_date, auto_renew, last_credit_update")
+    .select("is_premium, analysis_credits, subscription_tier, daily_analysis_count, last_analysis_date, subscription_end_date, auto_renew, last_credit_update, last_reward_ad_date")
     .eq("id", user.id)
     .single();
 
@@ -126,8 +127,6 @@ export async function getMatchAnalysis(matchId: string) {
 
   return data ? data.analysis_text : null;
 }
-
-// ... (analyzeVideo and analyzeMatch remain unchanged) ...
 
 // プレミアムへアップグレード（モック）
 export async function upgradeToPremium() {
@@ -500,4 +499,46 @@ KDA: ${kda}
   revalidatePath(`/dashboard/match/${matchId}`); 
 
   return { success: true, advice: resultAdvice };
+}
+
+// 1日1回の広告リワード（クレジット付与）
+export async function claimDailyReward() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("analysis_credits, last_reward_ad_date")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile) return { error: "Profile not found" };
+
+  const now = new Date();
+  const lastRewardStr = profile.last_reward_ad_date;
+  
+  if (lastRewardStr) {
+      const lastRewardDate = new Date(lastRewardStr);
+      // 同じ日付なら拒否
+      if (now.toDateString() === lastRewardDate.toDateString()) {
+          return { error: "Already claimed today." };
+      }
+  }
+
+  const currentCredits = profile.analysis_credits || 0;
+  const newCredits = currentCredits + 1;
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+        analysis_credits: newCredits,
+        last_reward_ad_date: now.toISOString()
+    })
+    .eq("id", user.id);
+
+  if (error) return { error: "Failed to update credits" };
+
+  revalidatePath("/dashboard", "layout");
+  return { success: true, newCredits };
 }
