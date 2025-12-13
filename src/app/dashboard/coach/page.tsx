@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition, useCallback, useRef } from "react";
 import DashboardLayout from "../../Components/layout/DashboardLayout";
 import { fetchMatchIds, fetchMatchDetail } from "@/app/actions/riot";
-import { analyzeMatchTimeline, CoachingInsight, AnalysisFocus } from "@/app/actions/coach";
+import { analyzeMatchTimeline, dev_getMockAnalysis, CoachingInsight, AnalysisFocus, AnalysisResult, BuildItem } from "@/app/actions/coach";
 import { useSummoner } from "../../Providers/SummonerProvider";
 import { getAnalysisStatus, type AnalysisStatus, upgradeToPremium, claimDailyReward } from "@/app/actions/analysis";
 import PlanStatusBadge from "../../Components/subscription/PlanStatusBadge";
@@ -28,7 +28,7 @@ export default function CoachPage() {
     const [matches, setMatches] = useState<MatchSummary[]>([]);
     const [loadingIds, setLoadingIds] = useState(true);
     const [selectedMatch, setSelectedMatch] = useState<MatchSummary | null>(null);
-    const [insights, setInsights] = useState<CoachingInsight[] | null>(null);
+    const [analysisData, setAnalysisData] = useState<AnalysisResult | null>(null);
     const [status, setStatus] = useState<AnalysisStatus | null>(null); // Premium Status
     const [isAnalyzing, startTransition] = useTransition();
 
@@ -42,7 +42,6 @@ export default function CoachPage() {
     const [rewardLoading, setRewardLoading] = useState(false);
 
     // Progress State
-    const [loading, setLoading] = useState(false);
     const [progress, setProgress] = useState(0);
 
     // Video State
@@ -184,8 +183,8 @@ export default function CoachPage() {
             clearInterval(interval);
             setProgress(100);
 
-            if (res.success && res.insights) {
-                setInsights(res.insights);
+            if (res.success && res.data) {
+                setAnalysisData(res.data);
                 // Refresh status to update credits
                 const newStatus = await getAnalysisStatus();
                 if (newStatus) setStatus(newStatus);
@@ -206,6 +205,20 @@ export default function CoachPage() {
             localVideoRef.current.play();
         }
     }
+
+    // Helper Component for Build Items
+    const BuildItemCard = ({ item }: { item: BuildItem }) => (
+        <div className="flex items-start gap-3 bg-slate-950 p-3 rounded border border-slate-700">
+             {/* Note: In a real app, we would fetch item images from DataDragon. For now, using a generic icon.*/}
+             <div className="w-10 h-10 bg-slate-800 rounded flex items-center justify-center shrink-0 border border-slate-600">
+                <span className="text-xl">⚔️</span>
+             </div>
+             <div>
+                 <div className="text-sm font-bold text-slate-200">{item.itemName}</div>
+                 <div className="text-xs text-slate-400">{item.reason}</div>
+             </div>
+        </div>
+    );
 
     return (
         <DashboardLayout>
@@ -268,14 +281,14 @@ export default function CoachPage() {
                             </div>
                         )}
 
-                        {/* Step 2 & 3: Video Player & Controls */}
+                        {/* Step 2 & 3: Video Player & Controls & Build Recs */}
                         {selectedMatch && (
-                            <div className="flex flex-col h-full gap-4">
+                            <div className="flex flex-col gap-4 pb-10">
                                 {/* Controls Bar */}
                                 <div className="flex items-center gap-4 bg-slate-900 border border-slate-800 p-4 rounded-xl">
                                     <div className="flex flex-col gap-1">
                                         <button 
-                                            onClick={() => { setSelectedMatch(null); setInsights(null); setVideoReady(false); setYoutubeUrl(""); setLocalVideoUrl(null); }}
+                                            onClick={() => { setSelectedMatch(null); setAnalysisData(null); setVideoReady(false); setYoutubeUrl(""); setLocalVideoUrl(null); }}
                                             className="text-slate-400 hover:text-white font-bold text-sm"
                                         >
                                             ← 戻る
@@ -457,8 +470,8 @@ export default function CoachPage() {
                                     </div>
                                 </div>
 
-                                {/* Video Area & Ad Interstitial */}
-                                <div className="flex-1 bg-black rounded-xl overflow-hidden border border-slate-800 relative shadow-2xl">
+                                {/* Video Area */}
+                                <div className="w-full aspect-video bg-black rounded-xl overflow-hidden border border-slate-800 relative shadow-2xl">
                                     {/* YouTube Player Container */}
                                     <div 
                                         id="youtube-player" 
@@ -481,9 +494,36 @@ export default function CoachPage() {
                                             <span>動画ファイルを選択するか、YouTube URLを入力してください</span>
                                         </div>
                                     )}
-
-                                    {/* AdSense Interstitial removed from here */}
                                 </div>
+
+                                {/* [NEW] Build Recommendation Section */}
+                                {analysisData?.buildRecommendation && (
+                                    <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-xl p-5 shadow-lg relative overflow-hidden">
+                                        <div className="absolute top-0 right-0 p-3 opacity-10 text-6xl">🛡</div>
+                                        <h3 className="text-lg font-black text-white mb-4 flex items-center gap-2">
+                                            <span className="text-amber-400">💡</span> AI Recommended Build
+                                        </h3>
+                                        
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div>
+                                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Core Items (Best for this match)</h4>
+                                                <div className="space-y-2">
+                                                    {analysisData.buildRecommendation.coreItems.map((item, idx) => (
+                                                        <BuildItemCard key={idx} item={item} />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Situational / Defensives</h4>
+                                                <div className="space-y-2">
+                                                    {analysisData.buildRecommendation.situationalItems.map((item, idx) => (
+                                                        <BuildItemCard key={idx} item={item} />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
                         {!selectedMatch && (
@@ -501,14 +541,14 @@ export default function CoachPage() {
                         
                         <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-700">
                             {/* Result Ad Placement (Top of results) */}
-                            {insights && (
+                            {analysisData && (
                                 <div className="mb-4">
                                     <p className="text-[10px] text-slate-500 mb-1 text-center">- SPONSORED -</p>
                                     <AdSenseBanner className="min-h-[100px] w-full bg-slate-800/50 rounded" />
                                 </div>
                             )}
 
-                            {!insights && !isAnalyzing && (
+                            {!analysisData && !isAnalyzing && (
                                 <div className="text-center text-slate-500 mt-10 p-4">
                                     <div className="text-4xl mb-4">🤖</div>
                                     <p>準備完了 (Ready)</p>
@@ -525,9 +565,9 @@ export default function CoachPage() {
                                 </div>
                             )}
 
-                            {insights && (
+                            {analysisData?.insights && (
                                 <div className="space-y-4">
-                                    {insights.map((insight, idx) => (
+                                    {analysisData.insights.map((insight, idx) => (
                                         <div 
                                             key={idx} 
                                             onClick={() => seekTo(insight.timestamp)}
@@ -552,7 +592,7 @@ export default function CoachPage() {
                                             
                                             <div className="pl-3">
                                                 <h4 className="font-bold text-slate-200 text-sm mb-1">{insight.title}</h4>
-                                                <p className="text-xs text-slate-400 mb-2">{insight.description}</p>
+                                                <p className="text-xs text-slate-400 mb-2 whitespace-pre-wrap">{insight.description}</p>
                                                 <div className="bg-purple-500/10 border border-purple-500/20 p-2 rounded text-xs text-purple-200 mt-2">
                                                     💡 {insight.advice}
                                                 </div>

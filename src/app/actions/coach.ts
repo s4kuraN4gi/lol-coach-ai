@@ -15,10 +15,36 @@ export type CoachingInsight = {
     advice: string;
 };
 
+export type BuildItem = {
+    itemName: string;
+    reason: string;
+};
+
+export type BuildRecommendation = {
+    coreItems: BuildItem[];
+    situationalItems: BuildItem[];
+};
+
+export type AnalysisResult = {
+    insights: CoachingInsight[];
+    buildRecommendation?: BuildRecommendation;
+};
+
 // Fallback sequence: Stable 2.0 -> New 2.5 -> Legacy Standard
 const MODELS_TO_TRY = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash", "gemini-pro"];
 
-export async function analyzeMatchTimeline(matchId: string, puuid: string, userApiKey?: string): Promise<{ success: boolean, insights?: CoachingInsight[], error?: string }> {
+export type AnalysisFocus = {
+    focusArea: string; // e.g., "LANING", "TEAMFIGHT", "MACRO", "BUILD", "VISION"
+    focusTime?: string; // e.g., "12:30"
+    specificQuestion?: string;
+};
+
+export async function analyzeMatchTimeline(
+    matchId: string, 
+    puuid: string, 
+    userApiKey?: string,
+    focus?: AnalysisFocus 
+): Promise<{ success: boolean, data?: AnalysisResult, error?: string }> {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     
@@ -33,7 +59,8 @@ export async function analyzeMatchTimeline(matchId: string, puuid: string, userA
         userId: user.id, 
         isPremium: status.is_premium, 
         credits: status.analysis_credits, 
-        hasUserKey: !!userApiKey 
+        hasUserKey: !!userApiKey,
+        focus: focus
     });
 
     let useEnvKey = false;
@@ -98,52 +125,72 @@ export async function analyzeMatchTimeline(matchId: string, puuid: string, userA
         // 4. Prompt Gemini with Fallback Logic
         const genAI = new GoogleGenerativeAI(apiKeyToUse);
         
+        // --- Construct Prompt based on Focus ---
+        let focusInstruction = "";
+        if (focus) {
+            focusInstruction = `
+            【ユーザーからの具体的な指示】
+            興味ある領域: ${focus.focusArea || "指定なし（全体）"}
+            ${focus.focusTime ? `注目してほしい時間帯: ${focus.focusTime}付近` : ""}
+            ${focus.specificQuestion ? `具体的な質問・悩み: "${focus.specificQuestion}"` : ""}
+            
+            指示がある場合は、その内容に対する回答を最優先し、それに関連するイベントを深く掘り下げてください。
+            `;
+        }
+        
         const prompt = `
         あなたはプロのLoLコーチ（日本の高レートプレイヤー）です。
-        以下の試合タイムラインを分析し、マクロ視点でのアドバイスを提供してください。
-        
-        【重要】:
-        - **日本語でお答えください。**
-        - ミクロの操作（スキルショットの精度など）には言及しないでください。
-        - **マクロ判断（ウェーブ管理、パワースパイク、アイテム選択、オブジェクト判断、マップ移動）** に集中してください。
-        - コンテキストを活用してください（${userPart.championName} vs ${opponentPart ? opponentPart.championName : '不明'}）。
-        
-        コンテキスト:
-        - ロール: ${userPart.teamPosition}
-        - チャンピオン: ${userPart.championName} (Lv ${userPart.champLevel})
+        以下の試合タイムラインと構成を分析し、ユーザーへ以下の2点を提供してください。
+
+        1. **タイムライン分析 (Insights)**: 試合の流れに応じた具体的なアドバイス。
+        2. **おすすめビルド提案 (Build)**: この試合（対面・敵構成）に対して最適だったアイテム構成。
+
+        【重要：出力スタイルの厳格な制約】
+        - **超簡潔に**: パッと見て分かるように、説明は**最大2行以内**に収めてください。
+        - **箇条書きベース**: 長文は禁止です。
+        - **日本語**: 自然な日本語で。
+        - **マクロ重視**: ミクロ（操作）より判断（マクロ）を指摘してください。
+
+        ${focusInstruction}
+
+        【コンテキスト】
+        - ユーザー: ${userPart.championName} (${userPart.teamPosition})
         - KDA: ${userPart.kills}/${userPart.deaths}/${userPart.assists}
-        - キーストーン: ${userPart.perks.styles[0].style} / ${userPart.perks.styles[1].style}
-        - サモナースペル: ${userPart.summoner1Id}, ${userPart.summoner2Id} (IDs)
-        
-        対面情報 (Lane/Jungle):
-        - チャンピオン: ${opponentPart ? opponentPart.championName : 'None'}
-        - ルーン: ${opponentPart ? opponentPart.perks.styles[0].style : 'N/A'}
-        
-        タイムラインイベント:
+        - 対面: ${opponentPart ? opponentPart.championName : '不明'}
+
+        【タイムラインイベント】
         ${JSON.stringify(events)}
 
-        出力例 (マクロ重視・日本語):
-        User is Fiora vs Malphite.
-        Event: Death at 14:00.
-        Insight: "ディヴァインサンダラーの完成前ですが、相手のマルファイトはすでにブランブルベストを持っています。ここで戦うのは統計的にも不利です。ウェーブをプッシュしてMidへのロームを狙うか、サンダラー完成までファームに徹するべきでした。"
-        
-        タスク:
-        提供されたイベントを分析し、以下のJSON形式で出力してください。
-        Output Format:
-        [
-            {
-                "timestamp": number (ms),
-                "timestampStr": string ("mm:ss"),
-                "title": string (短い見出し・日本語),
-                "description": string (状況説明・日本語),
-                "type": "MISTAKE" | "TURNING_POINT" | "GOOD_PLAY" | "INFO",
-                "advice": string (具体的な改善案・日本語)
+        【出力形式 (JSON)】
+        以下のJSON形式のみを出力してください。Markdownバッククォートは不要です。
+
+        {
+            "insights": [
+                {
+                    "timestamp": number (ms),
+                    "timestampStr": string ("mm:ss"),
+                    "title": string (短い見出し 例: "リコール判断ミス"),
+                    "description": string (状況説明 1行),
+                    "type": "MISTAKE" | "TURNING_POINT" | "GOOD_PLAY" | "INFO",
+                    "advice": string (簡潔な改善案 1-2行)
+                }
+            ],
+            "buildRecommendation": {
+                "coreItems": [
+                    { "itemName": "アイテム名(英語正式名称優先)", "reason": "短い採用理由" },
+                    { "itemName": "アイテム名", "reason": "短い採用理由" },
+                    { "itemName": "アイテム名", "reason": "短い採用理由" }
+                ],
+                "situationalItems": [
+                    { "itemName": "アイテム名", "reason": "短い採用理由" },
+                    { "itemName": "アイテム名", "reason": "短い採用理由" }
+                ]
             }
-        ]
+        }
         `;
 
         let lastError = null;
-        let insights: CoachingInsight[] | null = null;
+        let analysisResult: AnalysisResult | null = null;
 
         // Try primary model first (manually instantiated for clarity in loop)
         // Actually, the loop handles everything.
@@ -156,7 +203,7 @@ export async function analyzeMatchTimeline(matchId: string, puuid: string, userA
                 const text = result.response.text();
                 if (!text) throw new Error("Empty response");
                 
-                insights = JSON.parse(text);
+                analysisResult = JSON.parse(text);
                 console.log(`Success with model: ${modelName}`);
                 break; // Success!
             } catch (e: any) {
@@ -166,7 +213,7 @@ export async function analyzeMatchTimeline(matchId: string, puuid: string, userA
             }
         }
 
-        if (!insights) {
+        if (!analysisResult) {
             throw lastError || new Error("All AI models failed to generate content.");
         }
 
@@ -185,7 +232,7 @@ export async function analyzeMatchTimeline(matchId: string, puuid: string, userA
         }
         // -------------------------------
 
-        return { success: true, insights };
+        return { success: true, data: analysisResult };
 
     } catch (e: any) {
         console.error("Coaching Analysis Error:", e);
