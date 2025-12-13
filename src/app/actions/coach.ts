@@ -1,7 +1,7 @@
 'use server';
 
 import { createClient } from "@/utils/supabase/server";
-import { fetchMatchTimeline, fetchMatchDetail } from "./riot";
+import { fetchMatchTimeline, fetchMatchDetail, fetchDDItemData } from "./riot";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const GEMINI_API_KEY_ENV = process.env.GEMINI_API_KEY;
@@ -16,18 +16,20 @@ export type CoachingInsight = {
 };
 
 export type BuildItem = {
+    id: number; // Item ID for Icon
     itemName: string;
-    reason: string;
+    reason?: string; // Reason for recommendation or critique
 };
 
-export type BuildRecommendation = {
-    coreItems: BuildItem[];
-    situationalItems: BuildItem[];
+export type BuildComparison = {
+    userItems: BuildItem[];
+    recommendedItems: BuildItem[];
+    analysis: string; // "Why X is better than Y"
 };
 
 export type AnalysisResult = {
     insights: CoachingInsight[];
-    buildRecommendation?: BuildRecommendation;
+    buildRecommendation?: BuildComparison; // Renamed from BuildRecommendation
 };
 
 // Fallback sequence: Stable 2.0 -> New 2.5 -> Legacy Standard
@@ -102,9 +104,10 @@ export async function analyzeMatchTimeline(
 
     try {
         // 1. Fetch Data
-        const [timelineRes, matchRes] = await Promise.all([
+        const [timelineRes, matchRes, ddItemRes] = await Promise.all([
             fetchMatchTimeline(matchId),
-            fetchMatchDetail(matchId)
+            fetchMatchDetail(matchId),
+            fetchDDItemData()
         ]);
 
         if (!timelineRes.success || !timelineRes.data) return { success: false, error: "Failed to fetch timeline" };
@@ -112,6 +115,8 @@ export async function analyzeMatchTimeline(
 
         const timeline = timelineRes.data;
         const match = matchRes.data;
+        const itemMap = ddItemRes?.nameMap || {};
+        const idMap = ddItemRes?.idMap || {};
 
         // 2. Build Match Context
         const context = getMatchContext(match, puuid);
@@ -119,10 +124,21 @@ export async function analyzeMatchTimeline(
 
         const { userPart, opponentPart } = context;
 
-        // 3. Summarize Timeline
+        // 3. Extract User's Actual Build (End Game Items)
+        const userItemIds = [
+            userPart.item0, userPart.item1, userPart.item2, 
+            userPart.item3, userPart.item4, userPart.item5
+        ].filter(id => id > 0);
+
+        const userItems: BuildItem[] = userItemIds.map(id => ({
+            id,
+            itemName: idMap[id]?.name || `Item ${id}`
+        }));
+
+        // 4. Summarize Timeline
         const events = summarizeTimeline(timeline, userPart.participantId, opponentPart?.participantId);
 
-        // 4. Prompt Gemini with Fallback Logic
+        // 5. Prompt Gemini
         const genAI = new GoogleGenerativeAI(apiKeyToUse);
         
         // --- Construct Prompt based on Focus ---
@@ -140,16 +156,20 @@ export async function analyzeMatchTimeline(
         
         const prompt = `
         あなたはプロのLoLコーチ（日本の高レートプレイヤー）です。
-        以下の試合タイムラインと構成を分析し、ユーザーへ以下の2点を提供してください。
+        以下の試合データに基づき「詳細な分析」と「ビルド比較評価」を行ってください。
 
-        1. **タイムライン分析 (Insights)**: 試合の流れに応じた具体的なアドバイス。
-        2. **おすすめビルド提案 (Build)**: この試合（対面・敵構成）に対して最適だったアイテム構成。
+        1. **タイムライン分析 (Insights)**:
+           試合の流れに沿ったアドバイス。最大2〜3文で、具体的かつ説得力のある内容にしてください。
 
-        【重要：出力スタイルの厳格な制約】
-        - **超簡潔に**: パッと見て分かるように、説明は**最大2行以内**に収めてください。
-        - **箇条書きベース**: 長文は禁止です。
-        - **日本語**: 自然な日本語で。
-        - **マクロ重視**: ミクロ（操作）より判断（マクロ）を指摘してください。
+        2. **ビルド比較 (Build Comparison)**:
+           ユーザーが実際に購入したアイテムと、この試合（対面・敵構成）で理想的だったアイテム構成を比較し、
+           「なぜユーザーの選択が間違いだったのか（あるいは正しかったのか）」を解説してください。
+           - 実際のビルド: ${userItems.map(i => i.itemName).join(', ')}
+           - 特に「靴」「コアアイテム(1-3手目)」の選択ミスがあれば厳しく指摘してください。
+
+        【重要：出力スタイルの制約】
+        - **日本語**: 自然な日本語で出力してください。
+        - **アイテム名**: 正確な日本語名（例：ディヴァイン サンダラー）を使用してください。
 
         ${focusInstruction}
 
@@ -169,31 +189,26 @@ export async function analyzeMatchTimeline(
                 {
                     "timestamp": number (ms),
                     "timestampStr": string ("mm:ss"),
-                    "title": string (短い見出し 例: "リコール判断ミス"),
-                    "description": string (状況説明 1行),
+                    "title": string (短い見出し),
+                    "description": string (状況説明),
                     "type": "MISTAKE" | "TURNING_POINT" | "GOOD_PLAY" | "INFO",
-                    "advice": string (簡潔な改善案 1-2行)
+                    "advice": string (2-3文のアドバイス)
                 }
             ],
             "buildRecommendation": {
-                "coreItems": [
-                    { "itemName": "アイテム名(英語正式名称優先)", "reason": "短い採用理由" },
+                "recommendedItems": [
+                    { "itemName": "アイテム名(日本語)", "reason": "短い採用理由" },
                     { "itemName": "アイテム名", "reason": "短い採用理由" },
                     { "itemName": "アイテム名", "reason": "短い採用理由" }
+                    // 3〜4つ程度（靴含む）
                 ],
-                "situationalItems": [
-                    { "itemName": "アイテム名", "reason": "短い採用理由" },
-                    { "itemName": "アイテム名", "reason": "短い採用理由" }
-                ]
+                "analysis": string (ユーザーのビルドと推奨ビルドの比較解説。なぜそのアイテムが必要だったのか、ユーザーのビルドのどこが悪かったのかを具体的に解説。200文字程度。)
             }
         }
         `;
 
         let lastError = null;
-        let analysisResult: AnalysisResult | null = null;
-
-        // Try primary model first (manually instantiated for clarity in loop)
-        // Actually, the loop handles everything.
+        let analysisResult: any = null; // Temporary any
         
         for (const modelName of MODELS_TO_TRY) {
             try {
@@ -217,6 +232,43 @@ export async function analyzeMatchTimeline(
             throw lastError || new Error("All AI models failed to generate content.");
         }
 
+        // --- Post-Process: Map Recommended Names to IDs ---
+        // Requires precise name matching. If strict user builds are passed, AI might return them back.
+        // We will do a best-effort reverse lookup using nameMap.
+
+        const recommendedWithIds = analysisResult.buildRecommendation.recommendedItems.map((item: any) => {
+            const lowerName = item.itemName.toLowerCase().replace(/\s+/g, ''); // Simple normalization
+            // Try explicit lookup
+             let id = 0;
+             // Search in nameMap values or keys
+             // Japanese name in DDragon `name` field? Yes.
+             
+             // Name map is Key(Lower Name) -> ID.
+             // We need to match AI output (Japanese) to DDragon JA name.
+             // Try exact match first
+             for (const [key, val] of Object.entries(itemMap)) {
+                  if (key.replace(/\s+/g, '') === lowerName) {
+                      id = parseInt(val);
+                      break;
+                  }
+             }
+             
+             return {
+                 ...item,
+                 id: id // 0 if not found, UI should handle missing icon
+             };
+        });
+
+        const finalResult: AnalysisResult = {
+            insights: analysisResult.insights,
+            buildRecommendation: {
+                userItems: userItems,
+                recommendedItems: recommendedWithIds,
+                analysis: analysisResult.buildRecommendation.analysis
+            }
+        };
+
+
         // --- Update Usage Limits (DB) ---
         if (shouldIncrementCount) {
             const today = new Date().toISOString();
@@ -232,7 +284,7 @@ export async function analyzeMatchTimeline(
         }
         // -------------------------------
 
-        return { success: true, data: analysisResult };
+        return { success: true, data: finalResult };
 
     } catch (e: any) {
         console.error("Coaching Analysis Error:", e);

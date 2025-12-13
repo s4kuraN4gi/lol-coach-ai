@@ -228,3 +228,35 @@ export async function fetchThirdPartyCode(summonerId: string): Promise<string | 
         return null;
     }
 }
+
+// 8. Get DDragon Item Data (Cached)
+let _itemCache: Record<string, any> | null = null;
+let _itemNameCache: Record<string, string> | null = null; // Name -> ID
+
+export async function fetchDDItemData(): Promise<{ idMap: Record<string, any>, nameMap: Record<string, string> } | null> {
+    if (_itemCache && _itemNameCache) return { idMap: _itemCache, nameMap: _itemNameCache };
+
+    // Fetch latest version first (optional, or hardcode/env)
+    const version = "14.24.1"; // Hardcoded for stability or fetch from https://ddragon.leagueoflegends.com/api/versions.json
+    const url = `https://ddragon.leagueoflegends.com/cdn/${version}/data/ja_JP/item.json`;
+
+    try {
+        const res = await fetch(url, { next: { revalidate: 86400 } });
+        if (!res.ok) return null;
+
+        const data = await res.json();
+        _itemCache = data.data;
+        
+        _itemNameCache = {};
+        // Build Name -> ID Map (Normalize names to lower case for loose matching)
+        for (const [id, item] of Object.entries(data.data as Record<string, any>)) {
+            _itemNameCache[item.name.toLowerCase()] = id;
+            // Also map colloquials if we want later
+        }
+
+        return { idMap: _itemCache!, nameMap: _itemNameCache! };
+    } catch (e) {
+        console.error("fetchDDItemData error:", e);
+        return null;
+    }
+}
