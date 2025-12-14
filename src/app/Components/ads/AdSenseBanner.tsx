@@ -16,9 +16,10 @@ interface Props {
   style?: React.CSSProperties;
   format?: AdFormat;
   responsive?: boolean;
+  slotId?: string;
 }
 
-export default function AdSenseBanner({ className, style, format = "auto", responsive = true }: Props) {
+export default function AdSenseBanner({ className, style, format = "auto", responsive = true, slotId = "1234567890" }: Props) {
   const adRef = useRef<HTMLModElement>(null);
 
   useEffect(() => {
@@ -50,7 +51,7 @@ export default function AdSenseBanner({ className, style, format = "auto", respo
         className="adsbygoogle"
         style={{ display: "block", ...style }}
         data-ad-client={process.env.NEXT_PUBLIC_ADSENSE_ID}
-        data-ad-slot="1234567890" // You would typically make this prop-driven or generic
+        data-ad-slot={slotId}
         data-ad-format={format}
         data-full-width-responsive={responsive ? "true" : "false"}
       ></ins>
