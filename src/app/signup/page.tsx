@@ -112,12 +112,21 @@ export default function SignupPage() {
             >
                 REGISTER ACCOUNT
             </button>
-            <p className="text-center text-sm mt-6 text-slate-500">
-                Already have an account?{" "}
-                <a href="/login" className="text-blue-400 hover:text-blue-300 font-semibold transition hover:underline">
-                    Login
-                </a>
+            {/* アカウント誘導 */}
+        <div className="mt-8 text-center space-y-4">
+            <p className="text-sm text-slate-500">
+            Already have an account?{" "}
+            <a href="/login" className="text-blue-400 hover:text-blue-300 font-semibold transition hover:underline">
+                Login
+            </a>
             </p>
+
+            <div className="pt-6 border-t border-slate-800/50 flex flex-wrap justify-center gap-4 text-[10px] text-slate-500">
+                <a href="/terms" target="_blank" className="hover:text-slate-300 transition">利用規約</a>
+                <a href="/privacy" target="_blank" className="hover:text-slate-300 transition">プライバシーポリシー</a>
+                <a href="/legal" target="_blank" className="hover:text-slate-300 transition">特定商取引法に基づく表記</a>
+            </div>
+        </div>
         </div>
     </main>
 

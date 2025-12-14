@@ -246,7 +246,7 @@ export default function Timeline({ match, timeline }: { match: any, timeline: Ti
                     <div className="flex flex-col items-start bg-slate-900/50 p-2 rounded backdrop-blur-sm border border-slate-800/50">
                         <span className="text-[10px] text-slate-500 font-bold tracking-widest uppercase">Blue Vision</span>
                         <div className="text-2xl font-black text-blue-500 drop-shadow-lg tabular-nums">
-                            {hoveredFrame !== null ? visionGraphData[hoveredFrame].blue : 0}%
+                            {hoveredFrame !== null && visionGraphData[hoveredFrame] ? visionGraphData[hoveredFrame].blue : 0}%
                         </div>
                     </div>
                 </div>
@@ -254,7 +254,7 @@ export default function Timeline({ match, timeline }: { match: any, timeline: Ti
                      <div className="flex flex-col items-end bg-slate-900/50 p-2 rounded backdrop-blur-sm border border-slate-800/50">
                         <span className="text-[10px] text-slate-500 font-bold tracking-widest uppercase">Red Vision</span>
                         <div className="text-2xl font-black text-red-500 drop-shadow-lg tabular-nums">
-                            {hoveredFrame !== null ? visionGraphData[hoveredFrame].red : 0}%
+                            {hoveredFrame !== null && visionGraphData[hoveredFrame] ? visionGraphData[hoveredFrame].red : 0}%
                         </div>
                     </div>
                 </div>
@@ -367,7 +367,7 @@ export default function Timeline({ match, timeline }: { match: any, timeline: Ti
                         const x = e.clientX - rect.left;
                         // Adjust for padding? No, events relative to full width
                         const percent = x / rect.width;
-                        const frameIndex = Math.min(goldDiffData.length - 1, Math.floor(percent * goldDiffData.length));
+                        const frameIndex = Math.max(0, Math.min(goldDiffData.length - 1, Math.floor(percent * goldDiffData.length)));
                         setHoveredFrame(frameIndex);
                     }}
                     onMouseLeave={() => setHoveredFrame(null)}

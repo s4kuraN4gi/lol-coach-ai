@@ -39,7 +39,12 @@ export default function SidebarNav() {
                   ))}
               </nav>
             </div>
-            <div className="mt-8 border-t border-slate-800 pt-6">
+            <div className="mt-8 pt-6 border-t border-slate-800">
+              <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-500 px-4 mb-4">
+                  <Link href="/terms" className="hover:text-blue-400 transition">利用規約</Link>
+                  <Link href="/privacy" className="hover:text-blue-400 transition">プライバシー</Link>
+                  <Link href="/legal" className="hover:text-blue-400 transition">特商法</Link>
+              </div>
               <button 
                 onClick={handleLogout}
                 className="w-full text-left text-red-400 hover:text-red-300 hover:bg-red-900/20 px-4 py-3 rounded-lg font-bold transition flex items-center gap-3"

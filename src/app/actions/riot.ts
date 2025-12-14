@@ -229,15 +229,28 @@ export async function fetchThirdPartyCode(summonerId: string): Promise<string | 
     }
 }
 
-// 8. Get DDragon Item Data (Cached)
+// 8. Get Latest Version
+export async function fetchLatestVersion(): Promise<string> {
+    try {
+        const res = await fetch("https://ddragon.leagueoflegends.com/api/versions.json", { next: { revalidate: 3600 } });
+        if (!res.ok) return "14.24.1"; // Fallback
+        const versions = await res.json();
+        return versions[0] || "14.24.1";
+    } catch (e) {
+        console.error("fetchLatestVersion error:", e);
+        return "14.24.1";
+    }
+}
+
+// 9. Get DDragon Item Data (Cached)
 let _itemCache: Record<string, any> | null = null;
 let _itemNameCache: Record<string, string> | null = null; // Name -> ID
 
 export async function fetchDDItemData(): Promise<{ idMap: Record<string, any>, nameMap: Record<string, string> } | null> {
     if (_itemCache && _itemNameCache) return { idMap: _itemCache, nameMap: _itemNameCache };
 
-    // Fetch latest version first (optional, or hardcode/env)
-    const version = "14.24.1"; // Hardcoded for stability or fetch from https://ddragon.leagueoflegends.com/api/versions.json
+    // Fetch latest version dynamically
+    const version = await fetchLatestVersion();
     const url = `https://ddragon.leagueoflegends.com/cdn/${version}/data/ja_JP/item.json`;
 
     try {

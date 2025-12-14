@@ -180,8 +180,28 @@ export async function downgradeToFree() {
   return { success: true };
 }
 
+import { getPersonaPrompt, getModePrompt, AnalysisMode } from './promptUtils';
+import { fetchRank } from './riot';
+import { getActiveSummoner } from './profile'; 
+import { analyzeMatchTimeline } from './coach'; // Use the timeline analysis logic 
+
+// Helper for Retry Logic (Retry Disabled for Verification)
+async function generateContentWithRetry(model: any, content: any, retries = 0): Promise<any> {
+    try {
+        return await model.generateContent(content);
+    } catch (e: any) {
+        const isRateLimit = e.message?.includes('429') || e.status === 429 || e.message?.includes('Too Many Requests');
+        if (isRateLimit) {
+            console.warn("Gemini Rate Limit (429) hit. No retry.");
+            throw new Error("⚠️ AI is busy (Rate Limited). Please wait 1 minute and click Analyze again.");
+        }
+        throw e;
+    }
+} 
+
 // 動画解析を実行 (Gemini Vision)
-export async function analyzeVideo(formData: FormData, userApiKey?: string) {
+// 動画解析を実行 (Mock: Riot API based)
+export async function analyzeVideo(formData: FormData, userApiKey?: string, mode: AnalysisMode = 'MACRO') {
   const supabase = await createClient();
   const {
     data: { user },
@@ -191,6 +211,19 @@ export async function analyzeVideo(formData: FormData, userApiKey?: string) {
   // 現状を取得
   const status = await getAnalysisStatus();
   if (!status) return { error: "User not found" };
+
+  // Fetch Summoner Rank for Persona (Optional but good for fallback context)
+  let rankTier = "UNRANKED";
+  try {
+      const summoner = await getActiveSummoner();
+      if (summoner?.id) {
+          const ranks = await fetchRank(summoner.id);
+          const soloDuo = ranks.find(r => r.queueType === "RANKED_SOLO_5x5");
+          if (soloDuo) rankTier = soloDuo.tier;
+      }
+  } catch (e) {
+      console.warn("Rank fetch failed for video analysis", e);
+  }
 
   let useEnvKey = false;
   let shouldIncrementCount = false;
@@ -203,7 +236,6 @@ export async function analyzeVideo(formData: FormData, userApiKey?: string) {
       let currentCount = status.daily_analysis_count;
 
       if (lastDate !== today) {
-          // 日付が変わっていればカウントリセット扱い (DB更新は後ほど)
           currentCount = 0;
       }
 
@@ -235,143 +267,213 @@ export async function analyzeVideo(formData: FormData, userApiKey?: string) {
 
   // 入力データの取得
   const description = (formData.get("description") as string) || "";
-  const videoFile = formData.get("video") as File | null;
-
-  let resultAdvice = "";
+  const matchId = formData.get("matchId") as string | null;
 
   try {
-    // Dynamic import to avoid build-time resolution issues
-    const { GoogleGenerativeAI } = await import("@google/generative-ai");
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-    // 1. 動画ファイルがある場合の処理
-    if (videoFile && videoFile.size > 0) {
-      const { GoogleAIFileManager } = await import("@google/generative-ai/server");
-      const { writeFile, unlink } = await import("fs/promises");
-      const { join } = await import("path");
-      const { tmpdir } = await import("os");
-
-      // ファイルサイズチェック (4.5MB)
-      if (videoFile.size > 4.5 * 1024 * 1024) { 
-           return { error: "File too large. Please upload video smaller than 4.5MB." };
-      }
-
-      // (1) 一時ファイルに保存
-      const buffer = Buffer.from(await videoFile.arrayBuffer());
-      const tempFilePath = join(tmpdir(), `upload-${Date.now()}-${videoFile.name}`);
-      await writeFile(tempFilePath, buffer);
-
-      try {
-        // (2) Gemini File APIへアップロード
-        const fileManager = new GoogleAIFileManager(apiKey);
-        const uploadResponse = await fileManager.uploadFile(tempFilePath, {
-          mimeType: videoFile.type,
-          displayName: videoFile.name,
-        });
-
-        // (3) ファイル処理待ち
-        let file = await fileManager.getFile(uploadResponse.file.name);
-        while (file.state === "PROCESSING") {
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-          file = await fileManager.getFile(uploadResponse.file.name);
-        }
-
-        if (file.state === "FAILED") {
-          throw new Error("Video processing failed by Gemini.");
-        }
-
-        // (4) Generate Content
-        const prompt = `
-あなたはLeague of Legendsのプロコーチです。
-アップロードされた動画はプレイヤーのプレイ映像です。
-ユーザーからのメモ: "${description}"
-
-以下の点について、辛口かつ具体的にアドバイスしてください：
-1. 集団戦またはレーン戦でのポジショニング
-2. スキル使用のタイミング
-3. 改善すべき点
-
-出力は日本語で、箇条書きを用いて読みやすくまとめてください。
-`;
-        const result = await model.generateContent([
-          {
-            fileData: {
-              mimeType: uploadResponse.file.mimeType,
-              fileUri: uploadResponse.file.uri,
-            },
-          },
-          { text: prompt },
-        ]);
-
-        resultAdvice = result.response.text();
-
-        // 完了後、Gemini上のファイルを削除
-        await fileManager.deleteFile(uploadResponse.file.name);
-
-      } finally {
-        await unlink(tempFilePath).catch((err) => console.error("Failed to delete temp file:", err));
-      }
-
-    } else {
-        // 2. テキストのみ (URL解析) の場合
-        if(!description.trim()) {
-            return { error: "Please provide a description or URL." };
-        }
-        
-        const prompt = `
-あなたはLeague of Legendsのプロコーチです。
-ユーザーから以下の相談/URLが送られてきました。
-内容: "${description}"
-
-この情報から推測できる範囲で、プレイヤーへのアドバイスを300文字以内で作成してください。
-`;
-        const result = await model.generateContent(prompt);
-        resultAdvice = result.response.text();
+    if (!matchId) {
+         return { error: "Match ID is missing. Please select a match first." };
     }
 
-  } catch (e: unknown) {
-    console.error("Gemini API Error:", e);
-    const errorMessage = e instanceof Error ? e.message : "Unknown error";
-    return { error: `Gemini API Error: ${errorMessage}` };
-  }
+    const summoner = await getActiveSummoner();
+    if (!summoner?.puuid) {
+         return { error: "Summoner not found." };
+    }
 
-  // 利用状況の更新
-  if (shouldIncrementCount) {
-      const today = new Date().toISOString();
-      const todayDateStr = today.split('T')[0];
-      const lastDateStr = status.last_analysis_date ? status.last_analysis_date.split('T')[0] : null;
-      
-      let newCount = status.daily_analysis_count + 1;
-      if (lastDateStr !== todayDateStr) {
-          newCount = 1;
-      }
+    // Call analyzeMatchTimeline ("Mock" Video Analysis)
+    // We treat the "description" as a specific question/context for the timeline analysis
+    const focus = {
+        mode: mode,
+        focusArea: mode, // e.g. MACRO, TEAMFIGHT
+        specificQuestion: description // Pass the video context/user query here
+    };
 
-      await supabase
+    // Note: analyzeMatchTimeline returns { success: boolean, data?: AnalysisResult, error?: string }
+    const res = await analyzeMatchTimeline(matchId, summoner.puuid, useEnvKey ? undefined : apiKey, focus);
+
+    if (!res.success || !res.data) {
+        throw new Error(res.error || "Timeline analysis failed.");
+    }
+
+    // 利用状況の更新
+    if (shouldIncrementCount) {
+        const today = new Date().toISOString();
+        const todayDateStr = today.split('T')[0];
+        const lastDateStr = status.last_analysis_date ? status.last_analysis_date.split('T')[0] : null;
+        
+        let newCount = status.daily_analysis_count + 1;
+        if (lastDateStr !== todayDateStr) {
+            newCount = 1;
+        }
+
+        await supabase
+            .from("profiles")
+            .update({ 
+                daily_analysis_count: newCount,
+                last_analysis_date: today 
+            })
+            .eq("id", user.id);
+    } else if (!userApiKey && useEnvKey && !status.is_premium) {
+        // Consume Credit (Free User)
+        await supabase
         .from("profiles")
-        .update({ 
-            daily_analysis_count: newCount,
-            last_analysis_date: today 
-        })
+        .update({ analysis_credits: status.analysis_credits - 1 })
         .eq("id", user.id);
-  } else if (!userApiKey && useEnvKey && !status.is_premium) {
-      // Consume Credit
-      await supabase
-      .from("profiles")
-      .update({ analysis_credits: status.analysis_credits - 1 })
-      .eq("id", user.id);
+    }
+
+    revalidatePath("/dashboard", "layout");
+
+    return {
+        success: true,
+        data: res.data, // Return structured data similar to analyzeMatchTimeline
+        remainingCredits: status.is_premium ? 999 : status.analysis_credits - 1,
+    };
+
+  } catch (e: unknown) {
+    console.error("Mock Video Analysis Error:", e);
+    const errorMessage = e instanceof Error ? e.message : "Unknown error";
+    return { error: `Analysis failed: ${errorMessage}` };
   }
-
-  revalidatePath("/dashboard", "layout");
-
-  return {
-    success: true,
-    advice: resultAdvice,
-    remainingCredits: status.is_premium ? 999 : status.analysis_credits - 1,
-  };
 }
 
-// 試合の解析を実行 (Match Analysis)
+// 試合の解析を実行 (Match Analysis - Quick Verdict V2)
+export async function analyzeMatchQuick(
+  matchId: string,
+  summonerName: string,
+  puuid: string,
+  userApiKey?: string
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  // 1. Check Previous Analysis
+  const { data: existing } = await supabase
+    .from("match_analyses")
+    .select("analysis_text")
+    .eq("match_id", matchId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (existing) {
+      try {
+          // If existing analysis is JSON, return it
+          if (existing.analysis_text.trim().startsWith("{")) {
+               return { success: true, data: JSON.parse(existing.analysis_text), cached: true };
+          }
+      } catch (e) {
+          // Ignore parse error, proceed to analysis
+      }
+  }
+
+  // 2. Check Limits
+  const status = await getAnalysisStatus();
+  if (!status) return { error: "User profile not found." };
+
+  let useEnvKey = false;
+  let shouldIncrementCount = false;
+
+  if (status.is_premium) {
+      const today = new Date().toISOString().split('T')[0];
+      const lastDate = status.last_analysis_date ? status.last_analysis_date.split('T')[0] : null;
+      let currentCount = status.daily_analysis_count;
+      if (lastDate !== today) currentCount = 0;
+
+      if (currentCount >= 50) return { error: "Daily limit reached (50/50)." };
+      
+      useEnvKey = true;
+      shouldIncrementCount = true;
+  } else {
+      if (userApiKey) {
+          useEnvKey = false;
+      } else {
+          if (status.analysis_credits > 0) {
+              useEnvKey = true;
+          } else {
+              return { error: "API Key required or Credits exhausted." };
+          }
+      }
+  }
+
+  const apiKey = useEnvKey ? process.env.GEMINI_API_KEY : userApiKey;
+  if (!apiKey) return { error: "API Key missing." };
+
+  // 3. Fetch Data (Match V5 Only)
+  const { fetchMatchDetail, fetchDDItemData } =await import("./riot"); // Lazy import
+  const matchRes = await fetchMatchDetail(matchId);
+  if (!matchRes.success || !matchRes.data) return { error: "Failed to fetch match data." };
+  
+  const match = matchRes.data;
+  const participant = match.info.participants.find((p: any) => p.puuid === puuid);
+  if (!participant) return { error: "Participant not found." };
+  
+    // Find Opponent for Lane Verdict
+  const opponent = match.info.participants.find((p: any) => 
+      p.teamId !== participant.teamId && 
+      p.teamPosition === participant.teamPosition &&
+      p.teamPosition !== '' 
+  );
+
+  // 4. Generate Prompt
+  try {
+      const { GoogleGenerativeAI } = await import("@google/generative-ai");
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", generationConfig: { responseMimeType: "application/json" } });
+
+      const prompt = `
+      League of Legendsの試合結果から、プレイヤーの「即時評価」をJSONで出力してください。
+      
+      プレイヤー: ${participant.championName} (${participant.teamPosition}), KDA: ${participant.kills}/${participant.deaths}/${participant.assists}, 勝敗: ${participant.win ? "WIN" : "LOSS"}
+      対面: ${opponent ? opponent.championName : "Unknown"}, KDA: ${opponent ? `${opponent.kills}/${opponent.deaths}/${opponent.assists}` : "?"}
+
+      出力JSON形式:
+      {
+          "grade": "S/A/B/C/D",
+          "badge": { "label": "称号(5文字以内)", "icon": "絵文字", "color": "text-yellow-400" },
+          "laneVerdict": { "result": "WIN/LOSS/EVEN", "reason": "一言理由" },
+          "keyFeedback": "一言アドバイス"
+      }
+      `;
+
+      const result = await generateContentWithRetry(model, prompt);
+      let analysisJson = result.response.text();
+      
+      // Sanitize Markdown
+      analysisJson = analysisJson.replace(/```json/g, '').replace(/```/g, '').trim();
+
+      // 5. Save & Update
+      await supabase.from("match_analyses").upsert({
+          user_id: user.id,
+          match_id: matchId,
+          summoner_name: summonerName,
+          champion_name: participant.championName,
+          analysis_text: analysisJson // Store JSON string
+      });
+
+      if (shouldIncrementCount) {
+        const today = new Date().toISOString();
+        const todayDateStr = today.split('T')[0];
+        const lastDateStr = status.last_analysis_date ? status.last_analysis_date.split('T')[0] : null;
+        let newCount = status.daily_analysis_count + 1;
+        if (lastDateStr !== todayDateStr) newCount = 1;
+
+        await supabase.from("profiles").update({ daily_analysis_count: newCount, last_analysis_date: today }).eq("id", user.id);
+      } else if (!userApiKey && useEnvKey && !status.is_premium) {
+         await supabase.from("profiles").update({ analysis_credits: status.analysis_credits - 1 }).eq("id", user.id);
+      }
+      
+       revalidatePath(`/dashboard/match/${matchId}`); 
+
+      return { success: true, data: JSON.parse(analysisJson) };
+
+  } catch (e: any) {
+      console.error("Analyze Quick Error:", e);
+      return { error: e.message };
+  }
+}
+
+// 試合の解析を実行 (Match Analysis - Old/Generic)
 export async function analyzeMatch(
   matchId: string,
   summonerName: string,
@@ -380,7 +482,11 @@ export async function analyzeMatch(
   win: boolean,
   userApiKey?: string // [NEW] BYOK Support
 ) {
+  // Redirect to Quick Analysis logic if called? 
+  // For now perform backward compatibility wrap or just keep as is
+  // ... (Existing implementation below)
   const supabase = await createClient();
+   // ... keep existing implementation ...
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -443,7 +549,8 @@ export async function analyzeMatch(
       try {
         const { GoogleGenerativeAI } = await import("@google/generative-ai");
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
 
         const prompt = `
 あなたはLeague of Legendsのプロコーチです。
@@ -460,7 +567,7 @@ KDA: ${kda}
 2. 改善点（具体的に）
 3. 次へのアクション
 `;
-        const result = await model.generateContent(prompt);
+        const result = await generateContentWithRetry(model, prompt);
         resultAdvice = result.response.text();
 
       } catch (e: any) {
@@ -477,7 +584,7 @@ KDA: ${kda}
     match_id: matchId,
     summoner_name: summonerName,
     champion_name: championName,
-    analysis_text: resultAdvice,
+    analysis_text: resultAdvice, // Saving TEXT here
   });
   if (error) console.error("Failed to save analysis:", error);
 

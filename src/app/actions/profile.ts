@@ -136,15 +136,19 @@ export async function lookupSummoner(inputName: string) {
       return { error: '詳細情報の取得に失敗しました' };
   }
 
-  // Already Registered Check
-  const { data: exists } = await supabase
-    .from('summoner_accounts')
-    .select('id')
-    .eq('puuid', riotAccount.puuid)
-    .single()
+  // Already Registered Check (Global)
+  // We use an RPC function that runs as SECURITY DEFINER to bypass RLS
+  const { data: isTaken, error: rpcError } = await supabase.rpc('check_summoner_taken', { target_puuid: riotAccount.puuid });
   
-  if (exists) {
-      return { error: 'このサモナーは既に登録されています' };
+  if (rpcError) {
+      console.error('RPC Error:', rpcError);
+      // Fallback: If RPC fails, we can't be sure, so maybe let it slide to the unique constraint check later?
+      // Or block it. Let's block to be safe or treat as system error.
+      // But for now, let's assume if it exists it returns true.
+  }
+
+  if (isTaken) {
+      return { error: 'このサモナーは既に他のアカウントに登録されています' };
   }
 
   // Generate Challenge (Random Icon)
@@ -276,7 +280,11 @@ export async function verifyAndAddSummoner(summonerData: any) {
 
     if (insertError) {
         console.error('Insert error:', insertError)
-        return { error: `DB保存に失敗しました: ${insertError.message} (${insertError.details || ''})` }
+        // PostgreSQL Error 23505 = Unique Violation
+        if (insertError.code === '23505') {
+             return { error: 'このサモナーは既に他のアカウントに登録されています。' }
+        }
+        return { error: `システムエラー（保存失敗）: ${insertError.message}` }
     }
 
     // 5. Cleanup & Set Active

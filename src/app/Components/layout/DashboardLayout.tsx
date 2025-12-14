@@ -23,8 +23,15 @@ export default function DashboardLayout({children}: DashboardLayoutProps) {
 
     if(!user) {
       router.push("/login");
+      return;
     }
-  }, [user,router, authLoading]);
+
+    // Onboarding Check
+    // If not loading and no active summoner, redirect to onboarding
+    if (!summonerLoading && !activeSummoner) {
+        router.push("/onboarding");
+    }
+  }, [user, router, authLoading, activeSummoner, summonerLoading]);
 
   if(authLoading || !user) {
     return <div className="text-center mt-10">読み込み中...</div>

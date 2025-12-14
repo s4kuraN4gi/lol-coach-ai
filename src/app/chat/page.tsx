@@ -190,10 +190,29 @@ export default function ChatPage() {
     } catch (err: any) {
       console.log("AI接続エラー:", err);
       const errMsg = err.message || "AIとの通信に失敗しました。";
-      setMessage((prev) => [
-        ...prev,
-        { role: "ai", text: `⚠️ ${errMsg}` },
-      ]);
+      
+      const errorMsg: ChatMsg = { 
+          role: "ai", 
+          text: `⚠️ ${errMsg}`, 
+          ts: Date.now() 
+      };
+
+      // currentSession(ユーザー送信済み)にエラーメッセージを追加
+      const sessionWithError: ChatSession = {
+          ...currentSession!,
+          message: [...currentSession!.message, errorMsg]
+      };
+
+      // sessionWithErrorを先頭にして保存
+      // allSessions(外側の変数)は既にcurrentSessionを含んでいるので、除外して再構築
+      const filtered = allSessions.filter((s) => s.id !== sessionWithError.id);
+      const updatedSessions = [sessionWithError, ...filtered];
+
+      localStorage.setItem(key, JSON.stringify(updatedSessions));
+      setSessions(updatedSessions);
+      setSelectedSession(sessionWithError);
+      setMessage(sessionWithError.message);
+
     } finally {
       setLoadingAI(false);
     }

@@ -2,22 +2,28 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { fetchMatchDetail, fetchMatchTimeline } from "@/app/actions/riot";
+import { fetchMatchDetail, fetchMatchTimeline, fetchLatestVersion } from "@/app/actions/riot";
 import { getMatchAnalysis } from "@/app/actions/analysis";
 import DashboardLayout from "@/app/Components/layout/DashboardLayout";
 import Link from "next/link";
 import Timeline from "./components/Timeline";
 import MatchAnalysisPanel from "./components/MatchAnalysisPanel";
-import TeamOverviewCard from "./components/TeamOverviewCard"; // Import New Component
+import TeamOverviewCard from "./components/TeamOverviewCard";
 import LoadingAnimation from "@/app/Components/LoadingAnimation";
 import { useSummoner } from "@/app/Providers/SummonerProvider";
 import MatchSkeleton from "../../components/skeletons/MatchSkeleton";
-
 
 export default function MatchDetailsPage() {
     const params = useParams();
     const matchId = params?.matchId as string;
     const { activeSummoner, loading: summonerLoading } = useSummoner();
+    
+    // Dynamic Version
+    const [ddVersion, setDdVersion] = useState("14.24.1");
+
+    useEffect(() => {
+        fetchLatestVersion().then(v => setDdVersion(v));
+    }, []);
     
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -125,7 +131,7 @@ export default function MatchDetailsPage() {
                         <div className="flex items-center gap-4">
                              <div className="bg-slate-800 p-2 rounded-lg relative overflow-hidden group">
                                  <img 
-                                    src={`https://ddragon.leagueoflegends.com/cdn/14.24.1/img/champion/${championName}.png`} 
+                                    src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/champion/${championName}.png`} 
                                     alt={championName}
                                     className="w-16 h-16 rounded object-cover transform scale-110 group-hover:scale-100 transition duration-500"
                                     onError={(e) => e.currentTarget.style.display = 'none'} 
@@ -149,7 +155,7 @@ export default function MatchDetailsPage() {
                         </div>
 
                         <div className="text-xs font-mono text-slate-500 border border-slate-800 bg-slate-900/50 px-3 py-1.5 rounded-full">
-                            VER {matchData.info.gameVersion.split('.').slice(0, 2).join('.')}
+                            PATCH {matchData.info.gameVersion.split('.').slice(0, 2).join('.')} (View: {ddVersion})
                         </div>
                     </div>
 

@@ -191,6 +191,11 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="py-8 border-t border-white/5 text-center text-gray-500 text-sm">
+        <div className="flex justify-center gap-6 mb-4">
+             <Link href="/terms" className="hover:text-blue-400 transition">利用規約</Link>
+             <Link href="/privacy" className="hover:text-blue-400 transition">プライバシーポリシー</Link>
+             <Link href="/legal" className="hover:text-blue-400 transition">特定商取引法に基づく表記</Link>
+        </div>
         <p>&copy; {new Date().getFullYear()} LoL Coach AI. Not affiliated with Riot Games.</p>
       </footer>
     </div>

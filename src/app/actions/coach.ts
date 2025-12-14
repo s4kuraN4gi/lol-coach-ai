@@ -1,8 +1,9 @@
 'use server';
 
 import { createClient } from "@/utils/supabase/server";
-import { fetchMatchTimeline, fetchMatchDetail, fetchDDItemData } from "./riot";
+import { fetchMatchTimeline, fetchMatchDetail, fetchDDItemData, fetchRank } from "./riot";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { AnalysisMode, getPersonaPrompt, getModePrompt } from './promptUtils';
 
 const GEMINI_API_KEY_ENV = process.env.GEMINI_API_KEY;
 
@@ -23,6 +24,8 @@ export type BuildItem = {
 
 export type BuildComparison = {
     userItems: BuildItem[];
+    opponentItems?: BuildItem[];
+    opponentChampionName?: string;
     recommendedItems: BuildItem[];
     analysis: string; // "Why X is better than Y"
 };
@@ -33,12 +36,13 @@ export type AnalysisResult = {
 };
 
 // Fallback sequence: Stable 2.0 -> New 2.5 -> Legacy Standard
-const MODELS_TO_TRY = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash", "gemini-pro"];
+const MODELS_TO_TRY = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-flash-latest"];
 
 export type AnalysisFocus = {
-    focusArea: string; // e.g., "LANING", "TEAMFIGHT", "MACRO", "BUILD", "VISION"
+    focusArea: string; // e.g., "LANING", "TEAMFIGHT", "MACRO", "BUILD", "VISION" or "LANING_PHASE"
     focusTime?: string; // e.g., "12:30"
     specificQuestion?: string;
+    mode?: 'LANING' | 'MACRO' | 'TEAMFIGHT'; // New dynamic mode
 };
 
 export async function analyzeMatchTimeline(
@@ -124,6 +128,16 @@ export async function analyzeMatchTimeline(
 
         const { userPart, opponentPart } = context;
 
+        // --- NEW: Fetch Rank for Persona ---
+        let rankTier = "UNRANKED";
+        try {
+            const ranks = await fetchRank(userPart.summonerId);
+            const soloDuo = ranks.find(r => r.queueType === "RANKED_SOLO_5x5");
+            if (soloDuo) rankTier = soloDuo.tier; // e.g., "GOLD", "DIAMOND"
+        } catch (e) {
+            console.warn("Rank fetch failed, using UNRANKED", e);
+        }
+
         // 3. Extract User's Actual Build (End Game Items)
         const userItemIds = [
             userPart.item0, userPart.item1, userPart.item2, 
@@ -135,77 +149,44 @@ export async function analyzeMatchTimeline(
             itemName: idMap[id]?.name || `Item ${id}`
         }));
 
-        // 4. Summarize Timeline
-        const events = summarizeTimeline(timeline, userPart.participantId, opponentPart?.participantId);
+        // Extract Opponent's Items if available
+        let opponentItemsStr = "不明";
+        let opponentItems: BuildItem[] = []; // NEW
+        
+        if (opponentPart) {
+            const oppItemIds = [
+                opponentPart.item0, opponentPart.item1, opponentPart.item2,
+                opponentPart.item3, opponentPart.item4, opponentPart.item5
+            ].filter(id => id > 0);
+            
+            const oppItems = oppItemIds.map(id => idMap[id]?.name || `Item ${id}`);
+            if (oppItems.length > 0) opponentItemsStr = oppItems.join(', ');
+            
+            // Structured Object for Frontend
+            opponentItems = oppItemIds.map(id => ({
+                id,
+                itemName: idMap[id]?.name || `Item ${id}`
+            }));
+        }
+
+        // 4. Summarize Timeline (Filter by Mode)
+        const mode = focus?.mode || 'MACRO'; // Default to Macro if not specified
+        const events = summarizeTimeline(timeline, userPart.participantId, opponentPart?.participantId, mode);
 
         // 5. Prompt Gemini
         const genAI = new GoogleGenerativeAI(apiKeyToUse);
         
-        // --- Construct Prompt based on Focus ---
-        let focusInstruction = "";
-        if (focus) {
-            focusInstruction = `
-            【ユーザーからの具体的な指示】
-            興味ある領域: ${focus.focusArea || "指定なし（全体）"}
-            ${focus.focusTime ? `注目してほしい時間帯: ${focus.focusTime}付近` : ""}
-            ${focus.specificQuestion ? `具体的な質問・悩み: "${focus.specificQuestion}"` : ""}
-            
-            指示がある場合は、その内容に対する回答を最優先し、それに関連するイベントを深く掘り下げてください。
-            `;
-        }
-        
-        const prompt = `
-        あなたはプロのLoLコーチ（日本の高レートプレイヤー）です。
-        以下の試合データに基づき「詳細な分析」と「ビルド比較評価」を行ってください。
-
-        1. **タイムライン分析 (Insights)**:
-           試合の流れに沿ったアドバイス。最大2〜3文で、具体的かつ説得力のある内容にしてください。
-
-        2. **ビルド比較 (Build Comparison)**:
-           ユーザーが実際に購入したアイテムと、この試合（対面・敵構成）で理想的だったアイテム構成を比較し、
-           「なぜユーザーの選択が間違いだったのか（あるいは正しかったのか）」を解説してください。
-           - 実際のビルド: ${userItems.map(i => i.itemName).join(', ')}
-           - 特に「靴」「コアアイテム(1-3手目)」の選択ミスがあれば厳しく指摘してください。
-
-        【重要：出力スタイルの制約】
-        - **日本語**: 自然な日本語で出力してください。
-        - **アイテム名**: 正確な日本語名（例：ディヴァイン サンダラー）を使用してください。
-
-        ${focusInstruction}
-
-        【コンテキスト】
-        - ユーザー: ${userPart.championName} (${userPart.teamPosition})
-        - KDA: ${userPart.kills}/${userPart.deaths}/${userPart.assists}
-        - 対面: ${opponentPart ? opponentPart.championName : '不明'}
-
-        【タイムラインイベント】
-        ${JSON.stringify(events)}
-
-        【出力形式 (JSON)】
-        以下のJSON形式のみを出力してください。Markdownバッククォートは不要です。
-
-        {
-            "insights": [
-                {
-                    "timestamp": number (ms),
-                    "timestampStr": string ("mm:ss"),
-                    "title": string (短い見出し),
-                    "description": string (状況説明),
-                    "type": "MISTAKE" | "TURNING_POINT" | "GOOD_PLAY" | "INFO",
-                    "advice": string (2-3文のアドバイス)
-                }
-            ],
-            "buildRecommendation": {
-                "recommendedItems": [
-                    { "itemName": "アイテム名(日本語)", "reason": "短い採用理由" },
-                    { "itemName": "アイテム名", "reason": "短い採用理由" },
-                    { "itemName": "アイテム名", "reason": "短い採用理由" }
-                    // 3〜4つ程度（靴含む）
-                ],
-                "analysis": string (ユーザーのビルドと推奨ビルドの比較解説。なぜそのアイテムが必要だったのか、ユーザーのビルドのどこが悪かったのかを具体的に解説。200文字程度。)
-            }
-        }
-        `;
+        // Use the new versatile prompt generator
+        const systemPrompt = generateSystemPrompt(
+            rankTier, 
+            mode, 
+            userItems, 
+            opponentItemsStr, 
+            events, 
+            userPart, 
+            opponentPart, 
+            focus
+        );
 
         let lastError = null;
         let analysisResult: any = null; // Temporary any
@@ -214,7 +195,7 @@ export async function analyzeMatchTimeline(
             try {
                 console.log(`Trying Gemini Model: ${modelName}`);
                 const model = genAI.getGenerativeModel({ model: modelName, generationConfig: { responseMimeType: "application/json" } });
-                const result = await model.generateContent(prompt);
+                const result = await model.generateContent(systemPrompt);
                 const text = result.response.text();
                 if (!text) throw new Error("Empty response");
                 
@@ -263,6 +244,8 @@ export async function analyzeMatchTimeline(
             insights: analysisResult.insights,
             buildRecommendation: {
                 userItems: userItems,
+                opponentItems: opponentItems,
+                opponentChampionName: opponentPart?.championName || "Unknown",
                 recommendedItems: recommendedWithIds,
                 analysis: analysisResult.buildRecommendation.analysis
             }
@@ -312,47 +295,232 @@ function getMatchContext(match: any, puuid: string) {
     return { userPart, opponentPart };
 }
 
-// Helper: Summarize Timeline (Heuristic with Objectives)
-function summarizeTimeline(timeline: any, userId: number, opponentId?: number) {
+// Helper: Generate System Prompt based on Mode and Rank
+
+function generateSystemPrompt(
+    rank: string, // e.g. "GOLD", "IRON", "CHALLENGER"
+    mode: 'LANING' | 'MACRO' | 'TEAMFIGHT',
+    userItems: BuildItem[],
+    opponentItemsStr: string,
+    events: any[],
+    userPart: any,
+    opponentPart: any,
+    focus?: AnalysisFocus
+) {
+    // 1. Determine Persona based on Rank (Shared Logic)
+    const personaInstruction = getPersonaPrompt(rank);
+
+    // 2. Mode Specific Instructions (Shared Logic)
+    const modeInstruction = getModePrompt(mode);
+
+    // 3. User Focus
+    let focusInstruction = "";
+    if (focus) {
+        focusInstruction = `
+        【ユーザーからの具体的な質問】
+        興味ある領域: ${focus.focusArea || "指定なし"}
+        ${focus.specificQuestion ? `具体的な悩み: "${focus.specificQuestion}"` : ""}
+        
+        この質問に対する回答を最優先に含めてください。
+        `;
+    }
+
+    return `
+    ${personaInstruction}
+    
+    以下の試合データに基づき、選択されたモード「${mode}」に特化したコーチングを行ってください。
+
+    ${modeInstruction}
+    ${focusInstruction}
+
+    1. **タイムライン分析 (Insights)**:
+       試合の流れに沿ったアドバイス。最大2〜3文で、具体的かつ説得力のある内容にしてください。
+       **【超重要】必ず「6個以上」のインサイトを出力してください。数が少ないと分析として不十分です。**
+
+    2. **ビルド比較 (Build Comparison)**:
+       ユーザーが実際に購入したアイテムと、この試合（対面・敵構成・敵のビルド状況）で理想的だったアイテム構成を比較し、
+       「なぜユーザーの選択が間違いだったのか（あるいは正しかったのか）」を解説してください。
+       - 実際のビルド: ${userItems.map(i => i.itemName).join(', ')}
+       - 対面のビルド: ${opponentItemsStr}
+       - 特に「靴」「コアアイテム(1-3手目)」の選択ミスがあれば厳しく指摘してください。
+       - **【重要】「対面（${opponentPart ? opponentPart.championName : '不明'}）のアイテム状況（MR/Armor積みなど）を加味して、なぜそのアイテムが有効か」を具体的に述べてください。**
+
+    【重要：出力スタイルの制約】
+    - **日本語**: 自然な日本語で出力してください。
+    - **アイテム名**: 正式な日本語名（例：ディヴァイン サンダラー）を使用してください。
+
+    【コンテキスト】
+    - ユーザー: ${userPart.championName} (${userPart.teamPosition})
+    - ランク帯: ${rank.toUpperCase()}
+    - KDA: ${userPart.kills}/${userPart.deaths}/${userPart.assists}
+    - 対面: ${opponentPart ? opponentPart.championName : '不明'}
+
+    【重要: マクロ分析とデス診断のルール】
+    提供されたデータには詳細なコンテキストが含まれています。以下の基準で厳密に分析してください。
+
+    1. **カテゴリ: SOLO_KILL_LOSS (1v1敗北)**
+       - コンテキスト: \`isSolo: true\`
+       - **厳禁**: 「ガンク」や「人数差」を言い訳にすること。
+       - **指摘点**: スキル精度、ダメージ計算ミス、無理なトレード、サモナースペルの差、カウンター関係の理解不足。
+
+    2. **カテゴリ: GANK_OR_TEAMFIGHT (ガンク/集団戦敗北)**
+       - **Check 1: 視界 (\`nearbyVision: false\`)**:
+         - 文字通り「直近90秒間、周辺2000ユニット以内にワードが置かれていない」ことを検知済みです。
+         - アドバイス: 「ワードを置いていれば防げた」「視界管理の甘さ」を強く指摘してください。
+       - **Check 2: 所持ゴールド (\`goldOnHand > 1000\`)**:
+         - 1000G以上持った（=装備更新可能な）状態でデスしています。
+         - アドバイス: 「リコールタイミングの遅れ」「装備差（相手は買い物済みかも）による敗北」を指摘してください。
+       - **Check 3: 生存時間 (\`timeAliveMins\`)**:
+         - 極端に長時間生存していた後のデスなら「欲張りすぎ（Overstay）」を指摘。
+         - 復帰直後のデスなら「プレイの雑さ」を指摘。
+
+    【タイムラインイベント (解析済みデータ)】
+    ${JSON.stringify(events)}
+
+    【出力形式 (JSON)】
+    以下のJSON形式のみを出力してください。Markdownバッククォートは不要です。
+
+    {
+        "insights": [
+            {
+                "timestamp": number (ms),
+                "timestampStr": string ("mm:ss"),
+                "title": string (短い見出し),
+                "description": string (状況説明),
+                "type": "MISTAKE" | "TURNING_POINT" | "GOOD_PLAY" | "INFO",
+                "advice": string (2-3文のアドバイス)
+            }
+        ],
+        "buildRecommendation": {
+            "recommendedItems": [
+                { "itemName": "アイテム名(日本語)", "reason": "短い採用理由" },
+                { "itemName": "アイテム名", "reason": "短い採用理由" },
+                { "itemName": "アイテム名", "reason": "短い採用理由" }
+                // 3〜4つ程度（靴含む）
+            ],
+            "analysis": string (ユーザーのビルドと推奨ビルドの比較解説。200文字程度。)
+        }
+    }
+    `;
+}
+
+// Helper: Summarize Timeline (Heuristic with Objectives & Context)
+function summarizeTimeline(
+    timeline: any, 
+    userId: number, 
+    opponentId?: number,
+    mode: 'LANING' | 'MACRO' | 'TEAMFIGHT' = 'MACRO'
+) {
     const events: any[] = [];
     const frames = timeline.info.frames;
+    
+    // Track Last Recall or Spawn for "Uptime"
+    let lastSpawnTime = 0; 
+
+    // Pre-scan for Vision Events (Ward Placed) to optimize lookup
+    const wardEvents: { timestamp: number, x: number, y: number }[] = [];
+    frames.forEach((f: any) => {
+        f.events.forEach((e: any) => {
+            if (e.type === 'WARD_PLACED' && e.creatorId === userId) {
+                wardEvents.push({ timestamp: e.timestamp, x: e.x || 0, y: e.y || 0 });
+            }
+        });
+    });
 
     frames.forEach((frame: any) => {
+        // Mode Filtering Logic
+        // LANING: Only events before 15 min (900000 ms)
+        // TEAMFIGHT: Only events after 15 min
+        if (mode === 'LANING' && frame.timestamp > 900000) return;
+        if (mode === 'TEAMFIGHT' && frame.timestamp < 900000) return;
+
+        // Update user state from frame
+        const userFrame = frame.participantFrames?.[userId.toString()];
+        const currentGold = userFrame?.currentGold || 0;
+        const userPos = userFrame?.position || { x: 0, y: 0 };
+        
         const relevantEvents = frame.events.filter((e: any) => {
              // 1. Champion Kill (User or Opponent involved)
              if (e.type === 'CHAMPION_KILL') {
-                 // User died, User killed, or Opponent killed (important context)
-                 return e.victimId === userId || e.killerId === userId || e.assistingParticipantIds?.includes(userId) ||
+                 // Update Spawn time on death? No, on respawn? 
+                 // We just track death time.
+                 if (e.victimId === userId) {
+                     lastSpawnTime = e.timestamp; // Reset uptime counter roughly
+                     return true;
+                 }
+                 return e.killerId === userId || e.assistingParticipantIds?.includes(userId) ||
                         (opponentId && (e.killerId === opponentId || e.victimId === opponentId));
              }
-             // 2. Objectives (Dragon, Baron, Rift Herald) - GLOBAL relevance
+             // 2. Objectives
              if (e.type === 'ELITE_MONSTER_KILL') return true; 
              
-             // 3. Turrets (User taking or User losing)
+             // 3. Turrets
              if (e.type === 'BUILDING_KILL') {
-                 return e.killerId === userId || (e.teamId !== 0 && e.teamId === getTeamIdFromPid(userId, timeline) ); 
-                 // Note: getting TeamID from PID in timeline is tricky without context, but we can infer.
-                 // Actually easier: Just log all building kills, they are macro events.
+                 // Filter relevant ones
                  return true;
              }
-             
-             // 4. Item Purchase (Crucial for Power Spikes)
-             if (e.type === 'ITEM_PURCHASED') {
-                 return e.participantId === userId || (opponentId && e.participantId === opponentId);
-             }
 
-             return false;
+             // 4. Mode Specific Events
+             if (mode === 'LANING' && e.type === 'SKILL_LEVEL_UP' && e.participantId === userId) {
+                 return true; // Trace skill order in laning
+             }
+             
+             return false; // Skip items for prompt brevity unless specialized
         });
 
         relevantEvents.forEach((e: any) => {
-            // Simplify Item events to reduce tokens (only legendary/mythic? or just all for now)
-            // Filtering very cheap items might be good optimization later.
-            
-            events.push({
-                type: e.type,
-                timestamp: e.timestamp,
-                details: formatEventDetails(e, userId, opponentId)
-            });
+            if (e.type === 'CHAMPION_KILL' && e.victimId === userId) {
+                // --- Analyze Death Context ---
+                const assistCount = e.assistingParticipantIds ? e.assistingParticipantIds.length : 0;
+                const isSolo = assistCount === 0;
+                const timeSinceLastSpawn = ((e.timestamp - lastSpawnTime) / 60000).toFixed(1); // mins
+                
+                // Vision Check: Any ward placed near user in last 90s?
+                // We assume we look for wards placed ROUGHLY near death spot.
+                // Death event has x,y usually.
+                const deathX = e.position?.x || userPos.x;
+                const deathY = e.position?.y || userPos.y;
+                
+                const recentWards = wardEvents.filter(w => 
+                    w.timestamp < e.timestamp && 
+                    w.timestamp > (e.timestamp - 90000) &&
+                    getDistance(w.x, w.y, deathX, deathY) < 2000
+                );
+                const hasNearbyVision = recentWards.length > 0;
+
+                events.push({
+                    type: "USER_DIED",
+                    timestamp: e.timestamp,
+                    timestampStr: formatTime(e.timestamp),
+                    category: isSolo ? "SOLO_KILL_LOSS" : "GANK_OR_TEAMFIGHT",
+                    killerId: e.killerId,
+                    assists: assistCount,
+                    context: {
+                        goldOnHand: currentGold,
+                        nearbyVision: hasNearbyVision,
+                        timeAliveMins: timeSinceLastSpawn,
+                        isSolo: isSolo
+                    },
+                    details: isSolo 
+                        ? `1v1 Defeat against ${e.killerId}` 
+                        : `Caught by ${e.killerId} + ${assistCount} others`
+                });
+            } else if (e.type === 'SKILL_LEVEL_UP') {
+                // Simplified Skill Event
+                events.push({
+                    type: "SKILL_UP",
+                    timestamp: e.timestamp,
+                    skill: e.skillSlot, // 1=Q, 2=W, 3=E, 4=R
+                    level: e.levelUpType 
+                });
+            } else {
+                events.push({
+                    type: e.type,
+                    timestamp: e.timestamp,
+                    timestampStr: formatTime(e.timestamp),
+                    details: formatEventDetails(e, userId, opponentId)
+                });
+            }
         });
     });
 
@@ -361,22 +529,28 @@ function summarizeTimeline(timeline: any, userId: number, opponentId?: number) {
 
 function formatEventDetails(e: any, uid: number, oid?: number) {
     if (e.type === 'CHAMPION_KILL') {
-        if (e.victimId === uid) return `User DIED (Killer: ${e.killerId})`;
-        if (e.killerId === uid) return `User KILLED (Victim: ${e.victimId})`;
-        if (oid && e.killerId === oid) return `Opponent KILLED someone`;
-        if (oid && e.victimId === oid) return `Opponent DIED`;
-        return `Teamfight (User Assist)`;
+         if (e.victimId === uid) return "User DIED"; // Handled above but fallback
+         if (e.killerId === uid) return `User KILLED (Victim: ${e.victimId})`;
+         if (oid && e.killerId === oid) return `Opponent KILLED someone`;
+         if (oid && e.victimId === oid) return `Opponent DIED`;
+         return `Teamfight (User Assist)`;
     }
-    if (e.type === 'ITEM_PURCHASED') {
-        return `${e.participantId === uid ? "User" : "Opponent"} bought Item ${e.itemId}`;
-    }
-    if (e.type === 'ELITE_MONSTER_KILL') {
-        return `${e.monsterType} taken by Killer ${e.killerId}`;
-    }
+    if (e.type === 'ELITE_MONSTER_KILL') return `${e.monsterType} taken by ${e.killerId}`;
+    if (e.type === 'BUILDING_KILL') return `Turret Destroyed`;
     return e.type;
 }
 
+function getDistance(x1: number, y1: number, x2: number, y2: number) {
+    return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+}
+
+function formatTime(ms: number) {
+    const totalSec = Math.floor(ms / 1000);
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
 function getTeamIdFromPid(pid: number, timeline: any) {
-    // In standard timeline, pids 1-5 are Team 100, 6-10 are Team 200.
     return pid <= 5 ? 100 : 200;
 }
