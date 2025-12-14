@@ -28,18 +28,19 @@ type TeamOverviewCardProps = {
     teamName: string;
     participants: Participant[];
     win: boolean;
+    version: string;
 }
 
-const getChampionImageUrl = (championName: string) => {
+const getChampionImageUrl = (championName: string, version: string) => {
     // Fix known DDragon naming inconsistencies
     const nameMap: Record<string, string> = {
         "FiddleSticks": "Fiddlesticks",
     };
     const cName = nameMap[championName] || championName;
-    return `https://ddragon.leagueoflegends.com/cdn/14.24.1/img/champion/${cName}.png`;
+    return `https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${cName}.png`;
 };
 
-export default function TeamOverviewCard({ teamId, teamName, participants, win }: TeamOverviewCardProps) {
+export default function TeamOverviewCard({ teamId, teamName, participants, win, version }: TeamOverviewCardProps) {
 
     return (
         <div className={`rounded-xl border ${win ? 'border-blue-500/30 bg-blue-900/10' : 'border-red-500/30 bg-red-900/10'} overflow-hidden`}>
@@ -62,7 +63,7 @@ export default function TeamOverviewCard({ teamId, teamName, participants, win }
                         {/* Champion Icon */}
                         <div className="relative group/icon">
                             <img 
-                                src={getChampionImageUrl(p.championName)}
+                                src={getChampionImageUrl(p.championName, version)}
                                 alt={p.championName}
                                 className="w-10 h-10 rounded shadow-md object-cover bg-slate-800 cursor-help"
                                 onError={(e) => {
@@ -99,7 +100,7 @@ export default function TeamOverviewCard({ teamId, teamName, participants, win }
                                 itemId !== 0 ? (
                                     <div key={idx} className="relative group/item">
                                         <img 
-                                            src={`https://ddragon.leagueoflegends.com/cdn/14.24.1/img/item/${itemId}.png`}
+                                            src={`https://ddragon.leagueoflegends.com/cdn/${version}/img/item/${itemId}.png`}
                                             alt={`Item ${itemId}`}
                                             className="w-7 h-7 rounded border border-slate-800 bg-slate-900"
                                         />
@@ -111,7 +112,7 @@ export default function TeamOverviewCard({ teamId, teamName, participants, win }
                             <div className="w-px bg-slate-700 mx-1 h-7"></div>
                              {p.item6 !== 0 ? (
                                 <img 
-                                    src={`https://ddragon.leagueoflegends.com/cdn/14.24.1/img/item/${p.item6}.png`}
+                                    src={`https://ddragon.leagueoflegends.com/cdn/${version}/img/item/${p.item6}.png`}
                                     alt="Trinket"
                                     className="w-7 h-7 rounded-full border border-slate-800 bg-slate-900"
                                 />

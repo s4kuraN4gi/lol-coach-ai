@@ -196,12 +196,14 @@ export default function MatchDetailsPage() {
                                         teamName="BLUE TEAM" 
                                         participants={team100} 
                                         win={team100Win} 
+                                        version={ddVersion}
                                     />
                                     <TeamOverviewCard 
                                         teamId={200} 
                                         teamName="RED TEAM" 
                                         participants={team200} 
-                                        win={team200Win} 
+                                        win={team200Win}
+                                        version={ddVersion} 
                                     />
                                 </div>
                              </div>
