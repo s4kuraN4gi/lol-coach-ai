@@ -220,7 +220,10 @@ export async function analyzeMatchTimeline(
         // We will do a best-effort reverse lookup using nameMap.
 
         const recommendedWithIds = analysisResult.buildRecommendation.recommendedItems.map((item: any) => {
-            const lowerName = item.itemName.toLowerCase().replace(/\s+/g, ''); // Simple normalization
+            // Robust Normalization: Remove whitespace, Nakaguro (・), Colons (:：), and full-width spaces
+            const normalizeRegex = /[\s\u3000\t・:：]+/g;
+            const lowerName = item.itemName.toLowerCase().replace(normalizeRegex, '');
+            
             // Try explicit lookup
              let id = 0;
              // Search in nameMap values or keys
@@ -230,7 +233,7 @@ export async function analyzeMatchTimeline(
              // We need to match AI output (Japanese) to DDragon JA name.
              // Try exact match first
              for (const [key, val] of Object.entries(itemMap)) {
-                  if (key.replace(/\s+/g, '') === lowerName) {
+                  if (key.replace(normalizeRegex, '') === lowerName) {
                       id = parseInt(val);
                       break;
                   }
