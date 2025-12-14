@@ -578,7 +578,8 @@ export default function CoachPage() {
                                              </div>
                                          </div>
 
-                                         {/* Opponent (VS) */}
+                                         {/* 3. Subscription Status */}
+                                 <PlanStatusBadge initialStatus={status} />
                                          {analysisData.buildRecommendation.opponentItems && (
                                              <div className="bg-red-900/10 p-3 rounded border border-red-500/30 relative overflow-hidden">
                                                  <div className="text-[10px] font-bold text-red-300 mb-2 uppercase flex justify-between">
@@ -643,13 +644,13 @@ export default function CoachPage() {
                                             className="bg-slate-900 border border-slate-700 hover:border-blue-500 hover:bg-slate-800 rounded-xl p-4 shadow-lg relative overflow-hidden group transition cursor-pointer"
                                          >
                                              <div className="absolute top-0 right-0 p-2 opacity-10 text-4xl group-hover:scale-110 transition duration-500">
-                                                 {insight.type === 'GOOD' ? '👍' : insight.type === 'BAD' ? '👎' : '💡'}
-                                             </div>
-                                             <div className="flex items-center gap-2 mb-2">
-                                                 <span className={`text-xs font-bold px-2 py-0.5 rounded ${
-                                                     insight.type === 'GOOD' ? 'bg-green-500/20 text-green-300' :
-                                                     insight.type === 'BAD' ? 'bg-red-500/20 text-red-300' :
-                                                     'bg-blue-500/20 text-blue-300'
+                                                {insight.type === 'GOOD_PLAY' ? '👍' : insight.type === 'MISTAKE' ? '👎' : '💡'}
+                                            </div>
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <span className={`text-xs font-bold px-2 py-0.5 rounded ${
+                                                    insight.type === 'GOOD_PLAY' ? 'bg-green-500/20 text-green-300' :
+                                                    insight.type === 'MISTAKE' ? 'bg-red-500/20 text-red-300' :
+                                                    'bg-blue-500/20 text-blue-300'
                                                  }`}>
                                                      {insight.timestampStr}
                                                  </span>
@@ -674,7 +675,7 @@ export default function CoachPage() {
                              </div>
                          ) : (
                              <>
-                                 <PremiumPromoCard status={status} />
+                                 <PremiumPromoCard initialStatus={status} />
                                  <AdSenseBanner slotId="1234567890" format="rectangle" />
                              </>
                          )}
