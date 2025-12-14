@@ -1,7 +1,7 @@
 'use server';
 
 import { createClient } from "@/utils/supabase/server";
-import { fetchMatchTimeline, fetchMatchDetail, fetchDDItemData, fetchRank } from "./riot";
+import { fetchMatchTimeline, fetchMatchDetail, fetchDDItemData, fetchRank, fetchLatestVersion } from "./riot";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { AnalysisMode, getPersonaPrompt, getModePrompt } from './promptUtils';
 
@@ -108,10 +108,11 @@ export async function analyzeMatchTimeline(
 
     try {
         // 1. Fetch Data
-        const [timelineRes, matchRes, ddItemRes] = await Promise.all([
+        const [timelineRes, matchRes, ddItemRes, latestVersion] = await Promise.all([
             fetchMatchTimeline(matchId),
             fetchMatchDetail(matchId),
-            fetchDDItemData()
+            fetchDDItemData(),
+            fetchLatestVersion()
         ]);
 
         if (!timelineRes.success || !timelineRes.data) return { success: false, error: "Failed to fetch timeline" };
@@ -185,7 +186,8 @@ export async function analyzeMatchTimeline(
             events, 
             userPart, 
             opponentPart, 
-            focus
+            focus,
+            latestVersion
         );
 
         let lastError = null;
@@ -305,7 +307,8 @@ function generateSystemPrompt(
     events: any[],
     userPart: any,
     opponentPart: any,
-    focus?: AnalysisFocus
+    focus?: AnalysisFocus,
+    patchVersion: string = "14.24.1"
 ) {
     // 1. Determine Persona based on Rank (Shared Logic)
     const personaInstruction = getPersonaPrompt(rank);
@@ -328,6 +331,11 @@ function generateSystemPrompt(
     return `
     ${personaInstruction}
     
+    【重要：前提条件】
+    - 現在のパッチバージョン: **${patchVersion}**
+    - このパッチに存在しない削除されたアイテム（例: ディヴァイン サンダラー / Divine Sunderer）は絶対に推奨しないでください。
+    - 必ず最新のアイテム環境（Map 14, Season 2024/2025）に基づいてアドバイスしてください。
+
     以下の試合データに基づき、選択されたモード「${mode}」に特化したコーチングを行ってください。
 
     ${modeInstruction}

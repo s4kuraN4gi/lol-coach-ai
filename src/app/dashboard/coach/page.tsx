@@ -579,8 +579,7 @@ export default function CoachPage() {
                                              </div>
                                          </div>
 
-                                         {/* 3. Subscription Status */}
-                                 <PlanStatusBadge initialStatus={status} />
+
                                          {analysisData.buildRecommendation.opponentItems && (
                                              <div className="bg-red-900/10 p-3 rounded border border-red-500/30 relative overflow-hidden">
                                                  <div className="text-[10px] font-bold text-red-300 mb-2 uppercase flex justify-between">
