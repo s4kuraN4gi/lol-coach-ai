@@ -198,7 +198,8 @@ export default function CoachPage() {
 
                 const formData = new FormData();
                 if (videoSourceType === "LOCAL" && localFile) {
-                    formData.append("video", localFile);
+                    // Do not upload video file (prevents 413 error). Analysis is based on Match ID.
+                    // formData.append("video", localFile); 
                 }
                 
                 // Enrich Description with Match Context
