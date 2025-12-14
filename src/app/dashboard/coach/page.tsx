@@ -12,6 +12,13 @@ import AdSenseBanner from "../../Components/ads/AdSenseBanner";
 import { ModeSelector } from "../components/Analysis/ModeSelector";
 import { AnalysisMode } from "@/app/actions/promptUtils";
 
+declare global {
+  interface Window {
+    YT: any;
+    onYouTubeIframeAPIReady: any;
+  }
+}
+
 // Types
 type MatchSummary = {
     matchId: string;
