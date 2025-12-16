@@ -199,6 +199,59 @@ async function generateContentWithRetry(model: any, content: any, retries = 0): 
     }
 } 
 
+// NEW: Get Analysis Status
+export async function getVideoAnalysisStatus(matchId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { data, error } = await supabase
+    .from("video_analyses")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("match_id", matchId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error) return { status: "idle" }; // No record found
+  return { 
+      status: data.status, 
+      result: data.result,
+      error: data.error,
+      id: data.id,
+      created_at: data.created_at,
+      inputs: data.inputs
+  };
+}
+
+// NEW: Get Latest Active Analysis (for Auto-Resume)
+export async function getLatestActiveAnalysis() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from("video_analyses")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error || !data) return null;
+  
+  // Optional: Only return if it's recent? (e.g. within 1 hour)
+  // For now, return the latest one.
+  return {
+    matchId: data.match_id,
+    status: data.status,
+    result: data.result,
+    error: data.error,
+    inputs: data.inputs
+  };
+}
+
 // 動画解析を実行 (Gemini Vision)
 // 動画解析を実行 (Mock: Riot API based)
 export async function analyzeVideo(formData: FormData, userApiKey?: string, mode: AnalysisMode = 'MACRO') {
@@ -208,130 +261,160 @@ export async function analyzeVideo(formData: FormData, userApiKey?: string, mode
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
-  // 現状を取得
-  const status = await getAnalysisStatus();
-  if (!status) return { error: "User not found" };
-
-  // Fetch Summoner Rank for Persona (Optional but good for fallback context)
-  let rankTier = "UNRANKED";
-  try {
-      const summoner = await getActiveSummoner();
-      if (summoner?.id) {
-          const ranks = await fetchRank(summoner.id);
-          const soloDuo = ranks.find(r => r.queueType === "RANKED_SOLO_5x5");
-          if (soloDuo) rankTier = soloDuo.tier;
-      }
-  } catch (e) {
-      console.warn("Rank fetch failed for video analysis", e);
-  }
-
-  let useEnvKey = false;
-  let shouldIncrementCount = false;
-
-  // プラン判定と制限チェック
-  if (status.is_premium) {
-      // Premium Plan: Use Platform Key with Daily Limit
-      const today = new Date().toISOString().split('T')[0];
-      const lastDate = status.last_analysis_date ? status.last_analysis_date.split('T')[0] : null;
-      let currentCount = status.daily_analysis_count;
-
-      if (lastDate !== today) {
-          currentCount = 0;
-      }
-
-      if (currentCount >= 50) {
-           return { error: "Daily limit reached (50/50). Please try again tomorrow." };
-      }
-
-      useEnvKey = true;
-      shouldIncrementCount = true;
-
-  } else {
-      // Free User Logic
-      if (userApiKey) {
-          useEnvKey = false; // Use provided key
-      } else {
-          // Check Credits
-          if (status.analysis_credits > 0) {
-              useEnvKey = true;
-          } else {
-              return { error: "API Key required or Credits exhausted. Please upgrade to Premium." };
-          }
-      }
-  }
-
-  const apiKey = useEnvKey ? process.env.GEMINI_API_KEY : userApiKey;
-  if (!apiKey) {
-    return { error: "Configuration Error: API Key is missing." };
-  }
-
-  // 入力データの取得
+  // 1. Inputs
   const description = (formData.get("description") as string) || "";
   const matchId = formData.get("matchId") as string | null;
 
+  // New Inputs for Persistence
+  const videoSourceType = formData.get("videoSourceType");
+  const videoUrl = formData.get("videoUrl");
+  const focusTime = formData.get("focusTime");
+  const specificQuestion = formData.get("specificQuestion");
+
+  const inputs = {
+      videoSourceType,
+      videoUrl,
+      focusTime,
+      specificQuestion,
+      mode
+  };
+
+  if (!matchId) return { error: "Match ID is missing. Please select a match first." };
+
+  // 2. Create 'Pending' Record immediately
+  const { data: job, error: jobError } = await supabase
+      .from("video_analyses")
+      .insert({
+          user_id: user.id,
+          match_id: matchId,
+          status: "processing",
+          result: null,
+          inputs: inputs
+      })
+      .select()
+      .single();
+  
+  if (jobError) {
+      console.error("Failed to create analysis job", jobError);
+      return { error: "Failed to start analysis job" };
+  }
+
   try {
-    if (!matchId) {
-         return { error: "Match ID is missing. Please select a match first." };
+    // Current Status Check (for Limits/Credits)
+    const status = await getAnalysisStatus();
+    if (!status) throw new Error("User not found");
+
+    // Fetch Summoner Rank for Persona
+    let rankTier = "UNRANKED";
+    try {
+        const summoner = await getActiveSummoner();
+        if (summoner?.id) {
+            const ranks = await fetchRank(summoner.id);
+            const soloDuo = ranks.find(r => r.queueType === "RANKED_SOLO_5x5");
+            if (soloDuo) rankTier = soloDuo.tier;
+        }
+    } catch (e) {
+        console.warn("Rank fetch failed for video analysis", e);
+    }
+
+    let useEnvKey = false;
+    let shouldIncrementCount = false;
+
+    // Plan & Limit Check
+    if (status.is_premium) {
+        const today = new Date().toISOString().split('T')[0];
+        const lastDate = status.last_analysis_date ? status.last_analysis_date.split('T')[0] : null;
+        let currentCount = status.daily_analysis_count;
+
+        if (lastDate !== today) {
+            currentCount = 0;
+        }
+
+        if (currentCount >= 50) {
+             throw new Error("Daily limit reached (50/50). Please try again tomorrow.");
+        }
+
+        useEnvKey = true;
+        shouldIncrementCount = true;
+
+    } else {
+        // Free User Logic
+        if (userApiKey) {
+            useEnvKey = false; 
+        } else {
+            if (status.analysis_credits > 0) {
+                useEnvKey = true;
+            } else {
+                throw new Error("API Key required or Credits exhausted. Please upgrade to Premium.");
+            }
+        }
+    }
+
+    const apiKey = useEnvKey ? process.env.GEMINI_API_KEY : userApiKey;
+    if (!apiKey) {
+      throw new Error("Configuration Error: API Key is missing.");
     }
 
     const summoner = await getActiveSummoner();
     if (!summoner?.puuid) {
-         return { error: "Summoner not found." };
+         throw new Error("Summoner not found.");
     }
 
-    // Call analyzeMatchTimeline ("Mock" Video Analysis)
-    // We treat the "description" as a specific question/context for the timeline analysis
+    // Call Internal Analysis Logic
     const focus = {
         mode: mode,
-        focusArea: mode, // e.g. MACRO, TEAMFIGHT
-        specificQuestion: description // Pass the video context/user query here
+        focusArea: mode,
+        specificQuestion: description
     };
 
-    // Note: analyzeMatchTimeline returns { success: boolean, data?: AnalysisResult, error?: string }
+    // Assume analyzeMatchTimeline is robust
     const res = await analyzeMatchTimeline(matchId, summoner.puuid, useEnvKey ? undefined : apiKey, focus);
 
     if (!res.success || !res.data) {
         throw new Error(res.error || "Timeline analysis failed.");
     }
 
-    // 利用状況の更新
+    // 3. Analysis Success -> Update Job
+    await supabase
+        .from("video_analyses")
+        .update({
+            status: "completed",
+            result: res.data,
+            error: null
+        })
+        .eq("id", job.id);
+
+    // 4. Update Consumption Stats
     if (shouldIncrementCount) {
         const today = new Date().toISOString();
         const todayDateStr = today.split('T')[0];
         const lastDateStr = status.last_analysis_date ? status.last_analysis_date.split('T')[0] : null;
-        
         let newCount = status.daily_analysis_count + 1;
-        if (lastDateStr !== todayDateStr) {
-            newCount = 1;
-        }
+        if (lastDateStr !== todayDateStr) newCount = 1;
 
-        await supabase
-            .from("profiles")
-            .update({ 
-                daily_analysis_count: newCount,
-                last_analysis_date: today 
-            })
-            .eq("id", user.id);
+        await supabase.from("profiles").update({ daily_analysis_count: newCount, last_analysis_date: today }).eq("id", user.id);
     } else if (!userApiKey && useEnvKey && !status.is_premium) {
-        // Consume Credit (Free User)
-        await supabase
-        .from("profiles")
-        .update({ analysis_credits: status.analysis_credits - 1 })
-        .eq("id", user.id);
+        await supabase.from("profiles").update({ analysis_credits: status.analysis_credits - 1 }).eq("id", user.id);
     }
 
     revalidatePath("/dashboard", "layout");
 
-    return {
-        success: true,
-        data: res.data, // Return structured data similar to analyzeMatchTimeline
-        remainingCredits: status.is_premium ? 999 : status.analysis_credits - 1,
-    };
+    return { success: true, data: res.data };
 
-  } catch (e: unknown) {
-    console.error("Mock Video Analysis Error:", e);
-    const errorMessage = e instanceof Error ? e.message : "Unknown error";
-    return { error: `Analysis failed: ${errorMessage}` };
+  } catch (e: any) {
+    console.error("Video Analysis Error:", e);
+    const errorMessage = e.message || "Unknown error";
+
+    // Update Job to Failed
+    await supabase
+        .from("video_analyses")
+        .update({
+            status: "failed",
+            error: errorMessage
+        })
+        .eq("id", job.id);
+
+    return { error: errorMessage };
   }
 }
 

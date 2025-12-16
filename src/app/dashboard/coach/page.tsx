@@ -5,7 +5,7 @@ import DashboardLayout from "../../Components/layout/DashboardLayout";
 import { fetchMatchIds, fetchMatchDetail, fetchLatestVersion } from "@/app/actions/riot";
 import { analyzeMatchTimeline, CoachingInsight, AnalysisFocus, AnalysisResult, BuildItem } from "@/app/actions/coach";
 import { useSummoner } from "../../Providers/SummonerProvider";
-import { getAnalysisStatus, type AnalysisStatus, upgradeToPremium, claimDailyReward, analyzeVideo } from "@/app/actions/analysis";
+import { getAnalysisStatus, type AnalysisStatus, upgradeToPremium, claimDailyReward, analyzeVideo, getVideoAnalysisStatus, getLatestActiveAnalysis } from "@/app/actions/analysis";
 import PlanStatusBadge from "../../Components/subscription/PlanStatusBadge";
 import PremiumPromoCard from "../../Components/subscription/PremiumPromoCard";
 import AdSenseBanner from "../../Components/ads/AdSenseBanner";
@@ -48,6 +48,10 @@ export default function CoachPage() {
     const [status, setStatus] = useState<AnalysisStatus | null>(null); // Premium Status
     const [isAnalyzing, startTransition] = useTransition();
 
+    // Async Analysis State
+    const [asyncStatus, setAsyncStatus] = useState<'idle' | 'processing' | 'completed' | 'failed'>('idle');
+    const [isRestoring, setIsRestoring] = useState(true); // New: Loading State to prevent flicker
+
     // Analysis Focus State
     const [focusArea, setFocusArea] = useState<string>("MACRO");
     const [analysisMode, setAnalysisMode] = useState<AnalysisMode>("MACRO");
@@ -70,6 +74,11 @@ export default function CoachPage() {
     
     // Dynamic Version
     const [ddVersion, setDdVersion] = useState("14.24.1");
+    
+    // Refs
+    const autoResumeChecked = useRef(false);
+    const analysisStartTime = useRef<number>(0);
+
     // Fetch latest version on mount
     useEffect(() => {
         fetchLatestVersion().then(v => setDdVersion(v));
@@ -86,6 +95,97 @@ export default function CoachPage() {
     useEffect(() => {
         getAnalysisStatus().then(setStatus);
     }, []);
+
+    // Polling Logic for Async Analysis
+    useEffect(() => {
+        if (!selectedMatch) {
+            setAsyncStatus('idle');
+            setAnalysisData(null);
+            return;
+        }
+
+        let intervalId: NodeJS.Timeout;
+        let isMounted = true;
+
+        const checkStatus = async () => {
+            if (!selectedMatch) return;
+            const res = await getVideoAnalysisStatus(selectedMatch.matchId);
+            
+            if (!isMounted) return;
+
+            // Stale Data Check
+            if (res.created_at && analysisStartTime.current > 0) {
+                 const created = new Date(res.created_at).getTime();
+                 if (created < analysisStartTime.current - 5000) {
+                     return; 
+                 }
+            }
+
+            if (res.status === 'completed' && res.result) {
+                setAsyncStatus('completed');
+                setAnalysisData(res.result as AnalysisResult);
+                setProgress(100);
+            } else if (res.status === 'processing') {
+                setAsyncStatus('processing');
+                // Progress handled by separate effect
+            } else if (res.status === 'failed') {
+                setAsyncStatus('failed');
+                setErrorMsg(res.error || "Analysis failed");
+                setProgress(0);
+            } else {
+                if (asyncStatus === 'processing') {
+                     // Keep waiting
+                } else {
+                     setAsyncStatus('idle');
+                }
+            }
+        };
+
+        // Initial check
+        checkStatus();
+
+        intervalId = setInterval(async () => {
+             const res = await getVideoAnalysisStatus(selectedMatch.matchId);
+             if (!isMounted) return;
+
+             if (res.status === 'completed' && res.result) {
+                 setAsyncStatus('completed');
+                 setAnalysisData(res.result as AnalysisResult);
+                 setProgress(100);
+             } else if (res.status === 'processing') {
+                 setAsyncStatus('processing');
+             } else if (res.status === 'failed') {
+                 setAsyncStatus('failed');
+                 setErrorMsg(res.error || "Analysis failed");
+             }
+        }, 3000);
+
+        return () => {
+             isMounted = false;
+             clearInterval(intervalId);
+        };
+    }, [selectedMatch?.matchId]);
+
+    // Smooth Progress Simulation
+    useEffect(() => {
+        if (asyncStatus !== 'processing') return;
+        
+        const interval = setInterval(() => {
+            setProgress(prev => {
+                if (prev >= 95) return 95; // Cap at 95% until done
+                
+                let increment = 0;
+                if (prev < 30) increment = 2;        // Fast start (0-30% in ~3s)
+                else if (prev < 60) increment = 0.5; // Steady middle (30-60% in ~12s)
+                else if (prev < 85) increment = 0.2; // Slowing down (60-85% in ~25s)
+                else increment = 0.05;               // Crawling (85-95% in ~40s)
+                
+                return Math.min(prev + increment, 95);
+            });
+        }, 200);
+        
+        return () => clearInterval(interval);
+    }, [asyncStatus]);
 
     // Fetch Matches logic
     const loadMatches = useCallback(async () => {
@@ -124,6 +224,45 @@ export default function CoachPage() {
             setLoadingIds(false);
         }
     }, [activeSummoner, summonerLoading, loadMatches]);
+
+    // Auto-Resume: Restore Active Analysis and Inputs
+    useEffect(() => {
+        if (loadingIds) return; // Wait for matches
+
+        if (!autoResumeChecked.current) {
+            autoResumeChecked.current = true;
+            getLatestActiveAnalysis().then(latest => {
+                 if (latest && (latest.status === 'processing' || latest.status === 'completed')) {
+                     const found = matches.find(m => m.matchId === latest.matchId);
+                     if (found) {
+                         console.log("Restoring Session:", found.matchId);
+                         setSelectedMatch(found);
+                         
+                         // Restore Inputs
+                         if (latest.inputs) {
+                             const inp = latest.inputs as any;
+                             if (inp.videoSourceType) setVideoSourceType(inp.videoSourceType);
+                             if (inp.videoUrl) setYoutubeUrl(inp.videoUrl);
+                             if (inp.focusTime) setFocusTime(inp.focusTime);
+                             if (inp.specificQuestion) setSpecificQuestion(inp.specificQuestion);
+                             if (inp.mode) setAnalysisMode(inp.mode);
+                         }
+
+                         // Pre-fill Data for immediate display
+                         if (latest.status === 'completed' && latest.result) {
+                             setAnalysisData(latest.result as AnalysisResult);
+                             setAsyncStatus('completed');
+                             setProgress(100);
+                         } else if (latest.status === 'processing') {
+                             setAsyncStatus('processing');
+                         }
+
+                     }
+                 }
+                 setIsRestoring(false);
+            });
+        }
+    }, [matches, loadingIds]); // Run once matches are ready
 
     // YouTube Embed Logic
     useEffect(() => {
@@ -189,80 +328,51 @@ export default function CoachPage() {
         
         if (!selectedMatch || !currentPuuid) return;
 
-        // Mode A: Video + Match Sync Analysis (Prioritize if video is ready)
-        if (videoReady) {
-             startTransition(async () => {
-                setErrorMsg(null);
-                setProgress(10);
-                const interval = setInterval(() => setProgress(p => Math.min(p + 2, 90)), 800); 
+        // Start Async Analysis
+        setErrorMsg(null);
+        setAsyncStatus('processing');
+        setAnalysisData(null);
+        setProgress(1);
+        analysisStartTime.current = Date.now();
 
-                const formData = new FormData();
-                if (videoSourceType === "LOCAL" && localFile) {
-                    // Do not upload video file (prevents 413 error). Analysis is based on Match ID.
-                    // formData.append("video", localFile); 
-                }
-                
-                // Enrich Description with Match Context
-                const matchInfo = `
-                [MATCH CONTEXT]
-                Champion: ${selectedMatch.championName}
-                Result: ${selectedMatch.win ? "WIN" : "LOSE"}
-                KDA: ${selectedMatch.kda}
-                MatchID: ${selectedMatch.matchId}
-                `;
-
-                const description = videoSourceType === "YOUTUBE" ? youtubeUrl : "Local Video Upload";
-                if (selectedMatch?.matchId) {
-                    formData.append("matchId", selectedMatch.matchId);
-                }
-                const descriptionCombined = `Videos Source: ${description}\n\nSpecific Question: ${specificQuestion}`;
-                formData.append("description", descriptionCombined);
-
-                // Use analyzeVideo (Now a Mock Wrapper around Riot API Analysis)
-                const res = await analyzeVideo(formData, undefined, analysisMode);
-                
-                clearInterval(interval);
-                setProgress(100);
-
-                if ('error' in res) {
-                     setErrorMsg(res.error || "Video Analysis Failed.");
-                } else if (res.success && res.data) {
-                    // Unified path: Use structured data directly
-                    setAnalysisData(res.data);
-
-                    const newStatus = await getAnalysisStatus();
-                    if (newStatus) setStatus(newStatus);
-                }
-            });
-            return;
+        const formData = new FormData();
+        
+        // Enrich Description with Match Context
+        const description = videoSourceType === "YOUTUBE" ? youtubeUrl : "Local Video Upload";
+        if (selectedMatch?.matchId) {
+            formData.append("matchId", selectedMatch.matchId);
         }
+        const descriptionCombined = `Videos Source: ${description}\n\nSpecific Question: ${specificQuestion}`;
+        formData.append("description", descriptionCombined);
 
-        // Mode B: Timeline Only Analysis (Fallback if no video provided)
-        startTransition(async () => {
-             setErrorMsg(null);
-             setProgress(10);
-             const interval = setInterval(() => setProgress(p => Math.min(p + 5, 90)), 500);
+        // Append Inputs for Persistence
+        formData.append("videoSourceType", videoSourceType);
+        
+        if (videoSourceType === 'YOUTUBE') {
+             formData.append("videoUrl", youtubeUrl);
+        }
+        formData.append("focusTime", focusTime);
+        formData.append("specificQuestion", specificQuestion);
 
-             const focus: AnalysisFocus = {
-                 mode: analysisMode, 
-                 focusArea: analysisMode, 
-                 focusTime,
-                 specificQuestion
-             };
-
-             const res = await analyzeMatchTimeline(selectedMatch.matchId, currentPuuid, undefined, focus);
-             
-             clearInterval(interval);
-             setProgress(100);
-
-             if (res.success && res.data) {
-                 setAnalysisData(res.data);
-                 const newStatus = await getAnalysisStatus();
-                 if (newStatus) setStatus(newStatus);
-             } else {
-                 setErrorMsg(res.error || "Unknown error occurred.");
-             }
-         });
+        // Call analyzeVideo (Fire & Forget / Background)
+        console.log("Starting Analysis Job...");
+        
+        analyzeVideo(formData, undefined, analysisMode).then(res => {
+            if ('error' in res && res.error) {
+                    setErrorMsg(res.error);
+                    setAsyncStatus('failed');
+            } else {
+                // Job started
+                if (res.success && res.data) {
+                        setAnalysisData(res.data);
+                        setAsyncStatus('completed');
+                }
+            }
+        }).catch(err => {
+            console.error("Launch Error", err);
+            setErrorMsg("Failed to launch analysis.");
+            setAsyncStatus('failed');
+        });
     }
 
     const seekTo = (timestampMs: number) => {
@@ -276,6 +386,8 @@ export default function CoachPage() {
             localVideoRef.current.play();
         }
     }
+
+
 
     // Helper Component for Build Items
     const BuildItemCard = ({ item }: { item: BuildItem }) => (
@@ -321,7 +433,15 @@ export default function CoachPage() {
                         {/* Match List (Visible if Video Not Ready?) - No, always allow select */}
                         {/* Changed Logic: Show Match List if NO match selected OR keep it accessible? */}
                         {/* To keep it simple, if matches exist, show them. Hide if selected? */}
-                        {!selectedMatch && (
+                        {/* Scoped Loading State */}
+                        {isRestoring ? (
+                             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 h-full flex items-center justify-center min-h-[300px]">
+                                 <div className="flex flex-col items-center gap-4">
+                                     <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+                                     <p className="text-slate-400 font-bold animate-pulse">セッションを復元中...</p>
+                                 </div>
+                             </div>
+                        ) : !selectedMatch && (
                             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
                                 <h2 className="text-xl font-bold text-slate-200 mb-4">分析する試合を選択</h2>
                                 {loadingIds ? (
@@ -331,7 +451,19 @@ export default function CoachPage() {
                                         {matches.map(m => (
                                             <button 
                                                 key={m.matchId}
-                                                onClick={() => setSelectedMatch(m)}
+                                                onClick={() => {
+                                                    setSelectedMatch(m);
+                                                    setAnalysisData(null);
+                                                    setAsyncStatus('idle');
+                                                    setProgress(0);
+                                                    setErrorMsg(null);
+                                                    // Reset Video State
+                                                    setYoutubeUrl("");
+                                                    setLocalVideoUrl(null);
+                                                    setLocalFile(null);
+                                                    setVideoReady(false);
+                                                    setVideoSourceType("YOUTUBE");
+                                                }}
                                                 className="flex items-center gap-4 p-4 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-blue-500 transition rounded-lg group text-left"
                                             >
                                                 <div className="w-12 h-12 rounded-full bg-slate-700 overflow-hidden">
@@ -407,17 +539,25 @@ export default function CoachPage() {
                                                 </button>
                                             </div>
                                         ) : (
-                                            <label className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded cursor-pointer transition whitespace-nowrap flex-1">
-                                                <span className="text-lg">📁</span>
-                                                <span className="text-sm font-bold">動画ファイルを選択</span>
-                                                <input 
-                                                    type="file" 
-                                                    accept="video/*" 
-                                                    className="hidden" 
-                                                    onChange={handleFileSelect}
-                                                />
-                                                <span className="text-xs text-slate-500 ml-2">※アップロードはされません</span>
-                                            </label>
+
+                                            <div className="flex flex-col gap-1 flex-1">
+                                                <label className={`flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border ${!localVideoUrl && analysisData ? 'border-amber-500/50' : 'border-slate-700'} px-3 py-1.5 rounded cursor-pointer transition whitespace-nowrap`}>
+                                                    <span className="text-lg">📁</span>
+                                                    <span className="text-sm font-bold">{localVideoUrl ? "動画選択済み" : "動画ファイルを選択"}</span>
+                                                    <input 
+                                                        type="file" 
+                                                        accept="video/*" 
+                                                        className="hidden" 
+                                                        onChange={handleFileSelect}
+                                                    />
+                                                    <span className="text-xs text-slate-500 ml-2">※アップロードはされません</span>
+                                                </label>
+                                                {!localVideoUrl && analysisData && (
+                                                    <div className="text-[10px] text-amber-500 font-bold px-1 animate-pulse">
+                                                        ⚠ ページを移動したため、動画再選択が必要です
+                                                    </div>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
                                 </div>
@@ -459,14 +599,14 @@ export default function CoachPage() {
                                             </div>
     
                                             <div className="w-full md:w-56 flex flex-col justify-end">
-                                            {isAnalyzing ? (
+                                            {isAnalyzing || asyncStatus === 'processing' ? (
                                                 <div className="relative w-full h-10 bg-slate-800 rounded overflow-hidden border border-slate-700 transition">
                                                     <div 
                                                         className="absolute top-0 left-0 h-full bg-blue-600/50 transition-all duration-300 ease-out"
                                                         style={{ width: `${progress}%` }}
                                                     ></div>
                                                     <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white z-10">
-                                                        AI分析中... {progress}%
+                                                        {Math.round(progress)}%
                                                     </div>
                                                 </div>
                                             ) : (
