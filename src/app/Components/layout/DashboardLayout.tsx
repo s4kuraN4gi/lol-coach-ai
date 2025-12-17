@@ -4,6 +4,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import SidebarNav from "./SidebarNav";
+import Footer from "./Footer";
 import { useSummoner } from "../../Providers/SummonerProvider";
 import { useAuth } from "@/app/Providers/AuthProvider";
 
@@ -45,6 +46,9 @@ export default function DashboardLayout({children}: DashboardLayoutProps) {
              {/* Global Background Glow */}
              <div className="fixed top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/10 via-slate-950 to-slate-950 pointer-events-none -z-10"></div>
              {children}
+             <div className="mt-12">
+                <Footer />
+             </div>
         </main>
     </div>
   )

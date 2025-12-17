@@ -11,6 +11,7 @@ import {
 import LoadingAnimation from "../Components/LoadingAnimation";
 import { useAuth } from "../Providers/AuthProvider";
 import { signOut } from "../actions/auth";
+import Footer from "../Components/layout/Footer";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -122,130 +123,133 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-screen bg-slate-950 flex flex-col relative overflow-hidden">
         {/* Background Glow */}
         <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[100px] pointer-events-none" />
         <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] bg-amber-500/5 rounded-full blur-[120px] pointer-events-none" />
 
-        <div className="w-full max-w-lg z-10">
-            {/* Header */}
-            <div className="text-center mb-8">
-                <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-amber-200 mb-2">
-                    WELCOME, SUMMONER
-                </h1>
-                <p className="text-slate-400">
-                    まずは、あなたのアカウントを連携して分析を開始しましょう。
-                </p>
-            </div>
-
-            {/* Notification */}
-            {notification && (
-                <div className={`mb-6 p-4 rounded-xl border flex items-start gap-3 shadow-lg animate-fadeIn ${notification.type === 'error' ? 'bg-red-900/40 border-red-500/50 text-red-100' : 'bg-green-900/40 border-green-500/50 text-green-100'}`}>
-                    <span className="text-xl mt-0.5">{notification.type === 'error' ? '🚫' : '✅'}</span>
-                    <div className="flex-1 text-sm whitespace-pre-wrap">{notification.message}</div>
+        <div className="flex-1 flex flex-col items-center justify-center p-6">
+            <div className="w-full max-w-lg z-10">
+                {/* Header */}
+                <div className="text-center mb-8">
+                    <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-amber-200 mb-2">
+                        WELCOME, SUMMONER
+                    </h1>
+                    <p className="text-slate-400">
+                        まずは、あなたのアカウントを連携して分析を開始しましょう。
+                    </p>
                 </div>
-            )}
 
-            {/* Validation Logic reused from AccountPage but styled for Onboarding */}
-            <div className="bg-slate-900/80 backdrop-blur border border-slate-700 p-8 rounded-2xl shadow-2xl">
-                {step === 1 ? (
-                    <div className="space-y-6 animate-fadeIn">
-                        <div>
-                            <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Enter Riot ID</label>
-                            <input
-                                type="text"
-                                placeholder="GameName #TagLine"
-                                value={inputName}
-                                onChange={(e) => setInputName(e.target.value)}
-                                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition"
-                                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                            />
-                            <p className="text-xs text-slate-500 mt-2">
-                                ※ JPサーバーのみ対応しています
-                            </p>
-                        </div>
-                        
-                        <button
-                            onClick={handleSearch}
-                            disabled={isPending || !inputName.trim()}
-                            className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold py-3 rounded-lg shadow-lg shadow-blue-500/20 transition-all flex justify-center items-center"
-                        >
-                             {isPending ? <div className="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full" /> : "連携を開始する"}
-                        </button>
-                    </div>
-                ) : (
-                    <div className="space-y-6 animate-fadeIn">
-                         <div className="text-center">
-                            <h3 className="text-lg font-bold text-white mb-2">本人確認 (アイコン認証)</h3>
-                            <p className="text-sm text-slate-400 mb-4">
-                                LoLクライアントで、プロフィールアイコンを<br/>以下に変更してください。
-                            </p>
-                            
-                             <div className="flex items-center justify-center gap-6 mb-6">
-                                 {/* Arrow */}
-                                 <div className="flex flex-col items-center">
-                                      <div className="w-16 h-16 rounded-full bg-slate-800 border-2 border-slate-600 flex items-center justify-center grayscale opacity-50 mb-2">
-                                         <img src={`https://ddragon.leagueoflegends.com/cdn/15.24.1/img/profileicon/${candidate?.profileIconId}.png`} className="w-full h-full rounded-full" />
-                                      </div>
-                                      <span className="text-xs text-slate-500">Current</span>
-                                 </div>
-                                 <div className="text-2xl text-blue-500">→</div>
-                                 <div className="flex flex-col items-center relative">
-                                      <div className="w-20 h-20 rounded-full border-4 border-blue-500 shadow-[0_0_20px_blue] overflow-hidden mb-2">
-                                         <img src={`https://ddragon.leagueoflegends.com/cdn/15.24.1/img/profileicon/${candidate?.targetIconId}.png`} className="w-full h-full" />
-                                      </div>
-                                      <span className="text-xs text-blue-400 font-bold">New Icon</span>
-                                      <div className="absolute -top-1 -right-2 bg-blue-600 text-[10px] px-1.5 py-0.5 rounded text-white font-bold">Target</div>
-                                 </div>
-                             </div>
-
-                             <Timer expiresAt={candidate?.expiresAt} onExpire={handleTimeout} />
-                         </div>
-
-                         <div className="flex gap-3">
-                             <button
-                                onClick={handleCancel}
-                                disabled={isPending}
-                                className="flex-1 py-3 text-slate-400 font-bold hover:text-white transition"
-                             >
-                                 キャンセル
-                             </button>
-                             <button
-                                onClick={handleVerify}
-                                disabled={isPending}
-                                className="flex-[2] bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-lg shadow-lg shadow-green-500/20 transition flex justify-center items-center gap-2"
-                             >
-                                {isPending ? (
-                                    <>
-                                       <div className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full" />
-                                       確認中...
-                                    </>
-                                ) : (
-                                    <>
-                                       <span>✅</span> 変更しました
-                                    </>
-                                )}
-                             </button>
-                         </div>
+                {/* Notification */}
+                {notification && (
+                    <div className={`mb-6 p-4 rounded-xl border flex items-start gap-3 shadow-lg animate-fadeIn ${notification.type === 'error' ? 'bg-red-900/40 border-red-500/50 text-red-100' : 'bg-green-900/40 border-green-500/50 text-green-100'}`}>
+                        <span className="text-xl mt-0.5">{notification.type === 'error' ? '🚫' : '✅'}</span>
+                        <div className="flex-1 text-sm whitespace-pre-wrap">{notification.message}</div>
                     </div>
                 )}
-            </div>
-            
-            <div className="mt-8 text-center">
-                 <button 
-                    onClick={async () => {
-                        await signOut(); 
-                        // The signOut action revalidates path & redirects, 
-                        // but since this is client navigation we might need to force reload or wait.
-                        // Actually signOut is likely a server action.
-                        // We should wait for it.
-                    }} 
-                    className="text-xs text-slate-600 hover:text-slate-400 underline"
-                 >
-                     ログアウトして戻る
-                 </button>
+
+                {/* Validation Logic reused from AccountPage but styled for Onboarding */}
+                <div className="bg-slate-900/80 backdrop-blur border border-slate-700 p-8 rounded-2xl shadow-2xl">
+                    {step === 1 ? (
+                        <div className="space-y-6 animate-fadeIn">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Enter Riot ID</label>
+                                <input
+                                    type="text"
+                                    placeholder="GameName #TagLine"
+                                    value={inputName}
+                                    onChange={(e) => setInputName(e.target.value)}
+                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition"
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                />
+                                <p className="text-xs text-slate-500 mt-2">
+                                    ※ JPサーバーのみ対応しています
+                                </p>
+                            </div>
+                            
+                            <button
+                                onClick={handleSearch}
+                                disabled={isPending || !inputName.trim()}
+                                className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold py-3 rounded-lg shadow-lg shadow-blue-500/20 transition-all flex justify-center items-center"
+                            >
+                                {isPending ? <div className="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full" /> : "連携を開始する"}
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="space-y-6 animate-fadeIn">
+                            <div className="text-center">
+                                <h3 className="text-lg font-bold text-white mb-2">本人確認 (アイコン認証)</h3>
+                                <p className="text-sm text-slate-400 mb-4">
+                                    LoLクライアントで、プロフィールアイコンを<br/>以下に変更してください。
+                                </p>
+                                
+                                <div className="flex items-center justify-center gap-6 mb-6">
+                                    {/* Arrow */}
+                                    <div className="flex flex-col items-center">
+                                        <div className="w-16 h-16 rounded-full bg-slate-800 border-2 border-slate-600 flex items-center justify-center grayscale opacity-50 mb-2">
+                                            <img src={`https://ddragon.leagueoflegends.com/cdn/15.24.1/img/profileicon/${candidate?.profileIconId}.png`} className="w-full h-full rounded-full" />
+                                        </div>
+                                        <span className="text-xs text-slate-500">Current</span>
+                                    </div>
+                                    <div className="text-2xl text-blue-500">→</div>
+                                    <div className="flex flex-col items-center relative">
+                                        <div className="w-20 h-20 rounded-full border-4 border-blue-500 shadow-[0_0_20px_blue] overflow-hidden mb-2">
+                                            <img src={`https://ddragon.leagueoflegends.com/cdn/15.24.1/img/profileicon/${candidate?.targetIconId}.png`} className="w-full h-full" />
+                                        </div>
+                                        <span className="text-xs text-blue-400 font-bold">New Icon</span>
+                                        <div className="absolute -top-1 -right-2 bg-blue-600 text-[10px] px-1.5 py-0.5 rounded text-white font-bold">Target</div>
+                                    </div>
+                                </div>
+
+                                <Timer expiresAt={candidate?.expiresAt} onExpire={handleTimeout} />
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={handleCancel}
+                                    disabled={isPending}
+                                    className="flex-1 py-3 text-slate-400 font-bold hover:text-white transition"
+                                >
+                                    キャンセル
+                                </button>
+                                <button
+                                    onClick={handleVerify}
+                                    disabled={isPending}
+                                    className="flex-[2] bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-lg shadow-lg shadow-green-500/20 transition flex justify-center items-center gap-2"
+                                >
+                                    {isPending ? (
+                                        <>
+                                        <div className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full" />
+                                        確認中...
+                                        </>
+                                    ) : (
+                                        <>
+                                        <span>✅</span> 変更しました
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+                
+                <div className="mt-8 text-center">
+                    <button 
+                        onClick={async () => {
+                            await signOut(); 
+                            // The signOut action revalidates path & redirects, 
+                            // but since this is client navigation we might need to force reload or wait.
+                            // Actually signOut is likely a server action.
+                            // We should wait for it.
+                        }} 
+                        className="text-xs text-slate-600 hover:text-slate-400 underline"
+                    >
+                        ログアウトして戻る
+                    </button>
+                </div>
             </div>
         </div>
+        <Footer />
     </div>
   );
 }

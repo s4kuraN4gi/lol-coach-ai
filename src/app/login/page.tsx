@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
+import Footer from "../Components/layout/Footer";
 
 
 export default function LoginPage() {
@@ -50,76 +51,73 @@ export default function LoginPage() {
     setLoading(false);
   };
   return (
-    <main className="flex items-center justify-center min-h-screen relative overflow-hidden">
+    <main className="min-h-screen flex flex-col relative overflow-hidden">
       {/* Background elements */}
       <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/20 via-slate-950 to-slate-950 -z-10"></div>
       <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] opacity-10 pointer-events-none"></div>
 
-      <div className="glass-panel p-8 rounded-2xl shadow-2xl w-full max-w-sm border border-slate-800 backdrop-blur-xl relative z-10 transition-all hover:shadow-[0_0_30px_rgba(59,130,246,0.1)]">
-        <div className="mb-6 text-center">
-            <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300 tracking-tighter mb-2">
-                LoL Coach AI
-            </h1>
-            <p className="text-slate-400 text-sm">Welcome back, Summoner.</p>
-        </div>
+      <div className="flex-1 flex items-center justify-center p-4">
+        <div className="glass-panel p-8 rounded-2xl shadow-2xl w-full max-w-sm border border-slate-800 backdrop-blur-xl relative z-10 transition-all hover:shadow-[0_0_30px_rgba(59,130,246,0.1)]">
+            <div className="mb-6 text-center">
+                <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300 tracking-tighter mb-2">
+                    LoL Coach AI
+                </h1>
+                <p className="text-slate-400 text-sm">Welcome back, Summoner.</p>
+            </div>
 
-        <form onSubmit={handleLogin} className="space-y-5">
-          {/* サモナーネーム入力欄 */}
-          <div>
-            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
-                Email
-            </label>
-            <input
-              type="text"
-              onChange={(e) => setLoginId(e.target.value)}
-              className="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3 text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition placeholder-slate-600"
-              placeholder="name@example.com"
-            />
-          </div>
-          {/* パスワード入力欄 */}
-          <div>
-            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
-              Password
-            </label>
-            <input
-              type="password"
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3 text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition placeholder-slate-600"
-              placeholder="••••••••"
-            />
-          </div>
-          {/* ログインボタン */}
-          <button
-            type="submit"
-            className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold py-3.5 rounded-lg hover:from-blue-500 hover:to-cyan-500 transition shadow-lg shadow-blue-900/20 active:scale-95 transform"
-            disabled={loading}
-          >
-            {loading ? "INITIALIZING..." : "LOGIN"}
-          </button>
-        </form>
+            <form onSubmit={handleLogin} className="space-y-5">
+            {/* サモナーネーム入力欄 */}
+            <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
+                    Email
+                </label>
+                <input
+                type="text"
+                onChange={(e) => setLoginId(e.target.value)}
+                className="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3 text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition placeholder-slate-600"
+                placeholder="name@example.com"
+                />
+            </div>
+            {/* パスワード入力欄 */}
+            <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
+                Password
+                </label>
+                <input
+                type="password"
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3 text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition placeholder-slate-600"
+                placeholder="••••••••"
+                />
+            </div>
+            {/* ログインボタン */}
+            <button
+                type="submit"
+                className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold py-3.5 rounded-lg hover:from-blue-500 hover:to-cyan-500 transition shadow-lg shadow-blue-900/20 active:scale-95 transform"
+                disabled={loading}
+            >
+                {loading ? "INITIALIZING..." : "LOGIN"}
+            </button>
+            </form>
 
-        {/* アカウント誘導 */}
-        <div className="mt-8 text-center space-y-4">
-            <p className="text-sm text-slate-500">
-            Don't have an account?{" "}
-            <a href="/signup" className="text-blue-400 hover:text-blue-300 font-semibold transition hover:underline">
-                Register
-            </a>
-            </p>
-
-            <p className="text-xs text-slate-600">
-                <a href="/react-password" className="hover:text-slate-400 transition">
-                Forgot Password?
+            {/* アカウント誘導 */}
+            <div className="mt-8 text-center space-y-4">
+                <p className="text-sm text-slate-500">
+                Don't have an account?{" "}
+                <a href="/signup" className="text-blue-400 hover:text-blue-300 font-semibold transition hover:underline">
+                    Register
                 </a>
-            </p>
+                </p>
 
-            <div className="pt-6 border-t border-slate-800/50 flex flex-wrap justify-center gap-4 text-[10px] text-slate-500">
-                <a href="/terms" target="_blank" className="hover:text-slate-300 transition">利用規約</a>
-                <a href="/privacy" target="_blank" className="hover:text-slate-300 transition">プライバシーポリシー</a>
-                <a href="/legal" target="_blank" className="hover:text-slate-300 transition">特定商取引法に基づく表記</a>
+                <p className="text-xs text-slate-600">
+                    <a href="/react-password" className="hover:text-slate-400 transition">
+                    Forgot Password?
+                    </a>
+                </p>
             </div>
         </div>
       </div>
+      <Footer />
     </main>
   );
 }

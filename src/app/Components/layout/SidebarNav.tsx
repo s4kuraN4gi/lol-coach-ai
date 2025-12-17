@@ -16,6 +16,7 @@ export default function SidebarNav() {
       { name: "詳細戦績", href: "/dashboard/stats", icon: "📈" },
 
       { name: "AI Coach", href: "/dashboard/coach", icon: "🧠" },
+      { name: "2D Replay", href: "/dashboard/replay", icon: "🗺️" },
       { name: "サモナー解析", href: "/chat", icon: "💬" },
       { name: "アカウント", href: "/account", icon: "⚙️" },
     ];
