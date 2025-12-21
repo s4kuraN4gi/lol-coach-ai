@@ -64,7 +64,7 @@ export async function fetchBasicStats(puuid: string, summonerId?: string | null,
         let validSummonerId = summonerId;
         
         // Helper to check validity
-        const isValid = (id?: string) => id && id.length > 5;
+        const isValid = (id?: string | null) => id && id.length > 5;
 
         if (!isValid(validSummonerId)) {
              const { fetchSummonerByPuuid, fetchRiotAccount } = await import('./riot');
