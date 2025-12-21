@@ -55,7 +55,7 @@ export type BasicStatsDTO = {
     debugLog: string[];
 }
 
-export async function fetchBasicStats(puuid: string, summonerId?: string | null, gameName?: string, tagLine?: string): Promise<BasicStatsDTO> {
+export async function fetchBasicStats(puuid: string, summonerId?: string | null, gameName?: string | null, tagLine?: string | null): Promise<BasicStatsDTO> {
     const logs: string[] = [];
     const log = (msg: string) => { console.log(msg); logs.push(msg); };
     
