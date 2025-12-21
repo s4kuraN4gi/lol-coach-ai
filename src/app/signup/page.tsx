@@ -66,6 +66,24 @@ export default function SignupPage() {
                 <h1 className="text-3xl font-black text-center mb-6 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300 tracking-tighter">
                     JOIN THE RIFT
                 </h1>
+
+                {/* RSO Button (Temporarily Hidden for Production Review) */}
+            {/* <div className="mb-6">
+                <a 
+                    href="/api/auth/riot"
+                    className="block w-full bg-[#d13639] hover:bg-[#b02c2f] text-white font-bold py-3.5 rounded-lg text-center transition shadow-lg shadow-red-900/20 active:scale-95 transform flex items-center justify-center gap-3"
+                >
+                    <svg viewBox="0 0 24 24" className="w-6 h-6 fill-current" aria-hidden="true">
+                        <path d="M16.635 6.408l2.943 5.568-2.944 5.568h-5.89l-2.944-5.568 2.944-5.568h5.89m2.288-4.32H5.02L0 11.976l5.02 9.888h13.904L24 11.976l-5.077-9.888z"/>
+                    </svg>
+                    Sign in with Riot
+                </a>
+                <div className="relative my-6">
+                    <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-700"></div></div>
+                    <div className="relative flex justify-center text-xs uppercase"><span className="bg-slate-900 px-2 text-slate-500">Or regiester with email</span></div>
+                </div>
+            </div> */}
+
                 <div className="space-y-4">
                     <div>
                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">

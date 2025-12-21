@@ -190,29 +190,36 @@ export async function analyzeMatchTimeline(
             latestVersion
         );
 
-        let lastError = null;
-        let analysisResult: any = null; // Temporary any
-        
+        let responseText = "";
+        let usedModel = "";
+        let analysisResult: any = null;
+
+        // 6. Generate AI Content with Retries
         for (const modelName of MODELS_TO_TRY) {
             try {
                 console.log(`Trying Gemini Model: ${modelName}`);
+                const genAI = new GoogleGenerativeAI(apiKeyToUse);
                 const model = genAI.getGenerativeModel({ model: modelName, generationConfig: { responseMimeType: "application/json" } });
+
                 const result = await model.generateContent(systemPrompt);
-                const text = result.response.text();
-                if (!text) throw new Error("Empty response");
-                
-                analysisResult = JSON.parse(text);
-                console.log(`Success with model: ${modelName}`);
-                break; // Success!
-            } catch (e: any) {
-                console.warn(`Model ${modelName} failed:`, e.message);
-                lastError = e;
-                continue;
+                const response = await result.response;
+                responseText = response.text();
+
+                if (responseText) {
+                    usedModel = modelName;
+                    analysisResult = JSON.parse(responseText);
+                    console.log(`Success with model: ${modelName}`);
+                    break; // Success!
+                }
+            } catch (modelError: any) {
+                console.error(`Gemini Model Error (${modelName}):`, modelError?.message || modelError);
+                // Continue to next model
             }
         }
 
-        if (!analysisResult) {
-            throw lastError || new Error("All AI models failed to generate content.");
+        if (!responseText || !analysisResult) {
+            console.error("All Gemini models failed. API Key valid?", !!apiKeyToUse);
+            return { success: false, error: "AI Service Unavailable (All models failed). Please check API Key or try again later." };
         }
 
         // --- Post-Process: Map Recommended Names to IDs ---

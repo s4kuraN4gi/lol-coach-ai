@@ -17,18 +17,19 @@ type ReplayViewerProps = {
 const MAX_COORD = 14820; // More precise edge
 
 export default function ReplayViewer({ data }: ReplayViewerProps) {
+    console.log("ReplayViewer MOUNTED", { data });
     const [currentTime, setCurrentTime] = useState(0); // in milliseconds
     const [isPlaying, setIsPlaying] = useState(false);
     const [speed, setSpeed] = useState(1);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
 
     // Metadata
-    const gameDuration = data.matchDetail.info.gameDuration * 1000;
+    const gameDuration = (data.matchDetail.info.gameDuration || 1800) * 1000;
     const participants = data.matchDetail.info.participants;
     
     // Timeline Frames
     const frames = data.timeline.info.frames;
-    const interval = data.timeline.info.frameInterval; 
+    const interval = data.timeline.info.frameInterval || 60000; // Default 60s
 
     // Find current frame index
     const currentFrameIndex = Math.floor(currentTime / interval);
@@ -41,16 +42,17 @@ export default function ReplayViewer({ data }: ReplayViewerProps) {
     // Playback Logic
     useEffect(() => {
         if (isPlaying) {
+            const tickRate = 33; // ms
             timerRef.current = setInterval(() => {
                 setCurrentTime(prev => {
-                    const next = prev + (1000 * speed); // 1 sec * speed per tick
+                    const next = prev + (tickRate * speed); 
                     if (next >= gameDuration) {
                         setIsPlaying(false);
                         return gameDuration;
                     }
                     return next;
                 });
-            }, 1000 / 30); // 30 FPS updates (visual only, logic is step based)
+            }, tickRate);
         } else if (timerRef.current) {
             clearInterval(timerRef.current);
         }
@@ -67,9 +69,9 @@ export default function ReplayViewer({ data }: ReplayViewerProps) {
     };
 
     return (
-        <div className="flex flex-col gap-4 h-full">
+        <div className="flex flex-col gap-4 h-full w-full max-w-4xl mx-auto">
             {/* Main Stage (Map) */}
-            <div className="relative w-full aspect-square max-w-[800px] mx-auto bg-slate-900 rounded-xl overflow-hidden shadow-2xl border border-slate-700">
+            <div className="relative h-[65vh] w-[65vh] mx-auto bg-slate-900 rounded-xl overflow-hidden shadow-2xl border border-slate-700 shrink-0">
                 {/* Background Map */}
                 <div 
                     className="absolute inset-0 bg-cover bg-center opacity-80"
@@ -79,8 +81,9 @@ export default function ReplayViewer({ data }: ReplayViewerProps) {
                 {/* Champions */}
                 {participants.map((p: any) => {
                     // Get position from frame
+                    if (!currentFrame?.participantFrames) return null;
                     const pFrame = currentFrame.participantFrames[p.participantId.toString()];
-                    const pNext = nextFrame?.participantFrames[p.participantId.toString()];
+                    const pNext = nextFrame?.participantFrames ? nextFrame.participantFrames[p.participantId.toString()] : null;
 
                     if (!pFrame || !pFrame.position) return null;
 
@@ -101,19 +104,19 @@ export default function ReplayViewer({ data }: ReplayViewerProps) {
                     return (
                         <div 
                             key={p.participantId}
-                            className="absolute w-8 h-8 -translate-x-1/2 -translate-y-1/2 transition-transform duration-100 ease-linear hover:z-50 group"
+                            className="absolute w-[4%] h-[4%] -translate-x-1/2 -translate-y-1/2 transition-transform duration-75 ease-linear hover:z-50 group"
                             style={{ left: `${left}%`, top: `${top}%` }}
                         >
-                            <div className={`relative w-full h-full rounded-full overflow-hidden border-2 ${isBlue ? 'border-blue-500' : 'border-red-500'} bg-black`}>
+                            <div className={`relative w-full h-full rounded-full overflow-hidden border-2 ${isBlue ? 'border-blue-500 shadow-[0_0_10px_blue]' : 'border-red-500 shadow-[0_0_10px_red]'} bg-black`}>
                                 <img 
-                                    src={`https://ddragon.leagueoflegends.com/cdn/14.24.1/img/champion/${p.championName}.png`} 
+                                    src={`https://ddragon.leagueoflegends.com/cdn/15.24.1/img/champion/${p.championName}.png`} 
                                     alt={p.championName}
-                                    className="w-full h-full object-cover"
+                                    className="w-full h-full object-cover scale-110"
                                 />
                             </div>
-                            {/* Tooltip */}
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-black/80 text-white text-[10px] rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-50">
-                                {p.championName} ({p.summonerName})
+                            {/* Player Name Tooltip */}
+                            <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-black/90 border border-slate-700 text-white text-[10px] rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-50">
+                                {p.championName}
                             </div>
                         </div>
                     );
@@ -121,42 +124,48 @@ export default function ReplayViewer({ data }: ReplayViewerProps) {
             </div>
 
             {/* Controls */}
-            <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex items-center gap-4">
-                <button 
-                    onClick={() => setIsPlaying(!isPlaying)}
-                    className="w-10 h-10 flex items-center justify-center bg-blue-600 hover:bg-blue-500 text-white rounded-full transition"
-                >
-                    {isPlaying ? "⏸" : "▶"}
-                </button>
-
-                <div className="flex-1 flex flex-col gap-1">
-                    <div className="flex justify-between text-xs text-slate-400 font-mono">
-                        <span>{formatTime(currentTime)}</span>
-                        <span>{formatTime(gameDuration)}</span>
+            <div className="bg-slate-900 border border-slate-700 p-4 rounded-xl flex flex-col gap-3 shadow-lg z-10 relative">
+                {/* Time Slider */}
+                <div className="flex items-center gap-4">
+                     <button 
+                        onClick={() => setIsPlaying(!isPlaying)}
+                        className="w-10 h-10 flex items-center justify-center bg-blue-600 hover:bg-blue-500 text-white rounded-full transition active:scale-95 shadow-lg shadow-blue-900/20"
+                    >
+                        {isPlaying ? "⏸" : "▶"}
+                    </button>
+                    
+                    <div className="flex-1">
+                        <input 
+                            type="range" 
+                            min={0} 
+                            max={gameDuration} 
+                            value={currentTime}
+                            onChange={(e) => {
+                                setCurrentTime(Number(e.target.value));
+                            }}
+                            className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500 hover:accent-blue-400"
+                        />
+                        <div className="flex justify-between text-xs text-slate-400 font-mono mt-1">
+                            <span>{formatTime(currentTime)}</span>
+                            <span>{formatTime(gameDuration)}</span>
+                        </div>
                     </div>
-                    <input 
-                        type="range" 
-                        min={0} 
-                        max={gameDuration} 
-                        value={currentTime}
-                        onChange={(e) => {
-                            setCurrentTime(Number(e.target.value));
-                            // Only pause if user is dragging? Keep playing for now.
-                        }}
-                        className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                    />
                 </div>
 
-                <div className="flex items-center gap-1 bg-slate-800 rounded p-1">
-                    {[1, 2, 5, 10].map(s => (
-                        <button 
-                            key={s}
-                            onClick={() => setSpeed(s)}
-                            className={`px-2 py-1 text-xs font-bold rounded ${speed === s ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-white'}`}
-                        >
-                            {s}x
-                        </button>
-                    ))}
+                {/* Speed Controls */}
+                <div className="flex justify-end border-t border-slate-800/50 pt-2">
+                     <div className="flex items-center gap-1 bg-slate-950/50 rounded-lg p-1 border border-slate-800">
+                        <span className="text-[10px] text-slate-500 px-2 uppercase font-bold">Speed</span>
+                        {[1, 2, 5, 10, 20].map(s => (
+                            <button 
+                                key={s}
+                                onClick={() => setSpeed(s)}
+                                className={`px-2 py-0.5 text-xs font-bold rounded transition ${speed === s ? 'bg-slate-700 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}
+                            >
+                                {s}x
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
         </div>

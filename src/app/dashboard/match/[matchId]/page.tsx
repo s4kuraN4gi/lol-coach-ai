@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { fetchMatchDetail, fetchMatchTimeline, fetchLatestVersion } from "@/app/actions/riot";
+import { fetchMatchDetail, fetchLatestVersion } from "@/app/actions/riot";
 import { getMatchAnalysis } from "@/app/actions/analysis";
 import DashboardLayout from "@/app/Components/layout/DashboardLayout";
 import Link from "next/link";
-import Timeline from "./components/Timeline";
-import MatchAnalysisPanel from "./components/MatchAnalysisPanel";
+
+
 import TeamOverviewCard from "./components/TeamOverviewCard";
 import LoadingAnimation from "@/app/Components/LoadingAnimation";
 import { useSummoner } from "@/app/Providers/SummonerProvider";
@@ -28,21 +28,20 @@ export default function MatchDetailsPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [matchData, setMatchData] = useState<any>(null);
-    const [timelineData, setTimelineData] = useState<any>(null);
     const [analysisData, setAnalysisData] = useState<any>(null);
     const [isTeamsExpanded, setIsTeamsExpanded] = useState(true);
 
     useEffect(() => {
         if (!matchId) return;
+        console.log("Match Details Rendered - Version Check"); 
         
         async function loadMatchData() {
             setLoading(true);
             setError(null);
 
             try {
-                const [matchRes, timelineRes, analysisRes] = await Promise.all([
+                const [matchRes, analysisRes] = await Promise.all([
                     fetchMatchDetail(matchId),
-                    fetchMatchTimeline(matchId),
                     getMatchAnalysis(matchId)
                 ]);
 
@@ -51,11 +50,6 @@ export default function MatchDetailsPage() {
                 }
 
                 setMatchData(matchRes.data);
-                
-                if (timelineRes.success) {
-                    setTimelineData(timelineRes.data);
-                }
-                
                 setAnalysisData(analysisRes);
 
             } catch (e: any) {
@@ -159,16 +153,7 @@ export default function MatchDetailsPage() {
                         </div>
                     </div>
 
-                    {/* Timeline Component (Full Width) */}
-                    {timelineData ? (
-                        <div className="transform transition-all duration-500 hover:scale-[1.01]">
-                            <Timeline match={matchData} timeline={timelineData} />
-                        </div>
-                    ) : (
-                        <div className="h-48 bg-slate-900 rounded-xl animate-pulse flex items-center justify-center text-slate-700">
-                            Loading Timeline...
-                        </div>
-                    )}
+
 
                     {/* Teams Overview Section (Collapsible) */}
                     {matchData && (
@@ -210,19 +195,7 @@ export default function MatchDetailsPage() {
                         </div>
                     )}
 
-                    {/* AI Analysis Panel (Bottom) */}
-                    <div className="w-full">
-                        {participant && (
-                            <MatchAnalysisPanel 
-                                matchId={matchId} 
-                                initialAnalysis={analysisData}
-                                summonerName={summonerName}
-                                championName={participant.championName}
-                                win={participant.win}
-                                kda={`${participant.kills}/${participant.deaths}/${participant.assists}`}
-                            />
-                        )}
-                    </div>
+
                 </div>
             </div>
         </DashboardLayout>

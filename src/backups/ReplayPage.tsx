@@ -3,11 +3,11 @@
 import { useEffect, useState, useCallback } from "react";
 import DashboardLayout from "@/app/Components/layout/DashboardLayout";
 import { getLatestActiveAnalysis } from "@/app/actions/analysis"; // Re-use connection? No, need fetch matches
-import { fetchMatchIds, fetchMatchDetail, MatchSummary } from "@/app/actions/riot";
+import { fetchMatchIds, fetchMatchDetail } from "@/app/actions/riot";
 import { getReplayData, ReplayData } from "@/app/actions/replay";
 import { getActiveSummoner } from "@/app/actions/profile"; // assuming this exists or similar
 import ReplayViewer from "@/components/replay/ReplayViewer";
-import { useAuth } from "@/app/Components/auth/AuthProvider"; // Assuming we have auth context or similar
+import { useAuth } from "@/app/Providers/AuthProvider";
 
 // Mocking get active summoner if not exported, or using what Coach/Page uses.
 // For now, I'll copy the match fetching logic pattern from Coach Page.
@@ -36,7 +36,7 @@ export default function ReplayPage() {
 
                 // 2. Fetch Matches
                 const idsRes = await fetchMatchIds(summoner.puuid, 10);
-                if (idsRes.success && idsRes.data) {
+                if (idsRes.data && idsRes.data) {
                     // Fetch details for summary
                     const summaries = await Promise.all(idsRes.data.map(async (id) => {
                         const detail = await fetchMatchDetail(id);
@@ -95,9 +95,9 @@ export default function ReplayPage() {
                     <p className="text-slate-400 text-sm">試合全体の動きをマップ上で振り返り、マクロの動きを確認しよう。</p>
                 </header>
 
-                <div className="flex-1 grid grid-cols-12 gap-6 overflow-hidden">
+                <div className="flex-1 grid grid-cols-12 gap-6 overflow-y-auto min-h-0 pb-4">
                     {/* Left: Match List (3 Cols) */}
-                    <div className="col-span-12 md:col-span-3 flex flex-col gap-2 overflow-y-auto pr-2">
+                    <div className="col-span-12 md:col-span-3 flex flex-col gap-2 overflow-y-auto pr-2 max-h-full">
                         {loadingMatches ? (
                             <div className="text-slate-500 text-center py-10">Loading Matches...</div>
                         ) : (

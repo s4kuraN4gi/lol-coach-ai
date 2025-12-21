@@ -7,6 +7,7 @@ import LoadingAnimation from "../Components/LoadingAnimation";
 import PremiumFeatureGate from "../Components/subscription/PremiumFeatureGate";
 import { useSummoner } from "../Providers/SummonerProvider";
 import { useRouter } from "next/navigation";
+import { fetchBasicStats, fetchMatchStats } from "@/app/actions/stats";
 
 const CHAT_KEY = "chat:message";
 
@@ -47,8 +48,20 @@ export default function ChatPage() {
   const [selectedSession, setSelectedSession] = useState<ChatSession | null>(
     null
   );
-//   自動スクロール用
+  //   自動スクロール用
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+  // Data Context for AI
+  type ChatContextType = {
+      rank?: string;
+      winRate?: number;
+      favoriteChampions?: string;
+      recentPerformance?: string;
+      summonerName?: string;
+      currentMatch?: any; // Add match context
+  };
+  const [chatContext, setChatContext] = useState<ChatContextType>({});
+  const [consultingMatch, setConsultingMatch] = useState<any>(null); // For UI display
 
   // Fetch Premium Status
   useEffect(() => {
@@ -58,7 +71,7 @@ export default function ChatPage() {
     });
   }, []);
 
-  // 初期表示時
+  // 初期表示時（セッション復元）
   useEffect(() => {
     if(!activeSummoner) return;
 
@@ -74,9 +87,85 @@ export default function ChatPage() {
     }
   }, [activeSummoner]);
 
+  // Fetch Context Data (Rank, Stats) when Summoner loads
+  useEffect(() => {
+    if (!activeSummoner) return;
+
+    // 1. Set Name immediately
+    setChatContext(prev => ({ ...prev, summonerName: activeSummoner.summoner_name }));
+
+    // 2. Fetch Rank (Fast)
+    // Note: stats.ts accepts (string, string|null, string, string), but here we coerce to string just in case
+    fetchBasicStats(
+        activeSummoner.puuid!, 
+        activeSummoner.summoner_id, 
+        activeSummoner.summoner_name || "", 
+        activeSummoner.tag_line || ""
+    ).then((basic: any) => {
+        if (basic.ranks && basic.ranks.length > 0) {
+            const r = basic.ranks[0];
+            setChatContext((prev) => ({ 
+                ...prev, 
+                rank: `${r.tier} ${r.rank} (${r.leaguePoints} LP)`
+            }));
+        } else {
+            setChatContext((prev) => ({ ...prev, rank: "Unranked" }));
+        }
+    }).catch((e: any) => console.error("Basic Stats fetch failed in Chat", e));
+
+    // 3. Fetch Match Stats (Slow, Lazy)
+    fetchMatchStats(activeSummoner.puuid!).then((stats: any) => {
+        // Top 3 Champs
+        const topChamps = stats.championStats
+            .sort((a: any, b: any) => b.games - a.games)
+            .slice(0, 3)
+            .map((c: any) => c.name)
+            .join(", ");
+        
+        const wins = stats.recentMatches.filter((m: any) => m.win).length;
+        const total = stats.recentMatches.length;
+        const wr = total > 0 ? Math.round((wins / total) * 100) : 0;
+        
+        // Recent Performance (last 5 games)
+        const recent5 = stats.recentMatches.slice(0, 5).map((m: any) => m.win ? "W" : "L").join("-");
+
+        setChatContext((prev) => ({ 
+            ...prev, 
+            favoriteChampions: topChamps,
+            winRate: wr,
+            recentPerformance: recent5
+        }));
+    }).catch((e: any) => console.error("Match Stats fetch failed in Chat", e));
+
+  }, [activeSummoner]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth"})
   },[selectedSession?.message])
+
+  // Check for Match Handover
+  useEffect(() => {
+      const matchCtxStr = sessionStorage.getItem("activeMatchContext");
+      if (matchCtxStr) {
+          try {
+              const matchCtx = JSON.parse(matchCtxStr);
+              // Update Context
+              setChatContext(prev => ({ ...prev, currentMatch: matchCtx }));
+              // Set UI
+              setConsultingMatch(matchCtx);
+              // Pre-fill input (User friendly)
+              setInput(`この試合(${matchCtx.championName} ${matchCtx.kda})の改善点を教えてください。`);
+              
+              // Clear storage so it doesn't persist forever
+              sessionStorage.removeItem("activeMatchContext");
+              
+              // Optional: Auto-create session if needed? 
+              // Existing logic creates session on submit.
+          } catch (e) {
+              console.error("Failed to parse match context", e);
+          }
+      }
+  }, []);
 
   // NOTE: Early return must be AFTER all hooks are defined to avoid React Error #310
   if (loading || loadingStatus) {
@@ -145,10 +234,20 @@ export default function ChatPage() {
     setLoadingAI(true);
 
     try {
+      // Prepare History (Last 6 messages for context)
+      const history = currentSession.message.slice(-6).map(m => ({
+          role: m.role,
+          text: m.text
+      }));
+
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: input }),
+        body: JSON.stringify({ 
+            message: input,
+            context: chatContext, // Inject Data Context
+            history: history      // Inject Conversation History
+        }),
       });
 
       const data = await res.json();
@@ -378,6 +477,31 @@ export default function ChatPage() {
 
           {/* 入力フォーム */}
           <div className="p-4 bg-slate-900 border-t border-slate-800 z-20">
+            {/* Consulting Mode Banner (Above Input) */}
+            {consultingMatch && (
+                <div className="mb-2 px-2">
+                    <div className="bg-blue-900/90 border border-blue-500/50 p-3 rounded-lg backdrop-blur-sm flex justify-between items-center shadow-lg animate-slideUp">
+                        <div className="flex items-center gap-3">
+                            <span className="text-2xl">🎓</span>
+                            <div>
+                                <p className="text-blue-100 font-bold text-sm">Consulting on: {consultingMatch.championName}</p>
+                                <p className="text-blue-300 text-xs">{consultingMatch.kda} • {consultingMatch.win ? "WIN" : "LOSS"}</p>
+                            </div>
+                        </div>
+                        <button 
+                            type="button"
+                            onClick={() => {
+                                setConsultingMatch(null);
+                                setChatContext(prev => ({ ...prev, currentMatch: undefined }));
+                            }}
+                            className="text-slate-400 hover:text-white text-xs underline"
+                        >
+                            Stop Context
+                        </button>
+                    </div>
+                </div>
+            )}
+            
             <form
                 onSubmit={handleSubmit}
                 className="flex gap-3 max-w-4xl mx-auto"

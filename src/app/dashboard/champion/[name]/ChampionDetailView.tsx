@@ -12,6 +12,23 @@ import { getAnalysisStatus, type AnalysisStatus } from "@/app/actions/analysis";
 
 type Match = any; // We can use strict type if available
 
+// --- HELPER COMPONENT: Simple Tooltip ---
+function HelperTooltip({ text }: { text: string }) {
+    return (
+        <div className="group relative ml-2 inline-flex items-center cursor-help z-50">
+            <span className="text-slate-500 hover:text-blue-400 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+                </svg>
+            </span>
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 bg-slate-800 border border-slate-700 rounded-lg shadow-xl text-xs text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                {text}
+                <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-800"></div>
+            </div>
+        </div>
+    );
+}
+
 export default function ChampionDetailView({ puuid, championName }: { puuid: string, championName: string }) {
     const [loadingIds, setLoadingIds] = useState(true);
     const [matchDetails, setMatchDetails] = useState<Match[]>([]);
@@ -40,9 +57,17 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                 }
                 const champId = parseInt(champIdStr);
 
-                // 2. Fetch Match IDs (Filtered)
+// 2. Fetch Match IDs (Filtered)
+                // DEBUG: Log the resolved ID and request
+                console.log(`[ChampionDetail] Fetching matches for ${championName} (ID: ${champId})...`);
                 const idsRes = await fetchMatchIds(puuid, 50, undefined, undefined, champId);
                 
+                if (idsRes.success && idsRes.data) {
+                     console.log(`[ChampionDetail] Found ${idsRes.data.length} matches for champion ${champId}`);
+                } else {
+                     console.log(`[ChampionDetail] Failed to find matches or error: ${idsRes.error}`);
+                }
+
                 if (ignore) return;
                 
                 if (!idsRes.success || !idsRes.data) {
@@ -81,9 +106,15 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
     // --- AGGREGATION LOGIC (Memoized) ---
     const stats: ChampionDetailsDTO | null = useMemo(() => {
         if (matchDetails.length === 0) return null;
+        
+        // ... (Aggregation logic remains same, implicit via skipping lines) ...
+        // We will jump to render logic for Tooltips in next chunk or rely on original code structure if unchanged.
+        // Actually I need to insert HelperTooltip usages in the JSX, which is further down.
+        // I will split this modification.
 
         // --- Copied Logic from server action (simplified/adapted) ---
         let wins = 0;
+
         let kills = 0, deaths = 0, assists = 0;
         let cs = 0, duration = 0;
         let totalCsDiff10 = 0, totalGoldDiff = 0, totalXpDiff = 0;
@@ -99,9 +130,19 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
         const matchupMap = new Map<string, { games: number, wins: number, goldDiff: number, csDiff: number, killDiff: number }>();
         const matchupItemsMap = new Map<string, Map<number, number>>();
 
+        let validGamesCount = 0;
+
         matchDetails.forEach(m => {
             const p = m.info.participants.find((p: any) => p.puuid === puuid);
-            if (!p) return; // Should not happen if correctly filtered
+            if (!p) return; 
+
+            // STRICT FILTER: Verify champion name matches requested champion
+            // This safeguards against API filter failures or cache issues
+            if (p.championName.toLowerCase() !== decodeURIComponent(championName).toLowerCase()) {
+                return;
+            }
+
+            validGamesCount++;
 
             const team = m.info.participants.filter((t: any) => t.teamId === p.teamId);
 
@@ -176,7 +217,7 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
             }
         });
 
-        const games = matchDetails.length;
+        const games = validGamesCount;
         if (games === 0) return null;
 
         const matchups = Array.from(matchupMap.entries()).map(([name, data]) => {
@@ -194,18 +235,20 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
              };
         }).sort((a,b) => b.games - a.games);
 
+        const safeDiv = (num: number, den: number) => den === 0 ? 0 : num / den;
+
         return {
             championName: championName, // Keep casing from URL? or use resolved? Using URL for now.
             summary: {
                 games,
                 wins,
-                winRate: Math.round((wins / games) * 100),
-                kda: `${(kills / games).toFixed(1)} / ${(deaths / games).toFixed(1)} / ${(assists / games).toFixed(1)}`,
-                avgKills: kills / games,
-                avgDeaths: deaths / games,
-                avgAssists: assists / games,
-                avgCs: Math.round(cs / games),
-                csPerMin: parseFloat(((cs / games) / (duration / games / 60)).toFixed(1))
+                winRate: Math.round(safeDiv(wins, games) * 100),
+                kda: `${safeDiv(kills, games).toFixed(1)} / ${(safeDiv(deaths, games)).toFixed(1)} / ${(safeDiv(assists, games)).toFixed(1)}`,
+                avgKills: safeDiv(kills, games),
+                avgDeaths: safeDiv(deaths, games),
+                avgAssists: safeDiv(assists, games),
+                avgCs: Math.round(safeDiv(cs, games)),
+                csPerMin: duration > 0 ? parseFloat(((cs * 60) / duration).toFixed(1)) : 0
             },
             laning: {
                 goldDiff: laningGames ? Math.round(totalGoldDiff / laningGames) : 0,
@@ -214,8 +257,8 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                 laneWinRate: 0
             },
             combat: {
-                damageShare: parseFloat(((damageShare / games) * 100).toFixed(1)),
-                killParticipation: parseFloat(((killParticipation / games) * 100).toFixed(1)),
+                damageShare: parseFloat((safeDiv(damageShare, games) * 100).toFixed(1)),
+                killParticipation: parseFloat((safeDiv(killParticipation, games) * 100).toFixed(1)),
                 damagePerDeath: 0 
             },
             spikes: {
@@ -247,8 +290,9 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
     }
     
     // Skeleton or Empty State
+    // Skeleton or Empty State
     if (!stats) {
-        if (!loadingIds && matchDetails.length === 0) {
+        if (!loadingIds && (matchDetails.length === 0 || (matchDetails.length > 0 && !stats))) {
             return (
                 <div className="p-8">
                      <h1 className="text-3xl font-bold text-slate-100 mb-4">{decodeURIComponent(championName)}</h1>
@@ -358,19 +402,28 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                     </div>
                     <div className="space-y-4">
                         <div className="flex justify-between items-center">
-                             <span className="text-sm text-slate-400">CS Diff @ 10</span>
+                             <span className="text-sm text-slate-400 flex items-center">
+                                CS Diff @ 10 
+                                <HelperTooltip text="Difference in Creep Score (minions) at 10 minutes vs your lane opponent." />
+                             </span>
                              <span className={`text-lg font-bold ${stats.laning.csDiff10 > 0 ? 'text-green-400' : 'text-red-400'}`}>
                                 {stats.laning.csDiff10 > 0 ? '+' : ''}{stats.laning.csDiff10}
                              </span>
                         </div>
                         <div className="flex justify-between items-center">
-                             <span className="text-sm text-slate-400">Gold Diff</span>
+                             <span className="text-sm text-slate-400 flex items-center">
+                                Gold Diff
+                                <HelperTooltip text="Average Gold difference vs opponent per game." />
+                             </span>
                              <span className={`text-lg font-bold ${stats.laning.goldDiff > 0 ? 'text-green-400' : 'text-red-400'}`}>
                                 {stats.laning.goldDiff > 0 ? '+' : ''}{stats.laning.goldDiff}
                              </span>
                         </div>
                         <div className="flex justify-between items-center">
-                             <span className="text-sm text-slate-400">XP Diff</span>
+                             <span className="text-sm text-slate-400 flex items-center">
+                                XP Diff
+                                <HelperTooltip text="Experience difference vs opponent. Higher means you are out-leveling them." />
+                             </span>
                              <span className={`text-lg font-bold ${stats.laning.xpDiff > 0 ? 'text-green-400' : 'text-red-400'}`}>
                                 {stats.laning.xpDiff > 0 ? '+' : ''}{stats.laning.xpDiff}
                              </span>
@@ -386,7 +439,10 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                     </div>
                     <div className="space-y-4">
                         <div className="flex justify-between items-center">
-                             <span className="text-sm text-slate-400">Damage Share</span>
+                             <span className="text-sm text-slate-400 flex items-center">
+                                Damage Share
+                                <HelperTooltip text="Percentage of your team's total damage to champions that you dealt." />
+                             </span>
                              <span className="text-lg font-bold text-blue-400">{stats.combat.damageShare}%</span>
                         </div>
                         <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
@@ -394,7 +450,10 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                         </div>
                         
                          <div className="flex justify-between items-center">
-                             <span className="text-sm text-slate-400">Kill Participation</span>
+                             <span className="text-sm text-slate-400 flex items-center">
+                                Kill Participation
+                                <HelperTooltip text="Percentage of team kills you were involved in (Kills + Assists)." />
+                             </span>
                              <span className="text-lg font-bold text-purple-400">{stats.combat.killParticipation}%</span>
                         </div>
                     </div>
@@ -411,7 +470,10 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                         <div className="p-5">
                             <div className="flex items-center gap-2 mb-4">
                                 <span className="text-xl">📈</span>
-                                <h3 className="font-bold text-slate-100">Power Spikes</h3>
+                                <h3 className="font-bold text-slate-100 flex items-center">
+                                    Power Spikes
+                                    <HelperTooltip text="Win Rate based on game duration. Shows if you are better in Early, Mid, or Late game." />
+                                </h3>
                             </div>
                             <div className="flex items-end justify-between h-32 gap-2 mt-2">
                                 {/* Early */}

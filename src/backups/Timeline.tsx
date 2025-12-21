@@ -102,9 +102,9 @@ const ObjectiveIcon = ({ type, subtype }: { type: string, subtype?: string }) =>
         if (subtype === "RIFTHERALD") {
             // Eye / Herald
             return (
-                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="drop-shadow-sm">
-                     <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20ZM12 6C10.9 6 10 6.9 10 8C10 9.1 10.9 10 12 10C13.1 10 14 9.1 14 8C14 6.9 13.1 6 12 6ZM12 13C9.33 13 7 14.33 7 17H17C17 14.33 14.67 13 12 13Z" />
-                 </svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="drop-shadow-sm">
+                    <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20ZM12 6C10.9 6 10 6.9 10 8C10 9.1 10.9 10 12 10C13.1 10 14 9.1 14 8C14 6.9 13.1 6 12 6ZM12 13C9.33 13 7 14.33 7 17H17C17 14.33 14.67 13 12 13Z" />
+                </svg>
             );
         }
         if (subtype === "HORDE") {
@@ -402,5 +402,3 @@ export default function Timeline({ match, timeline }: { match: any, timeline: Ti
         </div>
     );
 }
-
-

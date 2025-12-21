@@ -55,30 +55,58 @@ export type BasicStatsDTO = {
     debugLog: string[];
 }
 
-export async function fetchBasicStats(puuid: string, summonerId?: string | null): Promise<BasicStatsDTO> {
+export async function fetchBasicStats(puuid: string, summonerId?: string | null, gameName?: string, tagLine?: string): Promise<BasicStatsDTO> {
     const logs: string[] = [];
     const log = (msg: string) => { console.log(msg); logs.push(msg); };
     
     try {
         // 0. Self-Heal: Recover SummonerID if missing
         let validSummonerId = summonerId;
-        if (!validSummonerId) {
-             const { fetchSummonerByPuuid } = await import('./riot');
-             log(`[BasicStats] SummonerID missing. Recovering from Riot...`);
-             const summonerData = await fetchSummonerByPuuid(puuid);
-             if (summonerData) {
+        
+        // Helper to check validity
+        const isValid = (id?: string) => id && id.length > 5;
+
+        if (!isValid(validSummonerId)) {
+             const { fetchSummonerByPuuid, fetchRiotAccount } = await import('./riot');
+             log(`[BasicStats] SummonerID missing. Fetching by PUUID...`);
+             
+             let summonerData = await fetchSummonerByPuuid(puuid);
+             
+             // Check if data is valid (has ID)
+             if (!summonerData || !summonerData.id) {
+                 log(`[BasicStats] PUUID Fetch failed/bad data. Trying Riot ID Recovery...`);
+                 if (gameName && tagLine) {
+                     const riotAccount = await fetchRiotAccount(gameName, tagLine);
+                     if (riotAccount && riotAccount.puuid) {
+                         log(`[BasicStats] Recovered fresh PUUID: ${riotAccount.puuid.slice(0,10)}...`);
+                         // Retry Summoner Fetch with NEW PUUID
+                         summonerData = await fetchSummonerByPuuid(riotAccount.puuid);
+                     } else {
+                         log(`[BasicStats] Riot ID Lookup failed.`);
+                     }
+                 } else {
+                     log(`[BasicStats] No Name/Tag provided for recovery.`);
+                 }
+             }
+
+             if (summonerData && summonerData.id) {
                  validSummonerId = summonerData.id;
                  log(`[BasicStats] Recovered SummonerID: ${validSummonerId}`);
              } else {
-                 throw new Error("Failed to recover SummonerID from PUUID");
+                 throw new Error("Failed to recover SummonerID. API Key may be invalid or Account not found.");
              }
+        }
+        
+        // Ensure validSummonerId is a string for fetchRank
+        if (!validSummonerId) {
+             throw new Error("Critical: validSummonerId is undefined after recovery attempt.");
         }
 
         // 1. Fetch Rank
         let ranks = await fetchRank(validSummonerId);
 
         // Self-heal: If NO ranks found, SummonerID might be stale. Re-fetch ID from Riot.
-        if (ranks.length === 0 && validSummonerId) {
+        if (ranks.length === 0) {
              const { fetchSummonerByPuuid } = await import('./riot');
              log(`[BasicStats] No ranks found. Verifying SummonerID...`);
              const freshSummoner = await fetchSummonerByPuuid(puuid, true); // noCache=true

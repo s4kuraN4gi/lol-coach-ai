@@ -59,35 +59,69 @@ export async function fetchAndCacheMatches(puuid: string, count: number = 20): P
         log(`[Service] Missing IDs: ${missingIds.length}`);
 
         // 3. Fetch Missing from Riot
-        // Limit to 10 new per request for speed in this context, or full count?
-        // Reuse logic: fetch up to missingIds, but maybe limit to avoid timeout?
-        // Original logic limited to 10 new matches.
-        const matchesToFetch = missingIds.slice(0, 10);
+        // OPTIMIZED: Fetch prompt all missing matches (no hard limit of 10)
+        const matchesToFetch = missingIds; // Removed .slice(0, 10)
         if (matchesToFetch.length > 0) log(`[Service] Fetching ${matchesToFetch.length} new matches...`);
 
         const newMatches: any[] = [];
         if (matchesToFetch.length > 0) {
-            const chunkSize = 5; 
+            const chunkSize = 8; // Increased from 5 -> 8 for speed
             const chunkedIds = [];
             for (let i = 0; i < matchesToFetch.length; i += chunkSize) {
                 chunkedIds.push(matchesToFetch.slice(i, i + chunkSize));
             }
 
             for (const chunk of chunkedIds) {
+                // Initial Attempt
                 const promises = chunk.map(mid => fetchMatchDetail(mid));
-                const results = await Promise.all(promises);
+                let results = await Promise.all(promises);
 
+                const failedIds: string[] = [];
+                let hasRateLimitError = false;
+
+                // Process Results & Identify Failures
                 results.forEach((detail, idx) => {
+                    const matchId = chunk[idx];
                     if (detail.success && detail.data) {
                         const optimized = pruneMatchData(detail.data);
                         newMatches.push(optimized);
-                        cachedMap.set(optimized.metadata.matchId, optimized);
+                        cachedMap.set(matchId, optimized);
                     } else {
-                        log(`Failed to fetch match ${chunk[idx]}: ${detail.error}`);
+                        failedIds.push(matchId);
+                        if (detail.error?.includes('429')) hasRateLimitError = true;
+                        log(`[Service] Failed to fetch match ${matchId}: ${detail.error}`);
                     }
                 });
+
+                // BACKOFF & RETRY LOGIC (User Requested)
+                if (failedIds.length > 0) {
+                    if (hasRateLimitError) {
+                        log(`[Service] ⚠️ 429 Rate Limit Detected. Init Backoff (5s)...`);
+                        await delay(5000); // 5s Backoff
+                    } else {
+                        // For non-429 errors (network blip?), small wait
+                        await delay(1000); 
+                    }
+
+                    log(`[Service] 🔄 Retrying ${failedIds.length} failed matches...`);
+                    const retryPromises = failedIds.map(mid => fetchMatchDetail(mid));
+                    const retryResults = await Promise.all(retryPromises);
+
+                    retryResults.forEach((detail, idx) => {
+                        const matchId = failedIds[idx];
+                        if (detail.success && detail.data) {
+                            const optimized = pruneMatchData(detail.data);
+                            newMatches.push(optimized);
+                            cachedMap.set(matchId, optimized);
+                            log(`[Service] ✅ Retry Success: ${matchId}`);
+                        } else {
+                            log(`[Service] ❌ Retry Failed (Skipping): ${matchId} - ${detail.error}`);
+                        }
+                    });
+                }
                 
-                if (chunkedIds.length > 1) await delay(200);
+                // Reduced delay for speed (200ms -> 100ms)
+                if (chunkedIds.length > 1) await delay(100);
             }
         }
 

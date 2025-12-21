@@ -1,7 +1,5 @@
 "use client";
 
-import React, { useState, useTransition, useEffect, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
 import { 
     lookupSummoner,
     verifyAndAddSummoner,
@@ -45,7 +43,6 @@ export default function OnboardingPage() {
     };
     checkStatus();
   }, [user, authLoading, router]);
-
 
   // Step 1: Search
   const handleSearch = () => {
@@ -113,6 +110,7 @@ export default function OnboardingPage() {
       setStep(1);
       setNotification(null);
   }
+
 
   if (authLoading || initLoading) {
      return (
@@ -237,10 +235,6 @@ export default function OnboardingPage() {
                     <button 
                         onClick={async () => {
                             await signOut(); 
-                            // The signOut action revalidates path & redirects, 
-                            // but since this is client navigation we might need to force reload or wait.
-                            // Actually signOut is likely a server action.
-                            // We should wait for it.
                         }} 
                         className="text-xs text-slate-600 hover:text-slate-400 underline"
                     >
@@ -291,3 +285,5 @@ function Timer({ expiresAt, onExpire }: { expiresAt: number, onExpire?: () => vo
         </div>
     );
 }
+
+

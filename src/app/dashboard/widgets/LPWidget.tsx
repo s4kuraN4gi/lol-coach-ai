@@ -107,7 +107,7 @@ export default function LPWidget({ rank, recentMatches }: { rank: LeagueEntryDTO
                                 </linearGradient>
                             </defs>
                             <path 
-                                d={`M 0 50 L ${points}`} // Start mid if needed, but trending works even if starts arbitrarily
+                                d={points.length > 0 ? (points.indexOf(' ') === -1 ? `M 0 50 L ${points}` : `M 0 ${50} L ${points}`) : "M 0 50 L 100 50"}
                                 fill="none"
                                 stroke={trendData[trendData.length-1] >= 0 ? "#3b82f6" : "#ef4444"}
                                 strokeWidth="3"

@@ -191,9 +191,13 @@ async function generateContentWithRetry(model: any, content: any, retries = 0): 
         return await model.generateContent(content);
     } catch (e: any) {
         const isRateLimit = e.message?.includes('429') || e.status === 429 || e.message?.includes('Too Many Requests');
+        if (isRateLimit && retries < 2) {
+            console.warn(`Gemini Rate Limit (429) hit. Retrying in 2s... (Attempt ${retries + 1}/2)`);
+            await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3s
+            return generateContentWithRetry(model, content, retries + 1);
+        }
         if (isRateLimit) {
-            console.warn("Gemini Rate Limit (429) hit. No retry.");
-            throw new Error("⚠️ AI is busy (Rate Limited). Please wait 1 minute and click Analyze again.");
+             throw new Error("⚠️ AI Service is busy (High Load). Please try again in 30 seconds.");
         }
         throw e;
     }
@@ -498,11 +502,14 @@ export async function analyzeMatchQuick(
       p.teamPosition !== '' 
   );
 
-  // 4. Generate Prompt
+  // 4. Generate Prompt with Multi-Model Fallback
+  // EXACT match with coach.ts/chat to ensure success
+  const MODELS_TO_TRY = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-flash-latest"];
+  let finalJson = "";
+
   try {
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", generationConfig: { responseMimeType: "application/json" } });
 
       const prompt = `
       League of Legendsの試合結果から、プレイヤーの「即時評価」をJSONで出力してください。
@@ -519,11 +526,29 @@ export async function analyzeMatchQuick(
       }
       `;
 
-      const result = await generateContentWithRetry(model, prompt);
-      let analysisJson = result.response.text();
+      for (const modelName of MODELS_TO_TRY) {
+          try {
+              console.log(`[Analysis] Trying Model: ${modelName}`);
+              const model = genAI.getGenerativeModel({ model: modelName, generationConfig: { responseMimeType: "application/json" } });
+              const result = await generateContentWithRetry(model, prompt);
+              finalJson = result.response.text();
+              
+              if (finalJson) {
+                  console.log(`[Analysis] Success with ${modelName}`);
+                  break;
+              }
+          } catch (currentError: any) {
+              console.warn(`[Analysis] Failed with ${modelName}: ${currentError.message}`);
+              // Continue to next model
+          }
+      }
+
+      if (!finalJson) {
+           throw new Error("All AI models failed to respond for Match Diagnosis.");
+      }
       
       // Sanitize Markdown
-      analysisJson = analysisJson.replace(/```json/g, '').replace(/```/g, '').trim();
+      finalJson = finalJson.replace(/```json/g, '').replace(/```/g, '').trim();
 
       // 5. Save & Update
       await supabase.from("match_analyses").upsert({
@@ -531,7 +556,7 @@ export async function analyzeMatchQuick(
           match_id: matchId,
           summoner_name: summonerName,
           champion_name: participant.championName,
-          analysis_text: analysisJson // Store JSON string
+          analysis_text: finalJson // Store JSON string
       });
 
       if (shouldIncrementCount) {
@@ -548,7 +573,7 @@ export async function analyzeMatchQuick(
       
        revalidatePath(`/dashboard/match/${matchId}`); 
 
-      return { success: true, data: JSON.parse(analysisJson) };
+      return { success: true, data: JSON.parse(finalJson) };
 
   } catch (e: any) {
       console.error("Analyze Quick Error:", e);
@@ -628,13 +653,13 @@ export async function analyzeMatch(
        await new Promise((resolve) => setTimeout(resolve, 1500));
        resultAdvice = `【Mock】${championName}での${kda}は見事ですが、APIキーが設定されていません。`;
   } else {
-      // Call Gemini
+      // Call Gemini with Multi-Model Fallback
       try {
         const { GoogleGenerativeAI } = await import("@google/generative-ai");
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-
+        
+        const MODELS_TO_TRY = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-flash-latest"];
+        
         const prompt = `
 あなたはLeague of Legendsのプロコーチです。
 以下の試合結果を元に、プレイヤーへの具体的かつ簡潔な改善アドバイス（ダメ出し含む）を日本語で作成してください。
@@ -650,8 +675,25 @@ KDA: ${kda}
 2. 改善点（具体的に）
 3. 次へのアクション
 `;
-        const result = await generateContentWithRetry(model, prompt);
-        resultAdvice = result.response.text();
+        for (const modelName of MODELS_TO_TRY) {
+            try {
+                console.log(`[AnalysisLegacy] Trying Model: ${modelName}`);
+                const model = genAI.getGenerativeModel({ model: modelName });
+                const result = await generateContentWithRetry(model, prompt);
+                resultAdvice = result.response.text();
+
+                if (resultAdvice) {
+                    console.log(`[AnalysisLegacy] Success with ${modelName}`);
+                    break;
+                }
+            } catch (e: any) {
+                console.warn(`[AnalysisLegacy] Failed with ${modelName}: ${e.message}`);
+            }
+        }
+
+        if (!resultAdvice) {
+            throw new Error("All AI models failed to respond.");
+        }
 
       } catch (e: any) {
           console.error("Gemini Match Analysis Error:", e);

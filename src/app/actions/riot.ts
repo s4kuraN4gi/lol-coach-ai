@@ -68,20 +68,32 @@ export async function fetchRiotAccount(gameName: string, tagLine: string): Promi
 export async function fetchSummonerByPuuid(puuid: string, noCache = false): Promise<SummonerDTO | null> {
     if (!RIOT_API_KEY) return null;
     
-    const url = `https://${PLATFORM_ROUTING}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${puuid}`;
+    const url = `https://${PLATFORM_ROUTING}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${puuid}?t=${Date.now()}`;
     
     try {
+        console.log(`[RiotAPI] Fetching Summoner (Cache-Bust): ${url}`);
         const res = await fetch(url, {
             headers: { "X-Riot-Token": RIOT_API_KEY },
-            ...(noCache ? { cache: 'no-store' } : { next: { revalidate: 3600 } })
+            cache: 'no-store'
         });
         
         if (!res.ok) {
-            console.error(`Summoner API Error: ${res.status}`);
+            console.error(`[RiotAPI] Summoner Error: ${res.status} ${res.statusText}`);
+            const body = await res.text();
+            console.error(`[RiotAPI] Error Body: ${body}`);
             return null;
         }
         
-        return await res.json();
+        const data = await res.json();
+        console.log(`[RiotAPI] Summoner Data: ${JSON.stringify(data)}`);
+
+        if (!data.id) {
+             console.error(`[RiotAPI] CRITICAL: Response missing 'id' field! Polyfilling with PUUID to attempt fallback.`);
+             data.id = data.puuid; // Hack: Try to use PUUID as ID
+             data.name = data.name || "Summoner";
+        }
+
+        return data;
     } catch (e) {
         console.error("fetchSummonerByPuuid exception:", e);
         return null;
@@ -92,7 +104,17 @@ export async function fetchSummonerByPuuid(puuid: string, noCache = false): Prom
 export async function fetchRank(summonerId: string): Promise<LeagueEntryDTO[]> {
     if (!RIOT_API_KEY) return [];
     
+    // Fallback logic verification
+    // PUUID is long (78 chars), SummonerID is short (40-63 chars usually, but rarely 78).
+    // The by-summoner endpoint STRICTLY requires Encrypted Summoner ID.
+    // If we only have PUUID (because fetchSummoner failed to give ID), we CANNOT fetch rank.
+    if (summonerId.length > 60) {
+        console.warn(`[RiotAPI] Cannot fetch rank with PUUID (length ${summonerId.length}). Returning Unranked.`);
+        return [];
+    }
+    
     const url = `https://${PLATFORM_ROUTING}.api.riotgames.com/lol/league/v4/entries/by-summoner/${summonerId}`;
+    console.log(`[RiotAPI] Fetching Rank: ${url}`);
     
     try {
         const res = await fetch(url, {
@@ -105,7 +127,11 @@ export async function fetchRank(summonerId: string): Promise<LeagueEntryDTO[]> {
             return [];
         }
         
-        return await res.json();
+        const data = await res.json();
+        if (Array.isArray(data) && data.length === 0) {
+            console.warn(`[RiotAPI] fetchRank returned EMPTY for ID: ${summonerId}. URL: ${url}`);
+        }
+        return data;
     } catch (e) {
         console.error("fetchRank exception:", e);
         return [];
@@ -113,7 +139,7 @@ export async function fetchRank(summonerId: string): Promise<LeagueEntryDTO[]> {
 }
 
 // 4. Get Match IDs by PUUID
-export async function fetchMatchIds(puuid: string, count: number = 20, queue?: number, type?: string, championId?: number): Promise<{ success: boolean, data?: string[], error?: string }> {
+export async function fetchMatchIds(puuid: string, count: number = 20, queue?: number, type?: string, championId?: number, retries = 3): Promise<{ success: boolean, data?: string[], error?: string }> {
     if (!RIOT_API_KEY) return { success: false, error: "Server Configuration Error: RIOT_API_KEY is missing" };
     
     // Ensure region is correct. JP1 -> asia
@@ -128,6 +154,13 @@ export async function fetchMatchIds(puuid: string, count: number = 20, queue?: n
             headers: { "X-Riot-Token": RIOT_API_KEY },
             cache: 'no-store'
         });
+
+        if (res.status === 429 && retries > 0) {
+            const retryAfter = parseInt(res.headers.get("Retry-After") || "1");
+            console.log(`[RiotAPI] MatchIDs 429 Hit. Waiting ${retryAfter}s...`);
+            await delay((retryAfter + 1) * 1000); // Wait +1s buffer
+            return fetchMatchIds(puuid, count, queue, type, championId, retries - 1);
+        }
         
         if (!res.ok) {
             const body = await res.text();

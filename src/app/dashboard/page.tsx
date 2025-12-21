@@ -63,6 +63,12 @@ export default function DashboardPage() {
 
     // データ取得
     const fetchData = useCallback(async () => {
+        console.log("[Client] Active Summoner Status:", { 
+            exists: !!activeSummoner, 
+            id: activeSummoner?.summoner_id,
+            puuid: activeSummoner?.puuid
+        });
+
         if (!activeSummoner) return;
         
         // Don't set state if unmounted (though this check is early, the updates later matter more)
@@ -90,7 +96,7 @@ export default function DashboardPage() {
             if (isMounted.current) setDebugLogs(prev => [...prev, "[Client] Requesting Server Action (Basic Stats)..."]);
             
             // Start both fetches in parallel
-            const basicPromise = fetchBasicStats(puuid, summoner_id);
+            const basicPromise = fetchBasicStats(puuid, summoner_id, activeSummoner.summoner_name, activeSummoner.tag_line);
             const matchPromise = fetchMatchStats(puuid);
 
             // Await basic stats first
@@ -140,6 +146,8 @@ export default function DashboardPage() {
                 ...matchData,
                 debugLog: [...prev.debugLog, ...(matchData.debugLog || [])]
             } : null);
+
+            console.log("[Client] Ranks Data for Debug:", JSON.stringify(stats?.ranks || basicData.ranks, null, 2));
 
             setDebugLogs(prev => [
                 ...prev, 
