@@ -5,8 +5,10 @@ import InfoTooltip from "../components/InfoTooltip";
 export default function LaningPhaseWidget({ stats, matchCount }: { stats: UniqueStats | null, matchCount: number }) {
     if (!stats) return <DashboardCard><div className="animate-pulse h-32 bg-slate-800 rounded"></div></DashboardCard>;
 
-    // Solo Death Rate (Lower is Better)
-    const rate = stats.survival.soloDeathRate;
+    // CS Advantage (Higher is Better)
+    const val = stats.survival.csAdvantage; // Renamed from soloDeathRate
+    const isGood = val >= 10;
+    const isBad = val < 0;
 
     return (
         <DashboardCard>
@@ -27,15 +29,15 @@ export default function LaningPhaseWidget({ stats, matchCount }: { stats: Unique
                 </div>
                 <InfoTooltip 
                     content={{
-                        what: "序盤10分間の「生存安定性」と「稼ぐ力」を総合評価します。",
-                        why: "不用意なデスを避けつつ(守り)、CSを確実に稼ぐ(攻め)ことが、試合を作る土台となります。",
-                        how: "ソロデス率を0%に抑え、かつ10分時点でCS 80以上を目指しましょう。"
+                        what: "序盤10分間の「CS有利（対面との差）」と「稼ぐ力」を総合評価します。",
+                        why: "対面より多くのCSを取ることは、装備差を作るための最も確実な手段です。",
+                        how: "対面より常に+10CS以上リードすることを目指しましょう。"
                     }}
                 />
             </div>
 
             <div className="grid grid-cols-2 gap-2 divide-x divide-slate-700/50 mt-2">
-                {/* Left: Defense (Solo Death) */}
+                {/* Left: Offense (CS Advantage) */}
                 <div className="flex flex-col items-center justify-center pb-2">
                     <div className="relative w-16 h-16 mb-2 group">
                         <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
@@ -48,20 +50,20 @@ export default function LaningPhaseWidget({ stats, matchCount }: { stats: Unique
                             <path
                                 d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                                 fill="none"
-                                stroke={rate > 50 ? "#ef4444" : rate > 30 ? "#facc15" : "#4ade80"}
+                                stroke={isGood ? "#4ade80" : isBad ? "#ef4444" : "#facc15"}
                                 strokeWidth="3"
-                                strokeDasharray={`${rate}, 100`}
+                                strokeDasharray={`${Math.min(100, Math.max(0, val + 50))}, 100`} 
                                 strokeLinecap="round"
                             />
                         </svg>
-                        <div className="absolute inset-0 flex items-center justify-center font-black text-slate-200 text-sm">
-                            {rate}%
+                        <div className={`absolute inset-0 flex items-center justify-center font-black text-sm ${val > 0 ? 'text-emerald-400' : val < 0 ? 'text-rose-400' : 'text-slate-200'}`}>
+                            {val > 0 ? "+" : ""}{val}
                         </div>
                     </div>
                     <div className="text-center">
-                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Solo Death</div>
-                        <div className={`text-[10px] ${rate > 30 ? "text-rose-400" : "text-emerald-400"}`}>
-                            {rate > 50 ? "High Risk" : rate > 30 ? "Caution" : "Solid"}
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">CS Advantage</div>
+                        <div className={`text-[10px] ${isGood ? "text-emerald-400" : isBad ? "text-rose-400" : "text-yellow-400"}`}>
+                            {isGood ? "Dominating" : isBad ? "Behind" : "Even"}
                         </div>
                     </div>
                 </div>

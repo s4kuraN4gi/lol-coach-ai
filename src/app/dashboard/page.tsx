@@ -18,9 +18,11 @@ import AdSenseBanner from "../Components/ads/AdSenseBanner";
 
 import { useSummoner } from "../Providers/SummonerProvider";
 import { useAuth } from "../Providers/AuthProvider";
-import { fetchBasicStats, fetchMatchStats, type DashboardStatsDTO } from "@/app/actions/stats";
+import { type MatchStatsDTO, type BasicStatsDTO } from "@/app/actions/stats";
 import DashboardSkeleton from "./components/skeletons/DashboardSkeleton";
+import DashboardUpdater from "./components/DashboardUpdater";
 
+type DashboardStatsDTO = MatchStatsDTO & BasicStatsDTO;
 
 export default function DashboardPage() {
     const {activeSummoner, loading:summonerLoading} = useSummoner();
@@ -30,24 +32,7 @@ export default function DashboardPage() {
     const [error, setError] = useState<string | null>(null);
     const [debugLogs, setDebugLogs] = useState<string[]>([]);
     
-    // Note: ProfileCard logic was moved into ProfileCard component previously or page did logic?
-    // Looking at previous file view, ProfileCard took raw props like `rank`, `tier` etc.
-    // DashboardStatsDTO contains `rank`.
-    // We need to verify ProfileCard props.
-    // ProfileCard takes: summonerName, tagLine, level, iconId, tier, rank, lp, wins, losses, currentQueue, onQueueChange.
-    // DashboardStatsDTO.rank is a LeagueEntryDTO.
-
-    // Queue selection for ProfileCard (SOLO/FLEX) logic is mostly inside fetchDashboardStats which prioritizes SOLO.
-    // However, ProfileCard allows switching queue? 
-    // `fetchDashboardStats` should return ALL ranks or the Page should handle switching.
-    // The previous implementation fetched ALL ranks.
-    // `fetchDashboardStats` currently returns `rank: LeagueEntryDTO | null`.
-    // Just one rank.
-    // Let's modify `fetchDashboardStats` or just stick to SOLO priority for specific widgets, but ProfileCard needs flexibility?
-    // Actually, user wants LP Progression Widget. That widget usually tracks the Main Queue (Solo).
-    // Let's stick to prioritizing Solo for the Dashboard Overview.
-    // If refined, `stats.ts` should return `ranks: LeagueEntryDTO[]` and we filter in client.
-    // But for now let's use what `stats.ts` provides (the best rank).
+    // ... (rest of logic) ...
 
     const router = useRouter();
     const {user, loading: authLoading} = useAuth();
@@ -61,109 +46,47 @@ export default function DashboardPage() {
         };
     }, []);
 
-    // データ取得
+    // データ取得 (Cache-First)
     const fetchData = useCallback(async () => {
-        console.log("[Client] Active Summoner Status:", { 
-            exists: !!activeSummoner, 
-            id: activeSummoner?.summoner_id,
-            puuid: activeSummoner?.puuid
-        });
-
-        if (!activeSummoner) return;
-        
-        // Don't set state if unmounted (though this check is early, the updates later matter more)
-        if (!isMounted.current) return;
+        if (!activeSummoner || !isMounted.current) return;
 
         setIsFetching(true);
         setError(null);
-        setDebugLogs(["[Client] Starting Progressive Refresh...", `[Client] PUUID: ${activeSummoner.puuid?.slice(0,10)}...`]);
-        console.log("Start Dashboard Refresh...");
+        setDebugLogs(["[Client] Loading Cached Data..."]);
 
-        const { puuid, summoner_id } = activeSummoner;
+        const { puuid } = activeSummoner;
         
         if (!puuid) {
-            console.warn("[Dashboard] Active Summoner Incomplete:", activeSummoner);
             if (isMounted.current) {
                 setError("アカウント情報が不完全です（PUUID欠落）。アカウントを再連携してください。");
-                setDebugLogs(prev => [...prev, "[Client] Error: Missing PUUID"]);
                 setIsFetching(false);
             }
             return;
         }
 
         try {
-            console.log("Fetching basic stats for", puuid);
-            if (isMounted.current) setDebugLogs(prev => [...prev, "[Client] Requesting Server Action (Basic Stats)..."]);
+            // Server Action: Get Everything from DB
+            const { getStatsFromCache } = await import('@/app/actions/stats');
+            const data = await getStatsFromCache(puuid);
             
-            // Start both fetches in parallel
-            const basicPromise = fetchBasicStats(puuid, summoner_id, activeSummoner.summoner_name, activeSummoner.tag_line);
-            const matchPromise = fetchMatchStats(puuid);
+            if (!isMounted.current) return;
 
-            // Await basic stats first
-            const basicData = await basicPromise;
-            if (!isMounted.current) return; // Cleanup Check
-
-            console.log("Fetched Basic Stats Result:", JSON.stringify(basicData, null, 2));
+            setStats(data);
             
-            // Construct partial state for immediate rendering of profile/rank
-            const partialStats: DashboardStatsDTO = {
-                ranks: basicData.ranks,
-                recentMatches: [], // Empty until match data arrives
-                championStats: [],
-                radarStats: null,
-                uniqueStats: null,
-                debugLog: basicData.debugLog || []
-            };
-            setStats(partialStats); // Update state to show basic info
+            // Auto-select Queue
+            const hasSolo = data.ranks.some((r: any) => r.queueType === "RANKED_SOLO_5x5");
+            const hasFlex = data.ranks.some((r: any) => r.queueType === "RANKED_FLEX_SR");
             
-            // Auto-select Queue based on available ranks from basicData
-            const hasSolo = basicData.ranks.some((r: any) => r.queueType === "RANKED_SOLO_5x5");
-            const hasFlex = basicData.ranks.some((r: any) => r.queueType === "RANKED_FLEX_SR");
-            
-            if (!hasSolo && hasFlex) {
-                 setCurrentQueue("FLEX");
-                 console.log("[Dashboard] Auto-switched to FLEX (No Solo Rank found)");
-            } else if (hasSolo) {
-                 setCurrentQueue("SOLO");
-            }
+            if (!hasSolo && hasFlex) setCurrentQueue("FLEX");
+            else if (hasSolo) setCurrentQueue("SOLO");
 
-            setDebugLogs(prev => [
-                ...prev, 
-                `[Client] Basic Stats Received. Ranks: ${basicData.ranks.length}`,
-            ]);
-
-            // Now await match stats
-            console.log("Fetching match stats for", puuid);
-            if (isMounted.current) setDebugLogs(prev => [...prev, "[Client] Requesting Server Action (Match Stats)..."]);
-            const matchData = await matchPromise;
-            if (!isMounted.current) return; // Cleanup Check
-
-            console.log("Fetched Match Stats Result:", JSON.stringify(matchData, null, 2));
-            
-            // Merge match data into existing stats
-            setStats(prev => prev ? {
-                ...prev,
-                ...matchData,
-                debugLog: [...prev.debugLog, ...(matchData.debugLog || [])]
-            } : null);
-
-            console.log("[Client] Ranks Data for Debug:", JSON.stringify(stats?.ranks || basicData.ranks, null, 2));
-
-            setDebugLogs(prev => [
-                ...prev, 
-                `[Client] Match Stats Received. matches=${matchData.recentMatches.length}`,
-                ...(matchData.debugLog || ["[Client] Warn: matchData.debugLog is missing/empty"])
-            ]);
-            
-            if (matchData.recentMatches.length === 0) {
-                setError("直近の対戦データが見つかりませんでした。(JPサーバーでプレイしていますか？)");
-            }
+            setDebugLogs(prev => [...prev, `[Client] Cache Loaded. Matches: ${data.recentMatches.length}`]);
 
         } catch (error: any) {
             console.error("Failed to fetch dashboard stats", error);
             if (isMounted.current) {
-                setError("データの取得に失敗しました。時間をおいて再試行してください。");
-                setDebugLogs(prev => [...prev, `[Client] Exception: ${error.message || error}`]);
+                setError("データの読み込みに失敗しました。");
+                setDebugLogs(prev => [...prev, `[Client] Error: ${error.message}`]);
             }
         }
         
@@ -176,13 +99,28 @@ export default function DashboardPage() {
         }
     }, [activeSummoner]); 
 
+    // Manual Refresh Handler (Force Full Update)
+    const handleManualRefresh = async () => {
+        if (!activeSummoner?.puuid) return;
+        setIsFetching(true);
+         try {
+            const { performFullUpdate } = await import('@/app/actions/stats');
+            await performFullUpdate(activeSummoner.puuid);
+            await fetchData(); // Reload Cache
+            router.refresh();
+        } catch (e) {
+            console.error(e);
+        }
+        setIsFetching(false);
+    };
+
     // Filter Rank based on Queue Selection
     const displayedRank = stats?.ranks?.find(r => 
         currentQueue === "SOLO" ? r.queueType === "RANKED_SOLO_5x5" : r.queueType === "RANKED_FLEX_SR"
     ) || null;
 
-    // Determine if match-related data has loaded
-    const matchesLoaded = stats?.radarStats !== null;
+    // Determine if match-related data has loaded (simply check if stats exists now, as it's all-or-nothing from cache)
+    const matchesLoaded = stats !== null;
 
     if (authLoading || summonerLoading || (!stats && isFetching)) {
          return (
@@ -200,14 +138,15 @@ export default function DashboardPage() {
                         <div className="text-4xl mb-4">📭</div>
                         <h2 className="text-xl font-bold text-white mb-2">対戦データが見つかりませんでした</h2>
                         <p className="text-slate-400 mb-6">
-                            連携されたアカウントの直近の対戦履歴（過去10戦）が存在しないか、取得できませんでした。
+                            連携されたアカウントの直近の対戦履歴（過去10戦）が存在しないか、キャッシュされていません。
                         </p>
                         
                          <button 
-                            onClick={fetchData} 
+                            onClick={handleManualRefresh} 
+                            disabled={isFetching}
                             className="bg-primary-500 hover:bg-primary-600 px-6 py-2 rounded-lg text-white font-bold transition-colors w-full"
                         >
-                            再試行
+                            {isFetching ? "更新中..." : "データを取得 (API)"}
                         </button>
                     </div>
                 </div>
@@ -232,6 +171,8 @@ export default function DashboardPage() {
   return (
     <>
       <DashboardLayout>
+        {activeSummoner.puuid && <DashboardUpdater puuid={activeSummoner.puuid} />}
+        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div>
                 <h1 className="text-2xl font-bold font-display uppercase tracking-wider text-white">Dashboard</h1>
@@ -239,9 +180,7 @@ export default function DashboardPage() {
             </div>
             <div className="flex justify-end">
                 <button 
-                    onClick={() => {
-                        fetchData();
-                    }}
+                    onClick={handleManualRefresh}
                     className="text-sm bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-4 py-2 rounded-lg transition shadow-lg hover:shadow-blue-500/10 flex items-center gap-2"
                     disabled={isFetching}
                 >
@@ -255,6 +194,8 @@ export default function DashboardPage() {
                 </button>
             </div>
         </div>
+        
+
 
         {/* AdSense Top Banner */}
         <div className="mb-6 flex justify-center">

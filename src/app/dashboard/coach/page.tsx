@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition, useCallback, useRef } from "react";
 import DashboardLayout from "../../Components/layout/DashboardLayout";
 import { fetchMatchIds, fetchMatchDetail, fetchLatestVersion } from "@/app/actions/riot";
-import { analyzeMatchTimeline, CoachingInsight, AnalysisFocus, AnalysisResult, BuildItem } from "@/app/actions/coach";
+import { getCoachMatches, analyzeMatchTimeline, CoachingInsight, AnalysisFocus, AnalysisResult, BuildItem, type MatchSummary } from "@/app/actions/coach";
 import { useSummoner } from "../../Providers/SummonerProvider";
 import { getAnalysisStatus, type AnalysisStatus, upgradeToPremium, claimDailyReward, analyzeVideo, getVideoAnalysisStatus, getLatestActiveAnalysis } from "@/app/actions/analysis";
 import PlanStatusBadge from "../../Components/subscription/PlanStatusBadge";
@@ -18,16 +18,6 @@ declare global {
     onYouTubeIframeAPIReady: any;
   }
 }
-
-// Types
-type MatchSummary = {
-    matchId: string;
-    championName: string;
-    win: boolean;
-    kda: string;
-    timestamp: number;
-    queueId: number;
-};
 
 // Helper
 function extractVideoId(url: string) {
@@ -187,32 +177,23 @@ export default function CoachPage() {
         return () => clearInterval(interval);
     }, [asyncStatus]);
 
-    // Fetch Matches logic
+    // Fetch Matches logic (Cache First)
     const loadMatches = useCallback(async () => {
         if (!activeSummoner?.puuid) return;
         
         setLoadingIds(true);
         const puuid = activeSummoner.puuid;
-        const idsRes = await fetchMatchIds(puuid, 10);
         
-        if (idsRes.success && idsRes.data) {
-            const summaries = await Promise.all(idsRes.data.map(async (id) => {
-                 const detail = await fetchMatchDetail(id);
-                 if (!detail.success || !detail.data) return null;
-                 const m = detail.data;
-                 const p = m.info.participants.find((p: any) => p.puuid === puuid);
-                 if (!p) return null;
-                 return {
-                     matchId: id,
-                     championName: p.championName,
-                     win: p.win,
-                     kda: `${p.kills}/${p.deaths}/${p.assists}`,
-                     timestamp: m.info.gameStartTimestamp,
-                     queueId: m.info.queueId
-                 } as MatchSummary;
-            }));
-            const valid = summaries.filter((s): s is MatchSummary => s !== null);
-            setMatches(valid);
+        // Cache-First: Get matches from DB directly
+        const dbMatches = await getCoachMatches(puuid);
+        
+        if (dbMatches && dbMatches.length > 0) {
+            setMatches(dbMatches);
+        } else {
+            // Fallback: If DB is empty, user might be new.
+            // Ideally we guide them to Dashboard or trigger update.
+            // keeping it empty for now, or could trigger fetchMatchIds here.
+            setMatches([]); 
         }
         setLoadingIds(false);
     }, [activeSummoner]);
@@ -225,15 +206,17 @@ export default function CoachPage() {
         }
     }, [activeSummoner, summonerLoading, loadMatches]);
 
-    // Auto-Resume: Restore Active Analysis and Inputs
+    // Auto-Resume: Restore Active Analysis (Non-blocking)
     useEffect(() => {
-        if (loadingIds) return; // Wait for matches
+        if (loadingIds) return; 
 
         if (!autoResumeChecked.current) {
             autoResumeChecked.current = true;
             getLatestActiveAnalysis().then(latest => {
                  if (latest && (latest.status === 'processing' || latest.status === 'completed')) {
                      const found = matches.find(m => m.matchId === latest.matchId);
+                     // Note: If found is undefined because matches list is stale/empty, restoration won't happen.
+                     // This is a trade-off for speed.
                      if (found) {
                          console.log("Restoring Session:", found.matchId);
                          setSelectedMatch(found);
@@ -262,7 +245,7 @@ export default function CoachPage() {
                  setIsRestoring(false);
             });
         }
-    }, [matches, loadingIds]); // Run once matches are ready
+    }, [matches, loadingIds]); 
 
     // YouTube Embed Logic
     useEffect(() => {

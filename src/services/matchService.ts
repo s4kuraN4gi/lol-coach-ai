@@ -153,8 +153,23 @@ export async function fetchAndCacheMatches(puuid: string, count: number = 20): P
 
         return { matches, logs };
 
+        return { matches, logs };
+
     } catch (e: any) {
         log(`[Service] Critical Error: ${e.message}`);
         return { matches: [], logs };
     }
+}
+
+// Check cache for specific IDs (No API Fetch)
+export async function getCachedMatchesByIds(matchIds: string[]): Promise<any[]> {
+    if (!matchIds.length) return [];
+    
+    const supabase = await createClient();
+    const { data } = await supabase
+        .from('match_cache')
+        .select('data')
+        .in('match_id', matchIds);
+
+    return (data || []).map(d => d.data);
 }

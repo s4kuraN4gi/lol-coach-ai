@@ -518,7 +518,7 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
             </div>
 
             {/* Matchup Analysis - GATED */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-0 overflow-hidden relative">
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-0 relative">
                  <PremiumFeatureGate 
                     isPremium={isPremium} 
                     title="Unlock Matchup Analysis" 
@@ -526,7 +526,10 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                     onUpgrade={() => getAnalysisStatus().then(setAnalysisStatus)}
                 >
                     <div className="p-6">
-                        <h3 className="text-xl font-bold text-slate-100 mb-4">Matchup Analysis</h3>
+                        <div className="flex items-center gap-2 mb-4">
+                            <h3 className="text-xl font-bold text-slate-100">Matchup Analysis</h3>
+                            <HelperTooltip text="直近の対戦履歴から、対戦数の多い上位10体を表示しています。" />
+                        </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left text-slate-400">
                                 <thead className="text-xs text-slate-500 uppercase bg-slate-800/50">

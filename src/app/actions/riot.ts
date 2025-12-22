@@ -85,10 +85,11 @@ export async function fetchSummonerByPuuid(puuid: string, noCache = false): Prom
         }
         
         const data = await res.json();
+        console.log(`[RiotAPI] Raw Keys: ${Object.keys(data).join(", ")}`);
         console.log(`[RiotAPI] Summoner Data: ${JSON.stringify(data)}`);
 
         if (!data.id) {
-             console.error(`[RiotAPI] CRITICAL: Response missing 'id' field! Polyfilling with PUUID to attempt fallback.`);
+             console.error(`[RiotAPI] CRITICAL: Response missing 'id' field! Keys present: ${Object.keys(data)}`);
              data.id = data.puuid; // Hack: Try to use PUUID as ID
              data.name = data.name || "Summoner";
         }
@@ -108,10 +109,10 @@ export async function fetchRank(summonerId: string): Promise<LeagueEntryDTO[]> {
     // PUUID is long (78 chars), SummonerID is short (40-63 chars usually, but rarely 78).
     // The by-summoner endpoint STRICTLY requires Encrypted Summoner ID.
     // If we only have PUUID (because fetchSummoner failed to give ID), we CANNOT fetch rank.
-    if (summonerId.length > 60) {
-        console.warn(`[RiotAPI] Cannot fetch rank with PUUID (length ${summonerId.length}). Returning Unranked.`);
-        return [];
-    }
+    // if (summonerId.length > 60) {
+    //    console.warn(`[RiotAPI] Cannot fetch rank with PUUID (length ${summonerId.length}). Returning Unranked.`);
+    //    return [];
+    // }
     
     const url = `https://${PLATFORM_ROUTING}.api.riotgames.com/lol/league/v4/entries/by-summoner/${summonerId}`;
     console.log(`[RiotAPI] Fetching Rank: ${url}`);

@@ -29,7 +29,7 @@ export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }
              <div className="relative z-10">
                  <div className="flex justify-between items-center mb-4">
                     <div className="text-slate-400 text-xs font-bold tracking-wider">TOP CHAMPIONS</div>
-                    <Link href="/dashboard/stats" className="text-[10px] text-blue-400 hover:text-blue-300 bg-blue-500/10 px-2 py-1 rounded">
+                    <Link href="/dashboard/champions" className="text-[10px] text-blue-400 hover:text-blue-300 bg-blue-500/10 px-2 py-1 rounded">
                         VIEW ALL
                     </Link>
                  </div>

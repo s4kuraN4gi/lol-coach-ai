@@ -49,7 +49,8 @@ export default function ChatPage() {
     null
   );
   //   自動スクロール用
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  // const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const chatContainerRef = useRef<HTMLDivElement | null>(null);
 
   // Data Context for AI
   type ChatContextType = {
@@ -140,7 +141,13 @@ export default function ChatPage() {
   }, [activeSummoner]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth"})
+    // messagesEndRef.current?.scrollIntoView({ behavior: "smooth"})
+    if (chatContainerRef.current) {
+        chatContainerRef.current.scrollTo({
+            top: chatContainerRef.current.scrollHeight,
+            behavior: "smooth"
+        });
+    }
   },[selectedSession?.message])
 
   // Check for Match Handover
@@ -432,7 +439,7 @@ export default function ChatPage() {
           {/* Background decoration */}
            <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] opacity-5 pointer-events-none"></div>
 
-          <div className="w-full flex-1 p-6 flex flex-col gap-6 overflow-y-auto custom-scrollbar z-10">
+          <div ref={chatContainerRef} className="w-full flex-1 p-6 flex flex-col gap-6 overflow-y-auto custom-scrollbar z-10">
             {selectedSession ? (
               <>
                 {selectedSession?.message.map((msg, idx) => (
@@ -461,8 +468,8 @@ export default function ChatPage() {
                      <span className="text-slate-400 text-sm font-bold">AI IS THINKING...</span>
                   </div>
                 )}
-                {/* 自動スクロール用ダミー要素 */}
-                <div ref={messagesEndRef} />
+                {/* 自動スクロール用ダミー要素 (不要になったがレイアウト崩れ防止のため一旦残すか、削除するか。削除でOK) */}
+                {/* <div ref={messagesEndRef} /> */}
               </>
             ) : (
                 <div className="flex flex-col items-center justify-center h-full text-slate-500 opacity-60">
