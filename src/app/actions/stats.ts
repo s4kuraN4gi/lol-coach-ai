@@ -348,7 +348,7 @@ export async function performFullUpdate(puuid: string) {
     const { data: updatedData, error: updateError, count } = await supabase.from('summoner_accounts')
     .update(updatePayload)
     .eq('id', targetAccountId) 
-    .select('id, summoner_id, rank_info', { count: 'exact' });
+    .select('id, summoner_id, rank_info');
 
     if (updateError) {
         console.error(`[Action] DB Update Failed:`, updateError);
