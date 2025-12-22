@@ -62,9 +62,8 @@ export default function LandingPage() {
             </span>
           </h1>
           <p className="text-lg lg:text-xl text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-            あなたのプレイデータをAIが分析し、
-            <br className="hidden md:block" />
-            プロ級の具体的なコーチングアドバイスを即座に提供します。
+            あなたのプレイデータをRiot APIで取得。<br className="hidden md:block" />
+            CS、視界、ダメージ効率をTier平均と比較し、AIが具体的な改善点をコーチングします。
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link
@@ -88,29 +87,34 @@ export default function LandingPage() {
             
             {/* Mock Dashboard UI Component */}
             <div className="p-4 md:p-8 grid grid-cols-1 md:grid-cols-3 gap-6 opacity-80">
-                {/* Mock Card 1 */}
-                <div className="bg-slate-800 p-4 rounded-lg border border-white/5">
-                    <div className="h-4 w-24 bg-blue-500/20 rounded mb-4 animate-pulse"></div>
-                    <div className="h-32 w-full bg-slate-700/30 rounded flex items-center justify-center text-slate-500 text-sm">
-                        Win Rate Graph
+                {/* Mock Card 1: Skill Radar */}
+                <div className="bg-slate-800 p-4 rounded-lg border border-white/5 flex flex-col items-center">
+                    <div className="text-xs text-slate-500 mb-2">Skill Analysis</div>
+                    <div className="relative w-24 h-24 flex items-center justify-center">
+                        {/* Simple Polygon for Radar */}
+                        <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-[0_0_10px_rgba(59,130,246,0.5)]">
+                            <polygon points="50,10 90,40 70,90 30,90 10,40" fill="rgba(59, 130, 246, 0.3)" stroke="#60A5FA" strokeWidth="2" />
+                            <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.1)" />
+                            <circle cx="50" cy="50" r="25" fill="none" stroke="rgba(255,255,255,0.1)" />
+                        </svg>
                     </div>
+                    <div className="mt-2 text-blue-400 text-xs font-bold">Tier Average +20%</div>
                 </div>
-                 {/* Mock Card 2 (Main) */}
+                 {/* Mock Card 2 (Main): AI Chat */}
                  <div className="md:col-span-2 bg-slate-800 p-6 rounded-lg border border-blue-500/30 shadow-[0_0_30px_rgba(59,130,246,0.1)]">
                     <div className="flex items-center gap-3 mb-4">
                         <div className="w-10 h-10 rounded-full bg-amber-400/20 flex items-center justify-center text-amber-300 font-bold">AI</div>
                         <div className="text-left">
                             <div className="font-bold text-white">AI Coach Analysis</div>
-                            <div className="text-xs text-gray-400">Just now</div>
+                            <div className="text-xs text-gray-400">Match up: vs Yasuo</div>
                         </div>
                     </div>
                     <div className="space-y-3">
-                        <div className="h-3 bg-gray-600/50 rounded w-3/4"></div>
-                        <div className="h-3 bg-gray-600/50 rounded w-full"></div>
-                        <div className="h-3 bg-gray-600/50 rounded w-5/6"></div>
+                        <div className="h-3 bg-gray-600/30 rounded w-3/4"></div>
+                        <div className="h-3 bg-gray-600/30 rounded w-full"></div>
                     </div>
-                    <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded text-sm text-green-300 text-left">
-                        &quot;素晴らしい視界管理です！次はバロン前のセットアップを意識しましょう&quot;
+                    <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded text-sm text-blue-200 text-left">
+                        &quot;相手のYasuoは序盤のアグレッシブさが特徴です。Lv2先行に注意し、ウェーブをタワー手前で維持しましょう。&quot;
                     </div>
                 </div>
             </div>
@@ -127,10 +131,10 @@ export default function LandingPage() {
         <div className="container mx-auto px-6">
             <div className="text-center mb-16">
                 <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                    最強のパートナーを手に入れろ
+                    データで自分の「強み」を知る
                 </h2>
                 <p className="text-gray-400">
-                    最新のAI技術とRiot APIを駆使して、あなたのプレイを徹底解剖します。
+                    感覚に頼らない上達を。<br/>Riot APIの正確なデータに基づき、あなたのプレイスタイルを可視化します。
                 </p>
             </div>
 
@@ -140,9 +144,9 @@ export default function LandingPage() {
                     <div className="w-12 h-12 bg-blue-600/20 rounded-lg flex items-center justify-center text-2xl mb-6">
                         📊
                     </div>
-                    <h3 className="text-xl font-bold mb-3">戦績詳細分析</h3>
+                    <h3 className="text-xl font-bold mb-3">戦績＆スキル分析</h3>
                     <p className="text-gray-400 leading-relaxed">
-                        KDAやCSだけでなく、視界スコアやダメージ効率など、勝利に直結する重要指標を可視化します。
+                        CS、視界スコア、ダメージ効率などをTier平均と比較。レーダーチャートであなたの得意・不得意が一目でわかります。
                     </p>
                 </div>
 
@@ -151,20 +155,20 @@ export default function LandingPage() {
                     <div className="w-12 h-12 bg-amber-600/20 rounded-lg flex items-center justify-center text-2xl mb-6">
                         🤖
                     </div>
-                    <h3 className="text-xl font-bold mb-3">AIコーチング</h3>
+                    <h3 className="text-xl font-bold mb-3">AIコーチングチャット</h3>
                     <p className="text-gray-400 leading-relaxed">
-                        あなたの苦手なマッチアップや、改善すべき立ち回りをAIが特定し、具体的なアドバイスを提供します。
+                        「このマッチアップどうすればいい？」など、試合ごとの具体的な悩みをAIコーチに相談できます。対話形式で疑問を解決。
                     </p>
                 </div>
 
                 {/* Feature 3 */}
                 <div className="bg-slate-800/50 p-8 rounded-2xl border border-white/5 hover:border-purple-500/30 transition hover:-translate-y-1">
                     <div className="w-12 h-12 bg-purple-600/20 rounded-lg flex items-center justify-center text-2xl mb-6">
-                        🎥
+                        ⚔️
                     </div>
-                    <h3 className="text-xl font-bold mb-3">リプレイ動画解析</h3>
+                    <h3 className="text-xl font-bold mb-3">マッチアップ攻略</h3>
                     <p className="text-gray-400 leading-relaxed">
-                        動画URLやクリップを読み込ませるだけで、集団戦のポジショニングミスなどをAIが指摘します。
+                        対面ごとの勝率やキルレートを分析。苦手なチャンピオンに対する具体的な対策やビルドのアドバイスを提供します。
                     </p>
                 </div>
             </div>
