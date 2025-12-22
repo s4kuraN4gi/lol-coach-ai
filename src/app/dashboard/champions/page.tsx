@@ -23,12 +23,12 @@ export default function AllChampionsPage() {
     const [stats, setStats] = useState<(MatchStatsDTO & BasicStatsDTO) | null>(null);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
-    const [sortKey, setSortKey] = useState<"games" | "winRate" | "kda" | "name">("games");
+    const [sortKey, setSortKey] = useState<"games" | "winRate" | "avgKda" | "name">("games");
     const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
     useEffect(() => {
         if (summonerLoading) return;
-        if (!activeSummoner) {
+        if (!activeSummoner || !activeSummoner.puuid) {
             setLoading(false);
             return;
         }
@@ -36,7 +36,8 @@ export default function AllChampionsPage() {
         async function load() {
             setLoading(true);
             try {
-                const data = await getStatsFromCache(activeSummoner!.puuid);
+                // Assert puuid is string since we checked above
+                const data = await getStatsFromCache(activeSummoner!.puuid!);
                 setStats(data);
             } catch (e) {
                 console.error(e);
@@ -59,11 +60,7 @@ export default function AllChampionsPage() {
             let valB: any = b[sortKey as keyof ChampionStat];
             
             // Special handling for KDA string "x.xx" or "Perfect"
-            if (sortKey === "kda") {
-               valA = parseFloat(a.avgKda) || 0;
-               valB = parseFloat(b.avgKda) || 0;
-            } else if (sortKey === "avgKda") { 
-               // Map 'kda' state to 'avgKda' prop
+            if (sortKey === "avgKda") {
                valA = parseFloat(a.avgKda) || 0;
                valB = parseFloat(b.avgKda) || 0;
             }
