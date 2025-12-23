@@ -24,7 +24,10 @@ export default function PremiumPromoCard({ initialStatus, onStatusUpdate }: Prop
             syncSubscriptionStatus().then((res: any) => {
                  if(res?.success) {
                      console.log("Subscription Synced: AutoRenew =", res.AutoRenew);
-                     // Optionally update local state if needed, but revalidatePath handles server side
+                     setStatus((prev: AnalysisStatus | null) => {
+                         if (!prev) return null;
+                         return { ...prev, auto_renew: res.AutoRenew };
+                     });
                  }
             });
         }
