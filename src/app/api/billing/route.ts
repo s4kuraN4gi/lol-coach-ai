@@ -7,13 +7,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   try {
     const keyPrefix = process.env.STRIPE_SECRET_KEY?.substring(0, 7) || 'UNKNOWN';
-    console.log(`[Billing Portal] Request received. KeyPrefix: ${keyPrefix}`);
     
-    // TEMPORARY DEBUG: Return key status immediately
-    return NextResponse.json({ 
-      error: `DEBUG MODE: Key=${keyPrefix}, Node=${process.env.NODE_ENV}, Vercel=${process.env.VERCEL || 'No'}` 
-    }, { status: 500 });
-
     const supabase = await createClient();
     const {
       data: { user },
@@ -26,7 +20,7 @@ export async function POST(req: NextRequest) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('stripe_customer_id')
-      .eq('id', user!.id)
+      .eq('id', user.id)
       .single();
 
     if (!profile?.stripe_customer_id) {
@@ -49,7 +43,7 @@ export async function POST(req: NextRequest) {
     // console.log(`[Billing Portal] Attempting to create session`);
 
     const session = await stripe.billingPortal.sessions.create({
-      customer: profile!.stripe_customer_id,
+      customer: profile.stripe_customer_id,
       return_url: `${baseUrl}/dashboard`,
     });
 
