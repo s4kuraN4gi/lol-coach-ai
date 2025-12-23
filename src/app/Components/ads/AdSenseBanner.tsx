@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 declare global {
   interface Window {
@@ -19,21 +19,32 @@ interface Props {
   slotId?: string;
 }
 
+import { getAnalysisStatus } from "@/app/actions/analysis";
+
 export default function AdSenseBanner({ className, style, format = "auto", responsive = true, slotId = "1234567890" }: Props) {
   const adRef = useRef<HTMLModElement>(null);
+  const [shouldRender, setShouldRender] = useState(true); // Default yes, hide if premium found
 
   useEffect(() => {
-    try {
-      if (window.adsbygoogle && process.env.NEXT_PUBLIC_ADSENSE_ID) {
-        // Prevent double injection if already loaded in this specific slot
-        // AdSense is tricky with SPA, sometimes needs reload.
-        // We push to adsbygoogle array.
-        (window.adsbygoogle = window.adsbygoogle || []).push({});
-      }
-    } catch (e) {
-      console.error("AdSense Error:", e);
-    }
+    // 1. Check Premium Status
+    getAnalysisStatus().then(status => {
+        if (status?.is_premium) {
+            console.log("[AdSense] User is Premium. Hiding Ad.");
+            setShouldRender(false);
+        } else {
+            // 2. Only inject AdSense script if NOT premium
+             try {
+                if (window.adsbygoogle && process.env.NEXT_PUBLIC_ADSENSE_ID) {
+                    (window.adsbygoogle = window.adsbygoogle || []).push({});
+                }
+            } catch (e) {
+                console.error("AdSense Error:", e);
+            }
+        }
+    });
   }, []);
+
+  if (!shouldRender) return null; // Hide completely
 
   // Placeholder for development / when env is missing
   if (!process.env.NEXT_PUBLIC_ADSENSE_ID) {
