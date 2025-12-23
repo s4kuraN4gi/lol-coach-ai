@@ -774,3 +774,39 @@ export async function claimDailyReward() {
   revalidatePath("/dashboard", "layout");
   return { success: true, newCredits };
 }
+
+import { stripe } from "@/lib/stripe";
+
+// 強制的にStripeの最新ステータスと同期する
+export async function syncSubscriptionStatus() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("stripe_subscription_id")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile?.stripe_subscription_id) return { error: "No subscription ID found" };
+
+  try {
+      const subscription = await stripe.subscriptions.retrieve(profile.stripe_subscription_id);
+      
+      const updateData = {
+        subscription_status: subscription.status,
+        is_premium: subscription.status === 'active' || subscription.status === 'trialing',
+        subscription_end_date: new Date(subscription.current_period_end * 1000).toISOString(),
+        auto_renew: !subscription.cancel_at_period_end,
+      };
+
+      await supabase.from("profiles").update(updateData).eq("id", user.id);
+      revalidatePath("/dashboard", "layout");
+      
+      return { success: true, AutoRenew: updateData.auto_renew };
+  } catch (e: any) {
+      console.error("Sync Error:", e);
+      return { error: e.message };
+  }
+}

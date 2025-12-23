@@ -14,9 +14,21 @@ export default function PremiumPromoCard({ initialStatus, onStatusUpdate }: Prop
     const [isPending, startTransition] = useTransition();
     const [isLoading, setIsLoading] = useState(false); // Local loading state for checkout redirect
 
+import { syncSubscriptionStatus } from "@/app/actions/analysis";
+
     // Sync state with prop updates (e.g. initial fetch from parent)
     useEffect(() => {
         setStatus(initialStatus);
+        
+        // Auto-fix out of sync data (Frontend-initiated consistency check)
+        if (initialStatus?.is_premium) {
+            syncSubscriptionStatus().then((res: any) => {
+                 if(res?.success) {
+                     console.log("Subscription Synced: AutoRenew =", res.AutoRenew);
+                     // Optionally update local state if needed, but revalidatePath handles server side
+                 }
+            });
+        }
     }, [initialStatus]);
 
     const isPremium = status?.is_premium;
