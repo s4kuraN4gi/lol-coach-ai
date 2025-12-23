@@ -96,6 +96,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
         subscription_status: subscription.status,
         is_premium: subscription.status === 'active' || subscription.status === 'trialing',
         subscription_end_date: new Date((subscription as any).current_period_end * 1000).toISOString(),
+        auto_renew: !subscription.cancel_at_period_end,
     }).eq('id', userId);
 
     if (error) {
@@ -119,6 +120,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription, supa
         subscription_status: subscription.status,
         is_premium: subscription.status === 'active' || subscription.status === 'trialing',
         subscription_end_date: new Date((subscription as any).current_period_end * 1000).toISOString(),
+        auto_renew: !subscription.cancel_at_period_end,
     }).eq('id', profile.id);
 }
 
