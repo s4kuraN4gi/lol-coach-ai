@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useTransition, useEffect } from "react";
-import { downgradeToFree, type AnalysisStatus, getAnalysisStatus } from "@/app/actions/analysis";
+import { downgradeToFree, type AnalysisStatus, getAnalysisStatus, syncSubscriptionStatus } from "@/app/actions/analysis";
 import { triggerStripeCheckout, triggerStripePortal } from "@/lib/checkout";
 
 type Props = {
@@ -14,7 +14,6 @@ export default function PremiumPromoCard({ initialStatus, onStatusUpdate }: Prop
     const [isPending, startTransition] = useTransition();
     const [isLoading, setIsLoading] = useState(false); // Local loading state for checkout redirect
 
-import { syncSubscriptionStatus } from "@/app/actions/analysis";
 
     // Sync state with prop updates (e.g. initial fetch from parent)
     useEffect(() => {
