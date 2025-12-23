@@ -82,19 +82,18 @@ export default function PremiumPromoCard({ initialStatus, onStatusUpdate }: Prop
                       Active until: {new Date(status.subscription_end_date).toLocaleDateString()}
                   </p>
               )}
-              {status?.auto_renew !== false ? (
-                <button
-                     onClick={handleDowngrade}
-                     disabled={isPending}
-                     className="w-full mt-2 bg-white/5 text-indigo-200 border border-white/10 text-xs font-bold py-2 rounded hover:bg-white/10 transition flex justify-center items-center gap-2"
-                 >
-                     <span>⚙️</span> Manage Subscription
-                 </button>
-              ) : (
-                  <p className="text-xs text-amber-300 font-bold">
-                      Auto-Renew OFF
-                  </p>
-              )}
+              <button
+                   onClick={handleDowngrade}
+                   disabled={isPending}
+                   className="w-full mt-2 bg-white/5 text-indigo-200 border border-white/10 text-xs font-bold py-2 rounded hover:bg-white/10 transition flex justify-center items-center gap-2"
+               >
+                   <span>⚙️</span> {status?.auto_renew === false ? "Restore / Billing" : "Manage Subscription"}
+               </button>
+               {status?.auto_renew === false && (
+                   <p className="text-xs text-amber-300 font-bold mt-2">
+                       Auto-Renew OFF
+                   </p>
+               )}
             </div>
           )}
         </div>
