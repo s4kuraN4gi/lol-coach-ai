@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useTransition, useEffect } from "react";
-import { upgradeToPremium, type AnalysisStatus, getAnalysisStatus } from "@/app/actions/analysis";
+import { type AnalysisStatus, getAnalysisStatus } from "@/app/actions/analysis";
+import { triggerStripeCheckout } from "@/lib/checkout";
 
 type Props = {
     initialStatus: AnalysisStatus | null;
@@ -19,19 +20,9 @@ export default function PlanStatusBadge({ initialStatus, onStatusUpdate }: Props
     const isPremium = status?.is_premium;
     const credits = status?.analysis_credits ?? 0;
 
-    const handleUpgrade = () => {
-        if (!confirm("【モック】プレミアムプラン(月額980円)に登録しますか？")) return;
-    
+    const handleUpgrade = async () => {
         startTransition(async () => {
-          const res = await upgradeToPremium();
-          if (res.success) {
-            alert("プレミアムプランに登録しました！");
-            const newStatus = await getAnalysisStatus();
-            if (newStatus) {
-                setStatus(newStatus);
-                onStatusUpdate?.(newStatus);
-            }
-          }
+          await triggerStripeCheckout();
         });
     };
 

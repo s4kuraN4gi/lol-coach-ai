@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { upgradeToPremium } from "@/app/actions/analysis";
+
 
 type Props = {
     isPremium: boolean;
@@ -32,11 +32,32 @@ export default function PremiumFeatureGate({
             return;
         }
 
-        if (!confirm("【モック】プレミアムプラン(月額980円)に登録しますか？")) return;
-        const res = await upgradeToPremium();
-        if (res.success) {
-            alert("プレミアムプランに登録しました！ページを更新してください。");
-            window.location.reload();
+        try {
+            const response = await fetch('/api/checkout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID,
+                }),
+            });
+
+            if (!response.ok) {
+                console.error('Checkout error:', response.statusText);
+                alert('決済の開始に失敗しました。');
+                return;
+            }
+
+            const { url } = await response.json();
+            if (url) {
+                window.location.href = url;
+            } else {
+                 console.error('No checkout URL returned');
+            }
+        } catch (error) {
+            console.error('Checkout error:', error);
+            alert('エラーが発生しました。');
         }
     };
 

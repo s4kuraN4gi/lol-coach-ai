@@ -5,7 +5,8 @@ import DashboardLayout from "../../Components/layout/DashboardLayout";
 import { fetchMatchIds, fetchMatchDetail, fetchLatestVersion } from "@/app/actions/riot";
 import { getCoachMatches, analyzeMatchTimeline, CoachingInsight, AnalysisFocus, AnalysisResult, BuildItem, type MatchSummary } from "@/app/actions/coach";
 import { useSummoner } from "../../Providers/SummonerProvider";
-import { getAnalysisStatus, type AnalysisStatus, upgradeToPremium, claimDailyReward, analyzeVideo, getVideoAnalysisStatus, getLatestActiveAnalysis } from "@/app/actions/analysis";
+import { getAnalysisStatus, type AnalysisStatus, claimDailyReward, analyzeVideo, getVideoAnalysisStatus, getLatestActiveAnalysis } from "@/app/actions/analysis";
+import { triggerStripeCheckout } from "@/lib/checkout";
 import PlanStatusBadge from "../../Components/subscription/PlanStatusBadge";
 import PremiumPromoCard from "../../Components/subscription/PremiumPromoCard";
 import AdSenseBanner from "../../Components/ads/AdSenseBanner";
@@ -609,16 +610,9 @@ export default function CoachPage() {
                                                                     if (canAnalyze) {
                                                                         runAnalysis();
                                                                     } else {
-                                                                        if (confirm("【モック】プレミアムプラン(月額980円)に登録しますか？")) {
-                                                                            startTransition(async () => {
-                                                                                const res = await upgradeToPremium();
-                                                                                if (res.success) {
-                                                                                    alert("プレミアムプランに登録しました！");
-                                                                                    const newStatus = await getAnalysisStatus();
-                                                                                    if (newStatus) setStatus(newStatus);
-                                                                                }
-                                                                            });
-                                                                        }
+                                                                         startTransition(async () => {
+                                                                            await triggerStripeCheckout();
+                                                                         });
                                                                     }
                                                                 }}
                                                                 disabled={!videoReady}

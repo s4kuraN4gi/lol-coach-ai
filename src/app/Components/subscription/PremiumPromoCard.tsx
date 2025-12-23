@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useTransition, useEffect } from "react";
-import { upgradeToPremium, downgradeToFree, type AnalysisStatus, getAnalysisStatus } from "@/app/actions/analysis";
+import { downgradeToFree, type AnalysisStatus, getAnalysisStatus } from "@/app/actions/analysis";
+import { triggerStripeCheckout, triggerStripePortal } from "@/lib/checkout";
 
 type Props = {
     initialStatus: AnalysisStatus | null;
@@ -11,6 +12,7 @@ type Props = {
 export default function PremiumPromoCard({ initialStatus, onStatusUpdate }: Props) {
     const [status, setStatus] = useState<AnalysisStatus | null>(initialStatus);
     const [isPending, startTransition] = useTransition();
+    const [isLoading, setIsLoading] = useState(false); // Local loading state for checkout redirect
 
     // Sync state with prop updates (e.g. initial fetch from parent)
     useEffect(() => {
@@ -31,37 +33,25 @@ export default function PremiumPromoCard({ initialStatus, onStatusUpdate }: Prop
         )
     }
 
-    const handleUpgrade = () => {
-        if (!confirm("【モック】プレミアムプラン(月額980円)に登録しますか？")) return;
-    
-        startTransition(async () => {
-          const res = await upgradeToPremium();
-          if (res.success) {
-            alert("プレミアムプランに登録しました！");
-            const newStatus = await getAnalysisStatus();
-            if (newStatus) {
-                setStatus(newStatus);
-                onStatusUpdate?.(newStatus);
-            }
-          }
-        });
+    const handleUpgrade = async () => {
+        setIsLoading(true);
+        try {
+          await triggerStripeCheckout();
+        } catch (e) {
+            console.error(e);
+            alert("エラーが発生しました");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    const handleDowngrade = () => {
-        if (!confirm("自動更新を停止（解約予約）しますか？\n契約期間終了までプレミアム機能は利用可能です。")) return;
+    const handleDowngrade = async () => {
+        // Confirmation is good, but Portal handles it too. Let's redirect directly or confirm before redirect.
+        // Confirming before redirecting is safer UX.
+        if (!confirm("契約管理（解約・プラン変更）画面へ移動しますか？")) return;
     
         startTransition(async () => {
-          const res = await downgradeToFree();
-          if (res.success) {
-            alert("自動更新を停止しました。");
-            const newStatus = await getAnalysisStatus();
-            if (newStatus) {
-                setStatus(newStatus);
-                onStatusUpdate?.(newStatus);
-            }
-          } else {
-            alert("エラー: " + res.error);
-          }
+           await triggerStripePortal();
         });
     };
 
@@ -77,10 +67,10 @@ export default function PremiumPromoCard({ initialStatus, onStatusUpdate }: Prop
           {!isPremium ? (
             <button
               onClick={handleUpgrade}
-              disabled={isPending}
+              disabled={isPending || isLoading}
               className="w-full bg-white text-indigo-900 font-black py-3 rounded-lg hover:bg-indigo-50 transition shadow-lg disabled:opacity-50"
             >
-              {isPending ? "PROCESSING..." : "UPGRADE NOW"}
+              {isPending || isLoading ? "PROCESSING..." : "UPGRADE NOW"}
             </button>
           ) : (
             <div className="text-center">
@@ -94,12 +84,12 @@ export default function PremiumPromoCard({ initialStatus, onStatusUpdate }: Prop
               )}
               {status?.auto_renew !== false ? (
                 <button
-                    onClick={handleDowngrade}
-                    disabled={isPending}
-                    className="w-full mt-2 bg-red-500/10 text-red-400 border border-red-500/30 text-xs font-bold py-2 rounded hover:bg-red-500/20 transition flex justify-center items-center gap-2"
-                >
-                    <span>✖</span> Cancel Auto-Renew
-                </button>
+                     onClick={handleDowngrade}
+                     disabled={isPending}
+                     className="w-full mt-2 bg-white/5 text-indigo-200 border border-white/10 text-xs font-bold py-2 rounded hover:bg-white/10 transition flex justify-center items-center gap-2"
+                 >
+                     <span>⚙️</span> Manage Subscription
+                 </button>
               ) : (
                   <p className="text-xs text-amber-300 font-bold">
                       Auto-Renew OFF
