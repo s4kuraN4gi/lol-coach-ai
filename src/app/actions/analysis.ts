@@ -794,10 +794,20 @@ export async function syncSubscriptionStatus() {
   try {
       const subscription = await stripe.subscriptions.retrieve(profile.stripe_subscription_id);
       
+      const periodEnd = (subscription as any).current_period_end;
+      let endDate = null;
+      if (periodEnd) {
+          try {
+              endDate = new Date(periodEnd * 1000).toISOString();
+          } catch (e) {
+              console.warn("Invalid date in sync:", periodEnd);
+          }
+      }
+
       const updateData = {
         subscription_status: subscription.status,
         is_premium: subscription.status === 'active' || subscription.status === 'trialing',
-        subscription_end_date: new Date((subscription as any).current_period_end * 1000).toISOString(),
+        subscription_end_date: endDate,
         auto_renew: !subscription.cancel_at_period_end,
       };
 
