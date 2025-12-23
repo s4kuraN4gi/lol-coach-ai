@@ -797,7 +797,7 @@ export async function syncSubscriptionStatus() {
       const updateData = {
         subscription_status: subscription.status,
         is_premium: subscription.status === 'active' || subscription.status === 'trialing',
-        subscription_end_date: new Date(subscription.current_period_end * 1000).toISOString(),
+        subscription_end_date: new Date((subscription as any).current_period_end * 1000).toISOString(),
         auto_renew: !subscription.cancel_at_period_end,
       };
 
