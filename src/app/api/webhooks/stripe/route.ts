@@ -107,6 +107,8 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription, supabase: any) {
+    console.log(`[Webhook] Subscription Updated: ${subscription.id}, Status: ${subscription.status}, CancelAtEnd: ${subscription.cancel_at_period_end}`);
+    
     // Find user by stripe_customer_id
     const { data: profile } = await supabase
         .from('profiles')
@@ -114,17 +116,28 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription, supa
         .eq('stripe_customer_id', subscription.customer)
         .single();
     
-    if(!profile) return;
+    if(!profile) {
+        console.warn(`[Webhook] No profile found for customer: ${subscription.customer}`);
+        return;
+    }
 
-    await supabase.from('profiles').update({
+    const updateData = {
         subscription_status: subscription.status,
         is_premium: subscription.status === 'active' || subscription.status === 'trialing',
         subscription_end_date: new Date((subscription as any).current_period_end * 1000).toISOString(),
         auto_renew: !subscription.cancel_at_period_end,
-    }).eq('id', profile.id);
+    };
+
+    console.log(`[Webhook] Updating DB for user ${profile.id} with:`, JSON.stringify(updateData));
+
+    const { error } = await supabase.from('profiles').update(updateData).eq('id', profile.id);
+
+    if (error) console.error(`[Webhook] Update Failed: ${error.message}`);
+    else console.log(`[Webhook] Update Success.`);
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription, supabase: any) {
+    console.log(`[Webhook] Subscription Deleted: ${subscription.id}`);
     const { data: profile } = await supabase
         .from('profiles')
         .select('id')
@@ -137,5 +150,6 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription, supa
         subscription_status: 'canceled',
         is_premium: false,
         subscription_end_date: null,
+        auto_renew: false, // Ensure false on delete
     }).eq('id', profile.id);
 }
