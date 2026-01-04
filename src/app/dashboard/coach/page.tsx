@@ -1,17 +1,20 @@
 "use client";
 
-import { useState, useEffect, useTransition, useCallback, useRef } from "react";
+import { useState, useEffect, useTransition, useCallback, useRef, useMemo } from "react";
 import DashboardLayout from "../../Components/layout/DashboardLayout";
 import { fetchMatchIds, fetchMatchDetail, fetchLatestVersion } from "@/app/actions/riot";
 import { getCoachMatches, analyzeMatchTimeline, CoachingInsight, AnalysisFocus, AnalysisResult, BuildItem, type MatchSummary } from "@/app/actions/coach";
 import { useSummoner } from "../../Providers/SummonerProvider";
-import { getAnalysisStatus, type AnalysisStatus, claimDailyReward, analyzeVideo, getVideoAnalysisStatus, getLatestActiveAnalysis } from "@/app/actions/analysis";
+import { getAnalysisStatus, type AnalysisStatus, claimDailyReward, startAnalysis, analyzeVideo, getVideoAnalysisStatus, getAnalyzedMatchIds, getLatestActiveAnalysis } from "@/app/actions/analysis";
 import { triggerStripeCheckout } from "@/lib/checkout";
 import PlanStatusBadge from "../../Components/subscription/PlanStatusBadge";
 import PremiumPromoCard from "../../Components/subscription/PremiumPromoCard";
 import AdSenseBanner from "../../Components/ads/AdSenseBanner";
 import { ModeSelector } from "../components/Analysis/ModeSelector";
 import { AnalysisMode } from "@/app/actions/promptUtils";
+import { useVisionAnalysis } from "@/app/Providers/VisionAnalysisProvider";
+import { useCoachUI } from "@/app/Providers/CoachUIProvider";
+import { FaEye, FaChartBar, FaUpload, FaYoutube, FaMagic, FaClock } from "react-icons/fa"; // Added icons
 
 declare global {
   interface Window {
@@ -31,43 +34,62 @@ export default function CoachPage() {
     // Context
     const { activeSummoner, loading: summonerLoading } = useSummoner();
 
-    // State
+    // --- VISION PROVIDER INTEGRATION ---
+    const { 
+        isVisionAnalyzing, 
+        isVerifying,
+        visionProgress, 
+        visionMsg, 
+        globalVisionResult, 
+        visionError, 
+        startGlobalAnalysis, 
+        verifyVideo,
+        resetAnalysis: resetGlobalAnalysis,
+        clearError: clearVisionError,
+        setIsVerifying,
+        debugFrames // Expose Debug Frames
+    } = useVisionAnalysis();
+
+    // Debug Log
+    useEffect(() => {
+        console.log("[CoachPage] debugFrames Refreshed:", debugFrames?.length);
+    }, [debugFrames]);
+
+    // --- UI STATE PERSISTENCE ---
+    const {
+        selectedMatch, setSelectedMatch,
+        detailTab, setDetailTab,
+        localFile, setLocalFile,
+        videoPreviewUrl,
+        videoSourceType, setVideoSourceType,
+        youtubeUrl, setYoutubeUrl,
+        startTime, setStartTime,
+        specificQuestion, setSpecificQuestion,
+        analysisMode, setAnalysisMode,
+        focusTime, setFocusTime,
+        analysisData, setAnalysisData,
+        asyncStatus, setAsyncStatus,
+        progress, setProgress,
+        errorMsg, setErrorMsg,
+        resetCoachUI,
+        restoreFromLatest
+    } = useCoachUI();
+
+    // Local-only State
     const [matches, setMatches] = useState<MatchSummary[]>([]);
     const [loadingIds, setLoadingIds] = useState(true);
-    const [selectedMatch, setSelectedMatch] = useState<MatchSummary | null>(null);
-    const [analysisData, setAnalysisData] = useState<AnalysisResult | null>(null);
     const [status, setStatus] = useState<AnalysisStatus | null>(null); // Premium Status
     const [isAnalyzing, startTransition] = useTransition();
-
-    // Async Analysis State
-    const [asyncStatus, setAsyncStatus] = useState<'idle' | 'processing' | 'completed' | 'failed'>('idle');
-    const [isRestoring, setIsRestoring] = useState(true); // New: Loading State to prevent flicker
-
-    // Analysis Focus State
-    const [focusArea, setFocusArea] = useState<string>("MACRO");
-    const [analysisMode, setAnalysisMode] = useState<AnalysisMode>("MACRO");
-    const [focusTime, setFocusTime] = useState<string>("");
-    const [specificQuestion, setSpecificQuestion] = useState<string>("");
-
-    // Reward Ad State
+    const [isRestoring, setIsRestoring] = useState(true);
     const [rewardAdOpen, setRewardAdOpen] = useState(false);
     const [rewardLoading, setRewardLoading] = useState(false);
-
-    // Progress State
-    const [progress, setProgress] = useState(0);
-
-    // Video State
-    const [videoSourceType, setVideoSourceType] = useState<"YOUTUBE" | "LOCAL">("YOUTUBE");
-    const [youtubeUrl, setYoutubeUrl] = useState("");
-    const [localVideoUrl, setLocalVideoUrl] = useState<string | null>(null);
-    const [localFile, setLocalFile] = useState<File | null>(null);
     const [videoReady, setVideoReady] = useState(false);
-    
-    // Dynamic Version
     const [ddVersion, setDdVersion] = useState("14.24.1");
-    
+    const [ytPlayer, setYtPlayer] = useState<any>(null); 
+    const [focusArea, setFocusArea] = useState<string>("MACRO"); 
+    const [analyzedMatchIds, setAnalyzedMatchIds] = useState<string[]>([]); // New State 
+
     // Refs
-    const autoResumeChecked = useRef(false);
     const analysisStartTime = useRef<number>(0);
 
     // Fetch latest version on mount
@@ -75,108 +97,22 @@ export default function CoachPage() {
         fetchLatestVersion().then(v => setDdVersion(v));
     }, []);
     
-    // Error State
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    
     // Players
-    const [ytPlayer, setYtPlayer] = useState<any>(null); 
     const localVideoRef = useRef<HTMLVideoElement>(null);
+
+    // [Helper] Refresh Premium/Credit Status
+    const refreshStatus = useCallback(async () => {
+        const s = await getAnalysisStatus();
+        setStatus(s);
+    }, []);
 
     // Load Premium Status
     useEffect(() => {
-        getAnalysisStatus().then(setStatus);
-    }, []);
+        refreshStatus();
+    }, [refreshStatus]);
 
-    // Polling Logic for Async Analysis
-    useEffect(() => {
-        if (!selectedMatch) {
-            setAsyncStatus('idle');
-            setAnalysisData(null);
-            return;
-        }
+    // Macro Analysis Polling and Progress are now handled by CoachUIProvider
 
-        let intervalId: NodeJS.Timeout;
-        let isMounted = true;
-
-        const checkStatus = async () => {
-            if (!selectedMatch) return;
-            const res = await getVideoAnalysisStatus(selectedMatch.matchId);
-            
-            if (!isMounted) return;
-
-            // Stale Data Check
-            if (res.created_at && analysisStartTime.current > 0) {
-                 const created = new Date(res.created_at).getTime();
-                 if (created < analysisStartTime.current - 5000) {
-                     return; 
-                 }
-            }
-
-            if (res.status === 'completed' && res.result) {
-                setAsyncStatus('completed');
-                setAnalysisData(res.result as AnalysisResult);
-                setProgress(100);
-            } else if (res.status === 'processing') {
-                setAsyncStatus('processing');
-                // Progress handled by separate effect
-            } else if (res.status === 'failed') {
-                setAsyncStatus('failed');
-                setErrorMsg(res.error || "Analysis failed");
-                setProgress(0);
-            } else {
-                if (asyncStatus === 'processing') {
-                     // Keep waiting
-                } else {
-                     setAsyncStatus('idle');
-                }
-            }
-        };
-
-        // Initial check
-        checkStatus();
-
-        intervalId = setInterval(async () => {
-             const res = await getVideoAnalysisStatus(selectedMatch.matchId);
-             if (!isMounted) return;
-
-             if (res.status === 'completed' && res.result) {
-                 setAsyncStatus('completed');
-                 setAnalysisData(res.result as AnalysisResult);
-                 setProgress(100);
-             } else if (res.status === 'processing') {
-                 setAsyncStatus('processing');
-             } else if (res.status === 'failed') {
-                 setAsyncStatus('failed');
-                 setErrorMsg(res.error || "Analysis failed");
-             }
-        }, 3000);
-
-        return () => {
-             isMounted = false;
-             clearInterval(intervalId);
-        };
-    }, [selectedMatch?.matchId]);
-
-    // Smooth Progress Simulation
-    useEffect(() => {
-        if (asyncStatus !== 'processing') return;
-        
-        const interval = setInterval(() => {
-            setProgress(prev => {
-                if (prev >= 95) return 95; // Cap at 95% until done
-                
-                let increment = 0;
-                if (prev < 30) increment = 2;        // Fast start (0-30% in ~3s)
-                else if (prev < 60) increment = 0.5; // Steady middle (30-60% in ~12s)
-                else if (prev < 85) increment = 0.2; // Slowing down (60-85% in ~25s)
-                else increment = 0.05;               // Crawling (85-95% in ~40s)
-                
-                return Math.min(prev + increment, 95);
-            });
-        }, 200);
-        
-        return () => clearInterval(interval);
-    }, [asyncStatus]);
 
     // Fetch Matches logic (Cache First)
     const loadMatches = useCallback(async () => {
@@ -207,46 +143,32 @@ export default function CoachPage() {
         }
     }, [activeSummoner, summonerLoading, loadMatches]);
 
-    // Auto-Resume: Restore Active Analysis (Non-blocking)
+    // Auto-Resume Handling
     useEffect(() => {
-        if (loadingIds) return; 
+        // Initial Fetch for analyzed matches
+        getAnalyzedMatchIds().then(ids => {
+            setAnalyzedMatchIds(ids);
+        });
 
-        if (!autoResumeChecked.current) {
-            autoResumeChecked.current = true;
-            getLatestActiveAnalysis().then(latest => {
-                 if (latest && (latest.status === 'processing' || latest.status === 'completed')) {
-                     const found = matches.find(m => m.matchId === latest.matchId);
-                     // Note: If found is undefined because matches list is stale/empty, restoration won't happen.
-                     // This is a trade-off for speed.
-                     if (found) {
-                         console.log("Restoring Session:", found.matchId);
-                         setSelectedMatch(found);
-                         
-                         // Restore Inputs
-                         if (latest.inputs) {
-                             const inp = latest.inputs as any;
-                             if (inp.videoSourceType) setVideoSourceType(inp.videoSourceType);
-                             if (inp.videoUrl) setYoutubeUrl(inp.videoUrl);
-                             if (inp.focusTime) setFocusTime(inp.focusTime);
-                             if (inp.specificQuestion) setSpecificQuestion(inp.specificQuestion);
-                             if (inp.mode) setAnalysisMode(inp.mode);
-                         }
-
-                         // Pre-fill Data for immediate display
-                         if (latest.status === 'completed' && latest.result) {
-                             setAnalysisData(latest.result as AnalysisResult);
-                             setAsyncStatus('completed');
-                             setProgress(100);
-                         } else if (latest.status === 'processing') {
-                             setAsyncStatus('processing');
-                         }
-
-                     }
-                 }
-                 setIsRestoring(false);
-            });
+        if (!loadingIds && matches.length > 0) {
+            // Only restore if this is an ACTIVE session (Navigation within app)
+            // If Hard Reload (sessionStorage cleared or flag missing), do NOT restore
+            const isActiveSession = sessionStorage.getItem("COACH_SESSION_ACTIVE");
+            console.log("[CoachPage] Auto-Resume Check. Flag:", isActiveSession); // DEBUG LOG
+            
+            if (isActiveSession === "true") {
+                console.log("[CoachPage] Restoring session...");
+                restoreFromLatest(matches).finally(() => {
+                    setIsRestoring(false);
+                });
+            } else {
+                console.log("[CoachPage] Session flag missing. Skipping restore.");
+                setIsRestoring(false); // No restore needed
+            }
+        } else if (!loadingIds && matches.length === 0) {
+            setIsRestoring(false);
         }
-    }, [matches, loadingIds]); 
+    }, [matches, loadingIds, restoreFromLatest]);
 
     // YouTube Embed Logic
     useEffect(() => {
@@ -296,27 +218,76 @@ export default function CoachPage() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        const objectUrl = URL.createObjectURL(file);
-        setLocalVideoUrl(objectUrl);
         setLocalFile(file);
         setVideoSourceType("LOCAL");
         setVideoReady(true);
+        resetGlobalAnalysis();
         
         if (ytPlayer && ytPlayer.pauseVideo) {
             ytPlayer.pauseVideo();
         }
     };
 
-    const runAnalysis = () => {
+    const runAnalysis = async () => {
+        // --- VISION MODE CHECK ---
+        if (detailTab === 'MICRO') {
+            if (!localFile && !youtubeUrl) {
+                alert("解析する動画を選択してください");
+                return;
+            }
+            if (!selectedMatch || !activeSummoner?.puuid) {
+                alert("試合データが選択されていません");
+                return;
+            }
+             if (localFile) {
+                // Trigger Global Vision Analysis for local file
+                await startGlobalAnalysis(localFile, selectedMatch, activeSummoner.puuid, specificQuestion, startTime);
+                refreshStatus(); // Refresh credits immediately
+            } else if (youtubeUrl) {
+                alert("YouTube動画のVision解析は現在準備中です。ローカルファイルを使用してください。");
+                return;
+            }
+            return;
+        }
+
+        // --- MACRO MODE ---
         const currentPuuid = activeSummoner?.puuid;
         
         if (!selectedMatch || !currentPuuid) return;
 
-        // Start Async Analysis
+        // Show Verification Overlay (Ad) for Macro too
+        setIsVerifying(true);
+        setAnalysisData(null); // CRITICAL: Clear old results immediately to avoid confusion
         setErrorMsg(null);
         setAsyncStatus('processing');
-        setAnalysisData(null);
         setProgress(1);
+
+        try {
+            // [VERIFICATION]
+            // If Local File, we perform actual verification (integrity check)
+            // Use localFile existence as the source of truth, ignoring videoSourceType potential mismatch
+            if (localFile) {
+                await verifyVideo(localFile, selectedMatch, currentPuuid);
+            } else {
+                // For YouTube/Others, we simulate delay (Ad Time)
+                await new Promise(resolve => setTimeout(resolve, 3000));
+            }
+        } catch (e: any) {
+            console.error("Verification Failed:", e);
+            setIsVerifying(false); // Stop loader
+            
+            setAsyncStatus('failed'); // Ensure status is failed
+            // Show duplicate error message in a way user sees it
+            const msg = e.message || "動画の整合性チェックに失敗しました。";
+            setErrorMsg(msg);
+            alert("動画の照合に失敗しました。\n選択した試合と動画の内容が一致しません。"); // Localized Popup
+            
+            refreshStatus(); // Refund check triggers on server but UI refresh good here
+            return; // STOP Analysis
+        }
+
+        setIsVerifying(false);
+
         analysisStartTime.current = Date.now();
 
         const formData = new FormData();
@@ -337,14 +308,17 @@ export default function CoachPage() {
         }
         formData.append("focusTime", focusTime);
         formData.append("specificQuestion", specificQuestion);
-
+        // Ensure analysisMode is passed for consistency, though it's mainly for prompt selection
+        // Macro modes: LANING | MACRO | TEAMFIGHT
+        
         // Call analyzeVideo (Fire & Forget / Background)
-        console.log("Starting Analysis Job...");
+        console.log("Starting Analysis Job (Macro)...");
         
         analyzeVideo(formData, undefined, analysisMode).then(res => {
+            refreshStatus(); // Refresh credits as soon as job starts
             if ('error' in res && res.error) {
                     setErrorMsg(res.error);
-                    setAsyncStatus('failed');
+                    setAsyncStatus('idle'); // Back to idle if failed to start
             } else {
                 // Job started
                 if (res.success && res.data) {
@@ -356,6 +330,7 @@ export default function CoachPage() {
             console.error("Launch Error", err);
             setErrorMsg("Failed to launch analysis.");
             setAsyncStatus('failed');
+            refreshStatus();
         });
     }
 
@@ -398,26 +373,51 @@ export default function CoachPage() {
     return (
         <DashboardLayout>
             <div className="max-w-7xl mx-auto h-[calc(100vh-100px)] flex flex-col animate-fadeIn relative">
-                <header className="mb-6 flex justify-between items-center">
+                <header className="mb-6 flex justify-between items-center bg-slate-900/50 p-4 rounded-xl border border-white/5 backdrop-blur-sm">
                      <div>
                         <h1 className="text-3xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-300">
                              AI COACH <span className="text-sm not-italic font-normal text-slate-500 ml-2 border border-slate-700 px-2 rounded">TIMELINE SYNC & VIDEO</span>
                         </h1>
                         <p className="text-slate-400 text-sm">Riotの試合データとリプレイ動画を同期し、AIが徹底コーチング。</p>
                      </div>
-                     <PlanStatusBadge initialStatus={status} onStatusUpdate={setStatus} />
+                     
+                     <div className="flex items-center gap-4">
+                        {/* TAB SWITCHER (Restored Top Right Location) */}
+                        {selectedMatch && (
+                            <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
+                                <button
+                                    onClick={() => setDetailTab('MACRO')}
+                                    className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${
+                                        detailTab === 'MACRO' 
+                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' 
+                                        : 'text-slate-400 hover:text-white hover:bg-slate-700'
+                                    }`}
+                                >
+                                    <FaChartBar /> マクロ (Timeline)
+                                </button>
+                                <button
+                                    onClick={() => setDetailTab('MICRO')}
+                                    className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${
+                                        detailTab === 'MICRO' 
+                                        ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' 
+                                        : 'text-slate-400 hover:text-white hover:bg-slate-700'
+                                    }`}
+                                >
+                                    <FaEye /> ミクロ (Vision)
+                                </button>
+                            </div>
+                        )}
+                        <PlanStatusBadge initialStatus={status} onStatusUpdate={setStatus} />
+                     </div>
                 </header>
 
                 {/* Main Content Area */}
                 <div className="flex-1 grid grid-cols-12 gap-6 overflow-hidden">
                     
                     {/* Left: Match Selection & Video (8 Cols) */}
-                    <div className="col-span-8 flex flex-col gap-4 h-full overflow-y-auto pr-2">
+                    <div className="col-span-8 flex flex-col gap-4 h-full overflow-y-auto pr-2 custom-scrollbar">
                         
-                        {/* Match List (Visible if Video Not Ready?) - No, always allow select */}
-                        {/* Changed Logic: Show Match List if NO match selected OR keep it accessible? */}
-                        {/* To keep it simple, if matches exist, show them. Hide if selected? */}
-                        {/* Scoped Loading State */}
+                        {/* LIST VIEW: Show when NO match selected */}
                         {isRestoring ? (
                              <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 h-full flex items-center justify-center min-h-[300px]">
                                  <div className="flex flex-col items-center gap-4">
@@ -425,7 +425,7 @@ export default function CoachPage() {
                                      <p className="text-slate-400 font-bold animate-pulse">セッションを復元中...</p>
                                  </div>
                              </div>
-                        ) : !selectedMatch && (
+                        ) : !selectedMatch ? (
                             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
                                 <h2 className="text-xl font-bold text-slate-200 mb-4">分析する試合を選択</h2>
                                 {loadingIds ? (
@@ -437,20 +437,35 @@ export default function CoachPage() {
                                                 key={m.matchId}
                                                 onClick={() => {
                                                     setSelectedMatch(m);
+                                                    sessionStorage.setItem("COACH_SESSION_ACTIVE", "true"); // Mark session as active
+                                                    setDetailTab('MACRO'); 
+                                                    
+                                                    // Explicitly reset first
                                                     setAnalysisData(null);
                                                     setAsyncStatus('idle');
                                                     setProgress(0);
                                                     setErrorMsg(null);
-                                                    // Reset Video State
                                                     setYoutubeUrl("");
-                                                    setLocalVideoUrl(null);
                                                     setLocalFile(null);
                                                     setVideoReady(false);
-                                                    setVideoSourceType("YOUTUBE");
+                                                    setVideoSourceType("LOCAL");
+
+                                                    // Fetch existing result for THIS match (Specific Fetch)
+                                                    if (m.matchId) {
+                                                        const fetchSpecific = async () => {
+                                                            const status = await getVideoAnalysisStatus(m.matchId);
+                                                            if (status && status.status === 'completed' && status.result) {
+                                                                setAnalysisData(status.result as any);
+                                                                setAsyncStatus('completed');
+                                                                setProgress(100);
+                                                            }
+                                                        };
+                                                        fetchSpecific();
+                                                    }
                                                 }}
                                                 className="flex items-center gap-4 p-4 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-blue-500 transition rounded-lg group text-left"
                                             >
-                                                <div className="w-12 h-12 rounded-full bg-slate-700 overflow-hidden">
+                                                <div className="w-12 h-12 rounded-full bg-slate-700 overflow-hidden border-2 border-slate-600 group-hover:border-blue-400 transition">
                                                      <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/champion/${m.championName}.png`} alt={m.championName} className="w-full h-full object-cover" />
                                                 </div>
                                                 <div>
@@ -460,8 +475,13 @@ export default function CoachPage() {
                                                     <div className="text-sm text-slate-400">
                                                         {m.championName} • {m.kda} KDA
                                                     </div>
-                                                    <div className="text-xs text-slate-600">
+                                                    <div className="text-xs text-slate-600 flex items-center gap-2">
                                                         {new Date(m.timestamp).toLocaleDateString()}
+                                                        {analyzedMatchIds.includes(m.matchId) && (
+                                                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-500/20 text-green-400 border border-green-500/30">
+                                                                MACRO済み
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </button>
@@ -469,26 +489,56 @@ export default function CoachPage() {
                                     </div>
                                 )}
                             </div>
-                        )}
+                        ) : (
+                            /* DETAIL VIEW: Show when Match Selected */
+                            <div className="flex flex-col gap-4 pb-10 animate-fadeIn">
+                                {/* Selected Match Context Header (Separated) */}
+                                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex items-center justify-between shadow-lg">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-slate-600 shadow-md">
+                                            <img 
+                                                src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/champion/${selectedMatch.championName}.png`} 
+                                                alt={selectedMatch.championName} 
+                                                className="w-full h-full object-cover" 
+                                            />
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <div className="flex items-center gap-3 mb-0.5">
+                                                <h2 className="text-xl font-black text-white italic tracking-tight">{selectedMatch.championName}</h2>
+                                                <span className={`text-xs font-bold px-2 py-0.5 rounded border ${
+                                                    selectedMatch.win 
+                                                    ? "bg-blue-500/20 text-blue-400 border-blue-500/30" 
+                                                    : "bg-red-500/20 text-red-400 border-red-500/30"
+                                                }`}>
+                                                    {selectedMatch.win ? "VICTORY" : "DEFEAT"}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-3 text-xs text-slate-400 font-medium">
+                                                <span className="text-slate-300">KDA: {selectedMatch.kda}</span>
+                                                <span className="w-1 h-1 rounded-full bg-slate-600"></span>
+                                                <span>{new Date(selectedMatch.timestamp).toLocaleDateString()}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {/* Additional Metadata or Decorative element could go here */}
+                                </div>
 
-                        {/* Video Controls & Player */}
-                        {/* Show ONLY if Match Selected */}
-                        {selectedMatch && (
-                            <div className="flex flex-col gap-4 pb-10">
-                                {/* Controls Bar */}
-                                <div className="flex items-center gap-4 bg-slate-900 border border-slate-800 p-4 rounded-xl">
-                                    {(selectedMatch) && (
-                                        <button 
-                                            onClick={() => { setSelectedMatch(null); setAnalysisData(null); }}
-                                            className="text-slate-400 hover:text-white font-bold text-sm"
-                                        >
-                                            ← 戻る
-                                        </button>
-                                    )}
-                                    <div className="h-6 w-px bg-slate-700"></div>
+                                {/* Controls Bar (Cleaned) */}
+                                <div className="flex items-center gap-4 bg-slate-900 border border-slate-800 p-3 rounded-xl mt-2">
+                                    <button 
+                                        onClick={() => { 
+                                            setSelectedMatch(null); 
+                                            setAnalysisData(null); 
+                                            sessionStorage.removeItem("COACH_SESSION_ACTIVE"); // Clear session flag
+                                        }}
+                                        className="text-slate-400 hover:text-white font-bold text-sm bg-slate-800 px-3 py-1.5 rounded border border-slate-700 hover:border-slate-500 transition shadow-sm flex items-center gap-1"
+                                    >
+                                        <span>←</span> 戻る
+                                    </button>
+                                    <div className="h-6 w-px bg-slate-700 mx-2"></div>
                                     
                                     {/* Video Input Controls */}
-                                    <div className="flex-1 flex gap-2 overflow-x-auto items-center">
+                                    <div className="flex-1 flex gap-2 overflow-x-auto items-center justify-end">
                                         <div className="flex bg-slate-800 rounded p-1 mr-2">
                                             <button 
                                                 onClick={() => setVideoSourceType("YOUTUBE")}
@@ -505,8 +555,8 @@ export default function CoachPage() {
                                         </div>
 
                                         {videoSourceType === 'YOUTUBE' ? (
-                                            <div className="flex items-center gap-2 bg-slate-950 rounded px-2 border border-slate-700 flex-1">
-                                                <span className="text-red-500 text-lg">▶</span>
+                                            <div className="flex items-center gap-2 bg-slate-950 rounded px-2 border border-slate-700 w-full max-w-sm">
+                                                <span className="text-red-500 text-lg"><FaYoutube /></span>
                                                 <input 
                                                     type="text" 
                                                     placeholder="YouTube URL..." 
@@ -523,135 +573,282 @@ export default function CoachPage() {
                                                 </button>
                                             </div>
                                         ) : (
-
-                                            <div className="flex flex-col gap-1 flex-1">
-                                                <label className={`flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border ${!localVideoUrl && analysisData ? 'border-amber-500/50' : 'border-slate-700'} px-3 py-1.5 rounded cursor-pointer transition whitespace-nowrap`}>
-                                                    <span className="text-lg">📁</span>
-                                                    <span className="text-sm font-bold">{localVideoUrl ? "動画選択済み" : "動画ファイルを選択"}</span>
+                                            <div className="flex flex-col gap-1 w-full max-w-sm">
+                                                <label className={`flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border ${!videoPreviewUrl && analysisData ? 'border-amber-500/50' : 'border-slate-700'} px-3 py-1.5 rounded cursor-pointer transition whitespace-nowrap overflow-hidden`}>
+                                                    <span className="text-lg"><FaUpload /></span>
+                                                    <span className="text-sm font-bold truncate">{videoPreviewUrl ? "動画選択済み" : "動画ファイルを選択"}</span>
                                                     <input 
                                                         type="file" 
                                                         accept="video/*" 
                                                         className="hidden" 
                                                         onChange={handleFileSelect}
                                                     />
-                                                    <span className="text-xs text-slate-500 ml-2">※アップロードはされません</span>
                                                 </label>
-                                                {!localVideoUrl && analysisData && (
-                                                    <div className="text-[10px] text-amber-500 font-bold px-1 animate-pulse">
-                                                        ⚠ ページを移動したため、動画再選択が必要です
-                                                    </div>
-                                                )}
                                             </div>
                                         )}
                                     </div>
                                 </div>
 
-                                {/* Analysis Setup Panel */}
-                                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
-                                    <div className="flex flex-col gap-4">
-                                        <div className="w-full">
-                                             <label className="text-xs text-slate-400 font-bold block mb-2">分析モード (Analysis Mode)</label>
-                                             <ModeSelector 
-                                                 selectedMode={analysisMode} 
-                                                 onSelect={setAnalysisMode} 
-                                                 disabled={isAnalyzing}
-                                             />
-                                        </div>
-
-                                        <div className="flex flex-col md:flex-row gap-4">
-                                            <div className="flex-1 grid grid-cols-2 gap-4">
-                                                <div className="col-span-2 md:col-span-1">
-                                                    <label className="text-xs text-slate-400 font-bold block mb-1">時間 (任意)</label>
-                                                    <input 
-                                                        type="text" 
-                                                        placeholder="例: 12:30" 
-                                                        className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-blue-500 outline-none"
-                                                        value={focusTime}
-                                                        onChange={(e) => setFocusTime(e.target.value)}
-                                                    />
-                                                </div>
-                                                <div className="col-span-2 md:col-span-1">
-                                                    <label className="text-xs text-slate-400 font-bold block mb-1">具体的な悩み・質問 (任意)</label>
-                                                    <input 
-                                                        type="text"
-                                                        placeholder="例: この場面の立ち位置はどうだった？"
-                                                        className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-blue-500 outline-none"
-                                                        value={specificQuestion}
-                                                        onChange={(e) => setSpecificQuestion(e.target.value)}
-                                                    />
+                                {/* MICRO TAB EXCLUSIVE: Vision Analysis Results */}
+                                {detailTab === 'MICRO' && (
+                                     <div className="bg-slate-900 border border-purple-500/30 p-4 rounded-xl relative overflow-hidden">
+                                        <div className="absolute -top-10 -right-10 w-40 h-40 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                                        <h3 className="font-bold text-purple-300 mb-2 flex items-center gap-2">
+                                            <FaMagic /> ミクロ解析 (Vision Analysis)
+                                        </h3>
+                                        <p className="text-xs text-slate-400 mb-4">
+                                            動画の指定位置から30秒間を解析し、キル/デスや集団戦の評価を行います。
+                                        </p>
+                                        
+                                        {/* Local Video Preview & Seek UI */}
+                                        {localFile && (
+                                            <div className="mb-4 bg-slate-950 p-2 rounded border border-slate-800">
+                                                <video 
+                                                    id="preview-video"
+                                                    controls 
+                                                    className="w-full max-h-[300px] rounded bg-black mb-2"
+                                                    src={videoPreviewUrl}
+                                                />
+                                                <div className="flex items-center justify-between">
+                                                    <div className="text-xs text-slate-400">
+                                                        <p>ファイル: {localFile.name}</p>
+                                                        <p className="text-purple-400 font-bold mt-1">
+                                                            解析開始位置: {startTime.toFixed(1)}秒 〜 {(startTime + 30).toFixed(1)}秒
+                                                        </p>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => {
+                                                            const vid = document.getElementById('preview-video') as HTMLVideoElement;
+                                                            if (vid) {
+                                                                setStartTime(vid.currentTime);
+                                                            }
+                                                        }}
+                                                        className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded flex items-center gap-1 transition"
+                                                    >
+                                                        <FaClock /> この位置から30秒を解析
+                                                    </button>
                                                 </div>
                                             </div>
-    
-                                            <div className="w-full md:w-56 flex flex-col justify-end">
-                                            {isAnalyzing || asyncStatus === 'processing' ? (
-                                                <div className="relative w-full h-10 bg-slate-800 rounded overflow-hidden border border-slate-700 transition">
-                                                    <div 
-                                                        className="absolute top-0 left-0 h-full bg-blue-600/50 transition-all duration-300 ease-out"
-                                                        style={{ width: `${progress}%` }}
-                                                    ></div>
-                                                    <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white z-10">
-                                                        {Math.round(progress)}%
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                (() => {
-                                                    const isPremium = status?.is_premium;
-                                                    const credits = status?.analysis_credits ?? 0;
-                                                    const hasCredits = credits > 0;
-                                                    const canAnalyze = isPremium || hasCredits;
+                                        )}
+
+                                        {/* Status & Results */}
+                                        {!localFile && !youtubeUrl ? (
+                                             <div className="p-8 text-center border-2 border-dashed border-slate-700 rounded-lg bg-slate-800/50">
+                                                <p className="text-slate-400 text-sm">解析する動画を選択してください（Local File推奨）</p>
+                                             </div>
+                                        ) : (
+                                            localFile && (
+                                                <div className="p-4 bg-slate-950/50 rounded border border-slate-800">
+                                                    {isVisionAnalyzing && (
+                                                        <div className="mt-2">
+                                                            <div className="flex justify-between text-xs text-slate-400 mb-1">
+                                                                <span>Processing...</span>
+                                                                <span>{Math.round(visionProgress)}%</span>
+                                                            </div>
+                                                            <div className="w-full bg-slate-800 rounded-full h-2">
+                                                                <div className="bg-purple-500 h-2 rounded-full transition-all" style={{ width: `${visionProgress}%` }}></div>
+                                                            </div>
+                                                            <p className="text-center text-xs text-slate-500 mt-2 animate-pulse">{visionMsg}</p>
+                                                        </div>
+                                                    )}
+                                                    {/* Inline Vision Error display kept for non-mismatch errors */}
+                                                    {visionError && !visionError.includes("MATCH_INTEGRITY_ERROR:") && (
+                                                        <div className="mt-2 p-2 bg-red-900/20 text-red-300 text-xs rounded border border-red-500/20 flex justify-between items-center">
+                                                            <span>{visionError}</span>
+                                                            <button onClick={clearVisionError} className="text-white hover:text-red-200">✕</button>
+                                                        </div>
+                                                    )}
                                                     
-                                                    const canClaimReward = !!status && !status.is_premium && 
-                                                        (!status.last_reward_ad_date || new Date().toDateString() !== new Date(status.last_reward_ad_date).toDateString());
+                                                    {/* Analysis Button REMOVED - Unified to main button */}
+                                                </div>
+                                            )
+                                        )}
 
-                                                    return (
-                                                        <div className="flex flex-col gap-2 w-full">
-                                                            <button 
-                                                                onClick={() => {
-                                                                    if (canAnalyze) {
-                                                                        runAnalysis();
-                                                                    } else {
-                                                                         startTransition(async () => {
-                                                                            await triggerStripeCheckout();
-                                                                         });
-                                                                    }
-                                                                }}
-                                                                disabled={!videoReady}
-                                                                className={`w-full px-4 py-2.5 rounded font-bold text-sm transition shadow-lg whitespace-nowrap flex items-center justify-center gap-2 group h-10
-                                                                    ${!videoReady 
-                                                                        ? "bg-slate-800 text-slate-500 cursor-not-allowed"
-                                                                        : canAnalyze
-                                                                            ? isPremium 
-                                                                                ? "bg-purple-600 hover:bg-purple-500 text-white shadow-purple-500/20"
-                                                                                : "bg-gradient-to-r from-blue-600 to-cyan-500 text-white hover:scale-105 shadow-cyan-500/20"
-                                                                            : "bg-slate-700 text-slate-400 cursor-not-allowed border border-slate-600"
-                                                                    }
-                                                                `}
-                                                            >
-                                                                {isPremium ? (
-                                                                    <span>🧠 分析開始</span>
-                                                                ) : hasCredits ? (
-                                                                    <span>🎫 分析 (残: {credits}/3)</span>
-                                                                ) : (
-                                                                    <span>🔒 PREMIUMで分析</span>
-                                                                )}
-                                                            </button>
-
-                                                            {canClaimReward && (
-                                                                <button
-                                                                    onClick={() => setRewardAdOpen(true)}
-                                                                    className="text-xs text-amber-400 hover:text-amber-300 underline text-center"
-                                                                >
-                                                                    🎥 広告で回復 (+1)
-                                                                </button>
+                                        {/* Result Display */}
+                                        {globalVisionResult && (
+                                            <div className="mt-4 space-y-4 animate-fadeIn">
+                                                <div className="bg-slate-950 p-4 rounded border border-slate-700">
+                                                    <h4 className="font-bold text-white mb-2 border-b border-slate-800 pb-2">解析結果レポート</h4>
+                                                    <div className="space-y-4">
+                                                        {/* Summary */}
+                                                        <div>
+                                                           <h5 className="text-xs font-bold text-purple-400 mb-1">サマリー</h5>
+                                                           <p className="text-sm text-slate-300 leading-relaxed">{globalVisionResult.summary}</p>
+                                                        </div>
+                                                        {/* Step-by-Step Advice from Mistakes */}
+                                                        <div>
+                                                            <h5 className="text-xs font-bold text-red-400 mb-1">検出された課題</h5>
+                                                            <ul className="space-y-2">
+                                                                {globalVisionResult.mistakes.map((mk, idx) => (
+                                                                    <li key={idx} className="text-sm text-slate-300 bg-slate-900/50 p-2 rounded border-l-2 border-red-500">
+                                                                        <span className="font-bold text-red-300">[{mk.timestamp}] {mk.title}</span><br/>
+                                                                        {mk.advice}
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                            {globalVisionResult.finalAdvice && (
+                                                                <div className="mt-4 p-3 bg-blue-900/20 border border-blue-500/30 rounded">
+                                                                    <h5 className="text-xs font-bold text-blue-400 mb-1">総評</h5>
+                                                                    <p className="text-sm text-slate-300">{globalVisionResult.finalAdvice}</p>
+                                                                </div>
                                                             )}
                                                         </div>
-                                                    );
-                                                })()
-                                            )}
+                                                    </div>
+                                                    <div className="mt-4 text-right">
+                                                         <button 
+                                                            onClick={runAnalysis} // Re-run
+                                                            className="text-xs text-slate-400 hover:text-white underline"
+                                                         >
+                                                             別の場面を解析する
+                                                         </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                     </div>
+                                )}
+
+                                {/* MACRO TAB EXCLUSIVE: Mode Selector & Inputs */}
+                                {detailTab === 'MACRO' && (
+                                    <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+                                        <div className="flex flex-col gap-4">
+                                            <div className="w-full">
+                                                <label className="text-xs text-slate-400 font-bold block mb-2">分析モード (Analysis Mode)</label>
+                                                <ModeSelector 
+                                                    selectedMode={analysisMode} 
+                                                    onSelect={setAnalysisMode} 
+                                                    disabled={isAnalyzing}
+                                                />
+                                            </div>
+    
+                                            <div className="flex flex-col md:flex-row gap-4">
+                                                <div className="flex-1 grid grid-cols-2 gap-4">
+                                                    <div className="col-span-2 md:col-span-1">
+                                                        <label className="text-xs text-slate-400 font-bold block mb-1">時間 (任意)</label>
+                                                        <input 
+                                                            type="text" 
+                                                            placeholder="例: 12:30" 
+                                                            className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-blue-500 outline-none"
+                                                            value={focusTime}
+                                                            onChange={(e) => setFocusTime(e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className="col-span-2 md:col-span-1">
+                                                        <label className="text-xs text-slate-400 font-bold block mb-1">具体的な悩み・質問 (任意)</label>
+                                                        <input 
+                                                            type="text"
+                                                            placeholder="例: この場面の立ち位置はどうだった？"
+                                                            className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-blue-500 outline-none"
+                                                            value={specificQuestion}
+                                                            onChange={(e) => setSpecificQuestion(e.target.value)}
+                                                        />
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
+                                )}
+        
+                                {/* ANALYZE BUTTON (Shared but changes function based on Tab) */}
+                                <div className="w-full flex justify-end">
+                                    {isAnalyzing || asyncStatus === 'processing' || isVisionAnalyzing ? (
+                                        <div className="flex flex-col gap-2 w-full md:w-56">
+                                            <div className="relative w-full h-10 bg-slate-800 rounded overflow-hidden border border-slate-700 transition">
+                                                <div 
+                                                    className={`absolute top-0 left-0 h-full transition-all duration-300 ease-out ${detailTab === 'MICRO' ? 'bg-purple-600/50' : 'bg-blue-600/50'}`}
+                                                    style={{ width: `${detailTab === 'MICRO' ? visionProgress : progress}%` }}
+                                                ></div>
+                                                <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white z-10">
+                                                    Analyzing... {Math.round(detailTab === 'MICRO' ? visionProgress : progress)}%
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                    ) : (
+                                        (() => {
+                                            const isPremium = status?.is_premium;
+                                            const credits = status?.analysis_credits ?? 0;
+                                            const hasCredits = credits > 0;
+                                            const canAnalyze = isPremium || hasCredits;
+                                            
+                                            const canClaimReward = !!status && !status.is_premium && 
+                                                (!status.last_reward_ad_date || new Date().toDateString() !== new Date(status.last_reward_ad_date).toDateString());
+
+                                            return (
+                                                <div className="flex flex-col gap-2 w-full md:w-56">
+
+                                                    <button 
+                                                        onClick={() => {
+                                                            if (canAnalyze) {
+                                                                runAnalysis();
+                                                            } else {
+                                                                startTransition(async () => {
+                                                                    await triggerStripeCheckout();
+                                                                });
+                                                            }
+                                                        }}
+
+                                                        disabled={!videoReady} 
+                                                        className={`w-full px-4 py-2.5 rounded font-bold text-sm transition shadow-lg whitespace-nowrap flex items-center justify-center gap-2 group h-10
+                                                            ${!videoReady
+                                                                ? "bg-slate-800 text-slate-500 cursor-not-allowed"
+                                                                : canAnalyze
+                                                                    ? isPremium 
+                                                                        ? "bg-purple-600 hover:bg-purple-500 text-white shadow-purple-500/20"
+                                                                        : "bg-gradient-to-r from-blue-600 to-cyan-500 text-white hover:scale-105 shadow-cyan-500/20"
+                                                                    : "bg-slate-700 text-slate-400 cursor-not-allowed border border-slate-600"
+                                                            }
+                                                        `}
+                                                    >
+                                                        {isPremium ? (
+                                                            <span>🧠 {detailTab === 'MICRO' ? 'Vision分析開始' : '分析開始'}</span>
+                                                        ) : hasCredits ? (
+                                                            <span>🎫 分析 (残: {credits}/3)</span>
+                                                        ) : (
+                                                            <span>🔒 PREMIUMで分析</span>
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            );
+                                        })()
+                                    )}
                                 </div>
+
+                                {/* NEW ERROR DISPLAY POSITION (Between Button and Video) */}
+                                {((visionError && visionError.includes("MATCH_INTEGRITY_ERROR:")) || (errorMsg && errorMsg.includes("MATCH_INTEGRITY_ERROR:"))) && (
+                                    <div className="w-full mt-4 mb-4 bg-red-900/20 border border-red-500/50 rounded-xl p-4 animate-in slide-in-from-top-2 duration-300">
+                                        <div className="flex items-start gap-4">
+                                            <div className="w-10 h-10 bg-red-500/10 rounded-full flex-shrink-0 flex items-center justify-center text-red-500 text-xl shadow-inner border border-red-500/20">
+                                                ⚠️
+                                            </div>
+                                            <div className="flex-1">
+                                                <h3 className="text-lg font-bold text-red-100 flex items-center gap-2">
+                                                    動画の照合に失敗しました
+                                                    <span className="text-[10px] bg-red-500/20 text-red-300 px-2 py-0.5 rounded uppercase tracking-wider border border-red-500/20">Error</span>
+                                                </h3>
+                                                <p className="text-red-200/70 text-sm mt-1 mb-3">
+                                                    選択された試合データと動画の内容が一致しません。<br/>
+                                                    <span className="text-xs opacity-70">選択した試合: {selectedMatch?.championName} (KDA: {selectedMatch?.kda})</span>
+                                                </p>
+                                                
+                                                {/* REMOVED DETAILS AS REQUESTED */}
+
+                                                {/* DEBUG FRAMES: Show what AI saw */}
+
+
+                                                <button 
+                                                    onClick={() => {
+                                                        if (visionError) clearVisionError();
+                                                        if (errorMsg) setErrorMsg(null);
+                                                    }}
+                                                    className="mt-3 text-xs text-red-400 hover:text-red-300 underline underline-offset-4 decoration-red-500/30 hover:decoration-red-400 transition-colors"
+                                                >
+                                                    エラーを閉じる
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                                 
                                 <div className="w-full aspect-video bg-black rounded-xl overflow-hidden border border-slate-800 relative shadow-2xl">
                                     <div 
@@ -659,10 +856,10 @@ export default function CoachPage() {
                                         className={`w-full h-full ${videoSourceType === 'YOUTUBE' ? 'block' : 'hidden'}`}
                                     ></div>
                                     
-                                    {videoSourceType === 'LOCAL' && localVideoUrl && (
+                                    {videoSourceType === 'LOCAL' && videoPreviewUrl && (
                                         <video
                                             ref={localVideoRef}
-                                            src={localVideoUrl}
+                                            src={videoPreviewUrl}
                                             controls
                                             className="w-full h-full object-contain bg-black"
                                         />
@@ -676,15 +873,17 @@ export default function CoachPage() {
                                     )}
                                 </div>
 
-                                {analysisData?.buildRecommendation && (
-                                    <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-xl p-5 shadow-lg relative overflow-hidden">
+                                {/* ANALYSIS RESULTS AREA */}
+                                {/* Opponent Build & Recommendations (Visible on MACRO Tab) */}
+                                {detailTab === 'MACRO' && analysisData?.buildRecommendation && (
+                                    <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-xl p-5 shadow-lg relative overflow-hidden animate-in fade-in zoom-in-95 duration-500">
                                         <div className="absolute top-0 right-0 p-3 opacity-10 text-6xl">⚖️</div>
                                         <h3 className="text-lg font-black text-white mb-4 flex items-center gap-2">
                                             <span className="text-amber-400">💡</span> AI ビルド診断
                                         </h3>
                                         
                                         <div className="flex flex-col md:flex-row gap-8 mb-6">
-                                            <div className="bg-slate-950/50 p-3 rounded border border-slate-700">
+                                            <div className="bg-slate-950/50 p-3 rounded border border-slate-700 flex-1">
                                              <div className="text-[10px] font-bold text-slate-400 mb-2 uppercase">あなたのビルド</div>
                                              <div className="flex flex-wrap gap-1">
                                                  {analysisData.buildRecommendation.userItems.map((item, idx) => (
@@ -696,9 +895,8 @@ export default function CoachPage() {
                                              </div>
                                          </div>
 
-
                                          {analysisData.buildRecommendation.opponentItems && (
-                                             <div className="bg-red-900/10 p-3 rounded border border-red-500/30 relative overflow-hidden">
+                                             <div className="bg-red-900/10 p-3 rounded border border-red-500/30 relative overflow-hidden flex-1">
                                                  <div className="text-[10px] font-bold text-red-300 mb-2 uppercase flex justify-between">
                                                      <span>対面のビルド (VS)</span>
                                                      <span className="opacity-70">{analysisData.buildRecommendation.opponentChampionName}</span>
@@ -714,8 +912,8 @@ export default function CoachPage() {
                                              </div>
                                          )}
 
-                                            <div className="hidden md:flex items-center justify-center text-slate-500">
-                                                <span>vs</span>
+                                            <div className="hidden md:flex items-center justify-center text-slate-500 font-black italic text-xl">
+                                                VS
                                             </div>
 
                                             <div className="flex-1 bg-purple-900/10 p-4 rounded border border-purple-500/30">
@@ -728,9 +926,19 @@ export default function CoachPage() {
                                             </div>
                                         </div>
                                         
-                                        <div className="bg-slate-950/80 p-4 rounded text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
+                                        <div className="bg-slate-950/80 p-4 rounded text-sm text-slate-300 leading-relaxed whitespace-pre-wrap border-l-4 border-amber-500">
                                             {analysisData.buildRecommendation.analysis}
                                         </div>
+                                    </div>
+                                )}
+                                
+                                {/* MICRO TAB RESULTS (Global Vision Result) */}
+                                {detailTab === 'MICRO' && globalVisionResult && (
+                                    <div className="mt-4 bg-slate-900 border border-green-500/30 p-4 rounded-xl animate-in slide-in-from-bottom-5">
+                                        <h3 className="text-lg font-bold text-green-400 mb-2">解析完了 (Vision Result)</h3>
+                                        <pre className="text-xs text-slate-300 whitespace-pre-wrap font-mono bg-black p-4 rounded overflow-auto max-h-96">
+                                            {JSON.stringify(globalVisionResult, null, 2)}
+                                        </pre>
                                     </div>
                                 )}
 
@@ -739,17 +947,29 @@ export default function CoachPage() {
                         )}
                     </div>
 
-                    <div className="col-span-4 flex flex-col gap-6 h-full overflow-y-auto pb-10">
-                         {/* Logic: Show Ad at Top if Analysis Present? User likely wants Ad visible. */}
-                         {analysisData?.insights && analysisData.insights.length > 0 ? (
+                    {/* Right Column: Insights & Reports (4 Cols) */}
+                    <div className="col-span-4 flex flex-col gap-6 h-full overflow-y-auto pb-10 custom-scrollbar">
+                         {/* Show Ad at Top if Analysis Present? User likely wants Ad visible. */}
+                         {detailTab === 'MACRO' && analysisData?.insights && analysisData.insights.length > 0 ? (
                              <div className="flex flex-col gap-6 animate-in slide-in-from-right-10 duration-500">
+                                 
+                                 {/* Result Header */}
+                                 <div className="flex items-center justify-between px-2">
+                                     <div className="flex items-center gap-2">
+                                         <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]"></div>
+                                         <span className="text-sm font-bold text-green-400">分析完了 (Analysis Completed)</span>
+                                     </div>
+                                     <span className="text-[10px] text-slate-500 border border-slate-800 rounded px-2 py-0.5 bg-slate-900/50">
+                                         ※過去の分析結果を表示中
+                                     </span>
+                                 </div>
                                  {/* 1. Ad (Sponsored) */}
                                  <div className="w-full bg-slate-900/50 p-4 rounded-xl border border-slate-800">
                                      <div className="text-[10px] font-bold text-slate-500 mb-2 text-center uppercase tracking-widest">SPONSORED</div>
                                      <AdSenseBanner slotId="1234567890" format="rectangle" />
                                  </div>
 
-                                 {/* 2. Insights */}
+                                 {/* 2. Insights List */}
                                  <div className="flex flex-col gap-4">
                                      <h3 className="font-bold text-slate-400 text-sm uppercase tracking-wider mb-2">
                                          🔍 分析レポート (クリックでジャンプ)
@@ -762,13 +982,13 @@ export default function CoachPage() {
                                          >
                                              <div className="absolute top-0 right-0 p-2 opacity-10 text-4xl group-hover:scale-110 transition duration-500">
                                                 {insight.type === 'GOOD_PLAY' ? '👍' : insight.type === 'MISTAKE' ? '👎' : '💡'}
-                                            </div>
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <span className={`text-xs font-bold px-2 py-0.5 rounded ${
-                                                    insight.type === 'GOOD_PLAY' ? 'bg-green-500/20 text-green-300' :
-                                                    insight.type === 'MISTAKE' ? 'bg-red-500/20 text-red-300' :
-                                                    'bg-blue-500/20 text-blue-300'
-                                                 }`}>
+                                             </div>
+                                             <div className="flex items-center gap-2 mb-2">
+                                                 <span className={`text-xs font-bold px-2 py-0.5 rounded ${
+                                                     insight.type === 'GOOD_PLAY' ? 'bg-green-500/20 text-green-300' :
+                                                     insight.type === 'MISTAKE' ? 'bg-red-500/20 text-red-300' :
+                                                     'bg-blue-500/20 text-blue-300'
+                                                  }`}>
                                                      {insight.timestampStr}
                                                  </span>
                                                  <h4 className="font-bold text-white text-sm">{insight.title}</h4>
@@ -787,8 +1007,6 @@ export default function CoachPage() {
                                          </div>
                                      ))}
                                  </div>
-
-
                              </div>
                          ) : (
                              <>
@@ -798,15 +1016,53 @@ export default function CoachPage() {
                          )}
                     </div>
                 </div>
-
-                <div className="absolute top-24 right-6 w-80">
-                   {errorMsg && (
-                        <div className="bg-red-500/10 border border-red-500/50 text-red-200 p-4 rounded-lg shadow-xl backdrop-blur-md mb-4 animate-in fade-in slide-in-from-right-10 duration-300">
-                            <strong>Error:</strong> {errorMsg}
-                        </div>
-                   )}
-                </div>
             </div>
+            {/* VERIFICATION & AD OVERLAY (Free Users Only) */}
+            {((isVerifying && !status?.is_premium) || (isAnalyzing && !status?.is_premium && !asyncStatus.match(/completed|failed/))) && (
+                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="flex flex-col items-center gap-8 w-full max-w-2xl px-4">
+                        
+                        {/* Status Message */}
+                        <div className="flex flex-col items-center gap-4 text-center">
+                            <div className="relative">
+                                <div className="w-20 h-20 rounded-full border-4 border-blue-500/30 border-t-blue-500 animate-spin"></div>
+                                <div className="absolute inset-0 flex items-center justify-center text-2xl animate-pulse">
+                                    {detailTab === 'MICRO' ? <FaEye className="text-blue-400" /> : <FaChartBar className="text-blue-400" />}
+                                </div>
+                            </div>
+                            <div>
+                                <h2 className="text-2xl font-black text-white italic tracking-tighter uppercase">
+                                    {detailTab === 'MICRO' ? "AIが動画を照合中" : "AI解析の準備中"}
+                                </h2>
+                                <p className="text-slate-400 text-sm font-medium">
+                                    {detailTab === 'MICRO' 
+                                        ? "動画と試合データに不整合がないか確認しています..." 
+                                        : "最新の試合データとタイムラインを読み込んでいます..."}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Ad / Sponsored Section (Only for Non-Premium) */} 
+                        <div className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-6 shadow-2xl relative overflow-hidden group animate-in zoom-in-95 duration-700 delay-300">
+                            <div className="text-[10px] font-bold text-slate-500 mb-4 text-center uppercase tracking-[0.2em]">Sponsored Content</div>
+                            
+                            <div className="min-h-[250px] flex items-center justify-center bg-slate-950/50 rounded-xl border border-dashed border-slate-700">
+                                <div className="flex flex-col items-center gap-4 p-8 text-center">
+                                    <AdSenseBanner slotId="1234567890" format="rectangle" />
+                                    <div className="mt-4 p-4 bg-purple-600/10 border border-purple-500/20 rounded-lg max-w-sm">
+                                        <p className="text-xs text-purple-300 leading-relaxed font-bold">
+                                            ✨ PREMIUMプランなら広告なしで即解析 ✨
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="mt-4 text-center text-[10px] text-slate-500">この広告収益はAI解析機能の維持に充てられています。</div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+
         </DashboardLayout>
     );
 }

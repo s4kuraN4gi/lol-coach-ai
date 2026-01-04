@@ -26,8 +26,11 @@ export default function PremiumPromoCard({ initialStatus, onStatusUpdate }: Prop
                      console.log("Subscription Synced: AutoRenew =", res.AutoRenew);
                      setStatus((prev: AnalysisStatus | null) => {
                          if (!prev) return null;
+                         console.log("Setting Status AutoRenew to:", res.AutoRenew);
                          return { ...prev, auto_renew: res.AutoRenew };
                      });
+                 } else {
+                     console.error("Sync Failed:", res?.error);
                  }
             });
         }

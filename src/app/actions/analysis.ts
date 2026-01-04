@@ -229,6 +229,53 @@ export async function getVideoAnalysisStatus(matchId: string) {
   };
 }
 
+// NEW: Get Specific Job Status (For Micro Analysis)
+export async function getAnalysisJobStatus(jobId: string) {
+  const supabase = await createClient();
+  
+  // Note: We skip auth check inside query for speed, but RLS will handle it if enabled.
+  // However, explicit check is better.
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { data, error } = await supabase
+    .from("video_analyses")
+    .select("*")
+    .eq("id", jobId)
+    .single();
+
+  if (error || !data) return { status: "not_found" };
+  
+  return { 
+      status: data.status, 
+      result: data.result,
+      error: data.error,
+      id: data.id,
+      created_at: data.created_at 
+  };
+}
+
+// NEW: Get Analyzed Match IDs (Bulk for UI Labels)
+export async function getAnalyzedMatchIds() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  // Limit to last 100 to prevent overload
+  const { data, error } = await supabase
+    .from("video_analyses")
+    .select("match_id")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(100);
+
+  if (error || !data) return [];
+  
+  // Return unique IDs (in case of multiple analyses for same match)
+  const ids = data.map(d => d.match_id);
+  return Array.from(new Set(ids));
+}
+
 // NEW: Get Latest Active Analysis (for Auto-Resume)
 export async function getLatestActiveAnalysis() {
   const supabase = await createClient();
@@ -364,31 +411,8 @@ export async function analyzeVideo(formData: FormData, userApiKey?: string, mode
          throw new Error("Summoner not found.");
     }
 
-    // Call Internal Analysis Logic
-    const focus = {
-        mode: mode,
-        focusArea: mode,
-        specificQuestion: description
-    };
-
-    // Assume analyzeMatchTimeline is robust
-    const res = await analyzeMatchTimeline(matchId, summoner.puuid, useEnvKey ? undefined : apiKey, focus);
-
-    if (!res.success || !res.data) {
-        throw new Error(res.error || "Timeline analysis failed.");
-    }
-
-    // 3. Analysis Success -> Update Job
-    await supabase
-        .from("video_analyses")
-        .update({
-            status: "completed",
-            result: res.data,
-            error: null
-        })
-        .eq("id", job.id);
-
-    // 4. Update Consumption Stats
+    // 4. Update Consumption Stats (DEBIT FIRST)
+    let debited = false;
     if (shouldIncrementCount) {
         const today = new Date().toISOString();
         const todayDateStr = today.split('T')[0];
@@ -397,13 +421,56 @@ export async function analyzeVideo(formData: FormData, userApiKey?: string, mode
         if (lastDateStr !== todayDateStr) newCount = 1;
 
         await supabase.from("profiles").update({ daily_analysis_count: newCount, last_analysis_date: today }).eq("id", user.id);
+        debited = true;
     } else if (!userApiKey && useEnvKey && !status.is_premium) {
         await supabase.from("profiles").update({ analysis_credits: status.analysis_credits - 1 }).eq("id", user.id);
+        debited = true;
     }
 
     revalidatePath("/dashboard", "layout");
 
-    return { success: true, data: res.data };
+    // Call Internal Analysis Logic
+    const focus = {
+        mode: mode,
+        focusArea: mode,
+        specificQuestion: description
+    };
+
+    try {
+        // Assume analyzeMatchTimeline is robust
+        const res = await analyzeMatchTimeline(matchId, summoner.puuid, useEnvKey ? undefined : apiKey, focus);
+
+        if (!res.success || !res.data) {
+            throw new Error(res.error || "Timeline analysis failed.");
+        }
+
+        // 5. Analysis Success -> Update Job
+        await supabase
+            .from("video_analyses")
+            .update({
+                status: "completed",
+                result: res.data,
+                error: null
+            })
+            .eq("id", job.id);
+
+        return { success: true, data: res.data };
+
+    } catch (e: any) {
+        // [REFUND] If already debited, increment back
+        if (debited) {
+            if (shouldIncrementCount) {
+                // For daily count, we just decrement or ignore. Usually ignore is safer if it's just a count.
+                // But credits are real currency.
+            } else if (!userApiKey && useEnvKey && !status.is_premium) {
+                const { data: currentProfile } = await supabase.from("profiles").select("analysis_credits").eq("id", user.id).single();
+                if (currentProfile) {
+                    await supabase.from("profiles").update({ analysis_credits: currentProfile.analysis_credits + 1 }).eq("id", user.id);
+                }
+            }
+        }
+        throw e;
+    }
 
   } catch (e: any) {
     console.error("Video Analysis Error:", e);
