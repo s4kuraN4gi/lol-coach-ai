@@ -5,7 +5,7 @@ import DashboardLayout from "../../Components/layout/DashboardLayout";
 import { fetchMatchIds, fetchMatchDetail, fetchLatestVersion } from "@/app/actions/riot";
 import { getCoachMatches, analyzeMatchTimeline, CoachingInsight, AnalysisFocus, AnalysisResult, BuildItem, type MatchSummary } from "@/app/actions/coach";
 import { useSummoner } from "../../Providers/SummonerProvider";
-import { getAnalysisStatus, type AnalysisStatus, claimDailyReward, startAnalysis, analyzeVideo, getVideoAnalysisStatus, getAnalyzedMatchIds, getLatestActiveAnalysis } from "@/app/actions/analysis";
+import { getAnalysisStatus, type AnalysisStatus, claimDailyReward, analyzeVideo, getVideoAnalysisStatus, getAnalyzedMatchIds, getLatestActiveAnalysis } from "@/app/actions/analysis";
 import { triggerStripeCheckout } from "@/lib/checkout";
 import PlanStatusBadge from "../../Components/subscription/PlanStatusBadge";
 import PremiumPromoCard from "../../Components/subscription/PremiumPromoCard";
