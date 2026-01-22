@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "利用規約 | LoL Coach AI",
@@ -8,8 +9,14 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   return (
     <>
+      <div className="flex justify-end mb-4">
+        <Link href="/terms-en" className="text-sm text-blue-400 hover:text-blue-300">
+          English Version →
+        </Link>
+      </div>
+
       <h1 className="text-3xl font-bold text-white mb-8">利用規約</h1>
-      <p className="text-sm text-slate-400 mb-8">最終更新日: 2024年12月13日</p>
+      <p className="text-sm text-slate-400 mb-8">最終更新日: 2026年1月31日</p>
 
       <section className="mb-8">
         <h2>第1条（適用）</h2>

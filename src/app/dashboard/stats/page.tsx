@@ -9,7 +9,8 @@ import StatsSkeleton from "../components/skeletons/StatsSkeleton";
 // Premium Imports
 import PlanStatusBadge from "@/app/Components/subscription/PlanStatusBadge";
 import PremiumFeatureGate from "@/app/Components/subscription/PremiumFeatureGate";
-import { getAnalysisStatus, type AnalysisStatus } from "@/app/actions/analysis";
+import { getAnalysisStatus } from "@/app/actions/analysis";
+import { type AnalysisStatus } from "@/app/actions/constants";
 import AdSenseBanner from "@/app/Components/ads/AdSenseBanner";
 import { useTranslation } from "@/contexts/LanguageContext";
 

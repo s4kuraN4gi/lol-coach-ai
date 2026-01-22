@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "プライバシーポリシー | LoL Coach AI",
@@ -8,8 +9,14 @@ export const metadata: Metadata = {
 export default function PrivacyPage() {
   return (
     <>
+      <div className="flex justify-end mb-4">
+        <Link href="/privacy-en" className="text-sm text-blue-400 hover:text-blue-300">
+          English Version →
+        </Link>
+      </div>
+
       <h1 className="text-3xl font-bold text-white mb-8">プライバシーポリシー</h1>
-      <p className="text-sm text-slate-400 mb-8">最終更新日: 2024年12月13日</p>
+      <p className="text-sm text-slate-400 mb-8">最終更新日: 2026年1月31日</p>
 
       <section className="mb-8">
         <h2>1. 個人情報の収集について</h2>

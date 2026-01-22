@@ -3,15 +3,16 @@
 import { useState, useEffect, useTransition, useCallback, useRef, useMemo } from "react";
 import DashboardLayout from "../../Components/layout/DashboardLayout";
 import { fetchMatchIds, fetchMatchDetail, fetchLatestVersion } from "@/app/actions/riot";
-import { getCoachMatches, analyzeMatchTimeline, CoachingInsight, AnalysisFocus, AnalysisResult, BuildItem, type MatchSummary } from "@/app/actions/coach";
+import { getCoachMatches, analyzeMatchTimeline, CoachingInsight, AnalysisFocus, AnalysisResult, BuildItem, type MatchSummary, type TurningPoint, type Homework, type StrengthWeakness } from "@/app/actions/coach";
 import { useSummoner } from "../../Providers/SummonerProvider";
-import { getAnalysisStatus, type AnalysisStatus, claimDailyReward, analyzeVideo, getVideoAnalysisStatus, getAnalyzedMatchIds, getLatestActiveAnalysis } from "@/app/actions/analysis";
+import { getAnalysisStatus, claimDailyReward, analyzeVideo, getVideoAnalysisStatus, getAnalyzedMatchIds, getLatestActiveAnalysis } from "@/app/actions/analysis";
+import { type AnalysisStatus } from "@/app/actions/constants";
 import { triggerStripeCheckout } from "@/lib/checkout";
 import PlanStatusBadge from "../../Components/subscription/PlanStatusBadge";
 import PremiumPromoCard from "../../Components/subscription/PremiumPromoCard";
 import AdSenseBanner from "../../Components/ads/AdSenseBanner";
-import { ModeSelector } from "../components/Analysis/ModeSelector";
-import { AnalysisMode } from "@/app/actions/promptUtils";
+import VideoMacroAnalysis from "../components/Analysis/VideoMacroAnalysis";
+import { type VideoMacroAnalysisResult } from "@/app/actions/videoMacroAnalysis";
 import { useVisionAnalysis } from "@/app/Providers/VisionAnalysisProvider";
 import { useCoachUI } from "@/app/Providers/CoachUIProvider";
 import { useTranslation } from "@/contexts/LanguageContext";
@@ -67,11 +68,6 @@ export default function CoachPage() {
         youtubeUrl, setYoutubeUrl,
         startTime, setStartTime,
         specificQuestion, setSpecificQuestion,
-        analysisMode, setAnalysisMode,
-        focusTime, setFocusTime,
-        analysisData, setAnalysisData,
-        asyncStatus, setAsyncStatus,
-        progress, setProgress,
         errorMsg, setErrorMsg,
         resetCoachUI,
         restoreFromLatest
@@ -89,7 +85,8 @@ export default function CoachPage() {
     const [ddVersion, setDdVersion] = useState("14.24.1");
     const [ytPlayer, setYtPlayer] = useState<any>(null); 
     const [focusArea, setFocusArea] = useState<string>("MACRO"); 
-    const [analyzedMatchIds, setAnalyzedMatchIds] = useState<string[]>([]); // New State 
+    const [analyzedMatchIds, setAnalyzedMatchIds] = useState<string[]>([]); // New State
+    const [videoMacroResult, setVideoMacroResult] = useState<VideoMacroAnalysisResult | null>(null); // Video Macro Analysis Result
 
     // Refs
     const analysisStartTime = useRef<number>(0);
@@ -230,126 +227,31 @@ export default function CoachPage() {
         }
     };
 
-    const runAnalysis = async () => {
-        // --- VISION MODE CHECK ---
-        if (detailTab === 'MICRO') {
-            if (!localFile && !youtubeUrl) {
-                alert(t('coachPage.controls.selectVideo'));
-                return;
-            }
-            if (!selectedMatch || !activeSummoner?.puuid) {
-                alert(t('coachPage.list.selectMatch'));
-                return;
-            }
-             if (localFile) {
-                // Trigger Global Vision Analysis for local file
-                await startGlobalAnalysis(localFile, selectedMatch, activeSummoner.puuid, specificQuestion, startTime);
-                refreshStatus(); // Refresh credits immediately
-            } else if (youtubeUrl) {
-                alert(t('coachPage.micro.youtubeNotSupported'));
-                return;
-            }
+    // MICRO Vision Analysis only (MACRO is handled by VideoMacroAnalysis component)
+    const runMicroAnalysis = async () => {
+        if (!localFile && !youtubeUrl) {
+            alert(t('coachPage.controls.selectVideo'));
             return;
         }
-
-        // --- MACRO MODE ---
-        const currentPuuid = activeSummoner?.puuid;
-        
-        if (!selectedMatch || !currentPuuid) return;
-
-        // Show Verification Overlay (Ad) for Macro too
-        setIsVerifying(true);
-        setAnalysisData(null); // CRITICAL: Clear old results immediately to avoid confusion
-        setErrorMsg(null);
-        setAsyncStatus('processing');
-        setProgress(1);
-
-        try {
-            // [VERIFICATION]
-            // If Local File, we perform actual verification (integrity check)
-            // Use localFile existence as the source of truth, ignoring videoSourceType potential mismatch
-            if (localFile) {
-                await verifyVideo(localFile, selectedMatch, currentPuuid);
-            } else {
-                // For YouTube/Others, we simulate delay (Ad Time)
-                await new Promise(resolve => setTimeout(resolve, 3000));
-            }
-        } catch (e: any) {
-            console.error("Verification Failed:", e);
-            setIsVerifying(false); // Stop loader
-            
-            setAsyncStatus('failed'); // Ensure status is failed
-            // Show duplicate error message in a way user sees it
-            const msg = e.message || t('coachPage.analysis.verificationFailed');
-            setErrorMsg(msg);
-            alert(t('coachPage.analysis.verificationFailed')); // Localized Popup
-            
-            refreshStatus(); // Refund check triggers on server but UI refresh good here
-            return; // STOP Analysis
+        if (!selectedMatch || !activeSummoner?.puuid) {
+            alert(t('coachPage.list.selectMatch'));
+            return;
         }
-
-        setIsVerifying(false);
-
-        analysisStartTime.current = Date.now();
-
-        const formData = new FormData();
-        
-        // Enrich Description with Match Context
-        const description = videoSourceType === "YOUTUBE" ? youtubeUrl : "Local Video Upload";
-        if (selectedMatch?.matchId) {
-            formData.append("matchId", selectedMatch.matchId);
+        if (localFile) {
+            // Trigger Global Vision Analysis for local file
+            await startGlobalAnalysis(localFile, selectedMatch, activeSummoner.puuid, specificQuestion, startTime);
+            refreshStatus(); // Refresh credits immediately
+        } else if (youtubeUrl) {
+            alert(t('coachPage.micro.youtubeNotSupported'));
+            return;
         }
-        const descriptionCombined = `Videos Source: ${description}\n\nSpecific Question: ${specificQuestion}`;
-        formData.append("description", descriptionCombined);
-
-        // Append Inputs for Persistence
-        formData.append("videoSourceType", videoSourceType);
-        
-        if (videoSourceType === 'YOUTUBE') {
-             formData.append("videoUrl", youtubeUrl);
-        }
-        formData.append("focusTime", focusTime);
-        formData.append("specificQuestion", specificQuestion);
-        // Ensure analysisMode is passed for consistency, though it's mainly for prompt selection
-        // Macro modes: LANING | MACRO | TEAMFIGHT
-        
-        // Call analyzeVideo (Fire & Forget / Background)
-        console.log("Starting Analysis Job (Macro)...");
-        
-        analyzeVideo(formData, undefined, analysisMode).then(res => {
-            refreshStatus(); // Refresh credits as soon as job starts
-            if ('error' in res && res.error) {
-                    setErrorMsg(res.error);
-                    setAsyncStatus('idle'); // Back to idle if failed to start
-            } else {
-                // Job started
-                if (res.success && res.data) {
-                        setAnalysisData(res.data);
-                        setAsyncStatus('completed');
-                }
-            }
-        }).catch(err => {
-            console.error("Launch Error", err);
-            setErrorMsg(t('coachPage.analysis.launchFailed'));
-            setAsyncStatus('failed');
-            refreshStatus();
-        });
     }
 
     const seekTo = (timestampMs: number) => {
-        // [TIME SYNC] Apply Offset
-        // Video Time = Game Time + Offset
-        // timestampMs is Game Time (from Macro or Vision Result)
-        
-        // 1. Get Offset
-        // - Priority 1: Micro Vision Result (Most accurate for video)
-        // - Priority 2: Macro Analysis saved info (if available, currently mostly via Vision)
+        // [TIME SYNC] Apply Offset for MICRO Vision Analysis
         let offset = 0;
-        if (detailTab === 'MICRO' && globalVisionResult?.timeOffset) {
+        if (globalVisionResult?.timeOffset) {
             offset = globalVisionResult.timeOffset;
-        } else if (analysisData && (analysisData as any).time_offset) {
-             // Fallback if we save it to main analysis too
-            offset = (analysisData as any).time_offset;
         }
 
         const gameTimeSec = timestampMs / 1000;
@@ -458,30 +360,14 @@ export default function CoachPage() {
                                                 onClick={() => {
                                                     setSelectedMatch(m);
                                                     sessionStorage.setItem("COACH_SESSION_ACTIVE", "true"); // Mark session as active
-                                                    setDetailTab('MACRO'); 
-                                                    
-                                                    // Explicitly reset first
-                                                    setAnalysisData(null);
-                                                    setAsyncStatus('idle');
-                                                    setProgress(0);
+                                                    setDetailTab('MACRO');
+
+                                                    // Reset UI state
                                                     setErrorMsg(null);
                                                     setYoutubeUrl("");
                                                     setLocalFile(null);
                                                     setVideoReady(false);
                                                     setVideoSourceType("LOCAL");
-
-                                                    // Fetch existing result for THIS match (Specific Fetch)
-                                                    if (m.matchId) {
-                                                        const fetchSpecific = async () => {
-                                                            const status = await getVideoAnalysisStatus(m.matchId);
-                                                            if (status && status.status === 'completed' && status.result) {
-                                                                setAnalysisData(status.result as any);
-                                                                setAsyncStatus('completed');
-                                                                setProgress(100);
-                                                            }
-                                                        };
-                                                        fetchSpecific();
-                                                    }
                                                 }}
                                                 className="flex items-center gap-4 p-4 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-blue-500 transition rounded-lg group text-left"
                                             >
@@ -545,10 +431,9 @@ export default function CoachPage() {
 
                                 {/* Controls Bar (Cleaned) */}
                                 <div className="flex items-center gap-4 bg-slate-900 border border-slate-800 p-3 rounded-xl mt-2">
-                                    <button 
-                                        onClick={() => { 
-                                            setSelectedMatch(null); 
-                                            setAnalysisData(null); 
+                                    <button
+                                        onClick={() => {
+                                            setSelectedMatch(null);
                                             sessionStorage.removeItem("COACH_SESSION_ACTIVE"); // Clear session flag
                                         }}
                                         className="text-slate-400 hover:text-white font-bold text-sm bg-slate-800 px-3 py-1.5 rounded border border-slate-700 hover:border-slate-500 transition shadow-sm flex items-center gap-1"
@@ -594,7 +479,7 @@ export default function CoachPage() {
                                             </div>
                                         ) : (
                                             <div className="flex flex-col gap-1 w-full max-w-sm">
-                                                <label className={`flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border ${!videoPreviewUrl && analysisData ? 'border-amber-500/50' : 'border-slate-700'} px-3 py-1.5 rounded cursor-pointer transition whitespace-nowrap overflow-hidden`}>
+                                                <label className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded cursor-pointer transition whitespace-nowrap overflow-hidden">
                                                     <span className="text-lg"><FaUpload /></span>
                                                     <span className="text-sm font-bold truncate">{videoPreviewUrl ? t('coachPage.controls.fileSelected') : t('coachPage.controls.selectFile')}</span>
                                                     <input 
@@ -716,7 +601,7 @@ export default function CoachPage() {
                                                     </div>
                                                     <div className="mt-4 text-right">
                                                          <button 
-                                                            onClick={runAnalysis} // Re-run
+                                                            onClick={runMicroAnalysis} // Re-run MICRO analysis
                                                             className="text-xs text-slate-400 hover:text-white underline"
                                                          >
                                                              {t('coachPage.micro.analyzeAnother')}
@@ -728,111 +613,82 @@ export default function CoachPage() {
                                      </div>
                                 )}
 
-                                {/* MACRO TAB EXCLUSIVE: Mode Selector & Inputs */}
-                                {detailTab === 'MACRO' && (
-                                    <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
-                                        <div className="flex flex-col gap-4">
-                                            <div className="w-full">
-                                                <label className="text-xs text-slate-400 font-bold block mb-2">{t('coachPage.macro.modeLabel')}</label>
-                                                <ModeSelector 
-                                                    selectedMode={analysisMode} 
-                                                    onSelect={setAnalysisMode} 
-                                                    disabled={isAnalyzing}
-                                                />
-                                            </div>
-    
-                                            <div className="flex flex-col md:flex-row gap-4">
-                                                <div className="flex-1 grid grid-cols-2 gap-4">
-                                                    <div className="col-span-2 md:col-span-1">
-                                                        <label className="text-xs text-slate-400 font-bold block mb-1">{t('coachPage.macro.timeLabel')}</label>
-                                                        <input 
-                                                            type="text" 
-                                                            placeholder={t('coachPage.macro.timePlaceholder')} 
-                                                            className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-blue-500 outline-none"
-                                                            value={focusTime}
-                                                            onChange={(e) => setFocusTime(e.target.value)}
-                                                        />
-                                                    </div>
-                                                    <div className="col-span-2 md:col-span-1">
-                                                        <label className="text-xs text-slate-400 font-bold block mb-1">{t('coachPage.macro.questionLabel')}</label>
-                                                        <input 
-                                                            type="text"
-                                                            placeholder={t('coachPage.macro.questionPlaceholder')}
-                                                            className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-blue-500 outline-none"
-                                                            value={specificQuestion}
-                                                            onChange={(e) => setSpecificQuestion(e.target.value)}
-                                                        />
+
+                                {/* VIDEO MACRO ANALYSIS - Show when video is selected in MACRO tab */}
+                                {detailTab === 'MACRO' && localFile && selectedMatch && activeSummoner?.puuid && (
+                                    <VideoMacroAnalysis
+                                        matchId={selectedMatch.matchId}
+                                        puuid={activeSummoner.puuid}
+                                        videoFile={localFile}
+                                        videoElement={localVideoRef.current}
+                                        onAnalysisComplete={(result) => {
+                                            setVideoMacroResult(result);
+                                            refreshStatus();
+                                        }}
+                                        disabled={!status?.is_premium && (status?.analysis_credits || 0) <= 0}
+                                    />
+                                )}
+
+                                {/* ANALYZE BUTTON (MICRO Tab Only - MACRO uses VideoMacroAnalysis) */}
+                                {detailTab === 'MICRO' && (
+                                    <div className="w-full flex justify-end">
+                                        {isVisionAnalyzing ? (
+                                            <div className="flex flex-col gap-2 w-full md:w-56">
+                                                <div className="relative w-full h-10 bg-slate-800 rounded overflow-hidden border border-slate-700 transition">
+                                                    <div
+                                                        className="absolute top-0 left-0 h-full transition-all duration-300 ease-out bg-purple-600/50"
+                                                        style={{ width: `${visionProgress}%` }}
+                                                    ></div>
+                                                    <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white z-10">
+                                                        {t('coachPage.analysis.analyzing').replace('{progress}', Math.round(visionProgress).toString())}
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
+                                        ) : (
+                                            (() => {
+                                                const isPremium = status?.is_premium;
+                                                const credits = status?.analysis_credits ?? 0;
+                                                const hasCredits = credits > 0;
+                                                const canAnalyze = isPremium || hasCredits;
+
+                                                return (
+                                                    <div className="flex flex-col gap-2 w-full md:w-56">
+                                                        <button
+                                                            onClick={() => {
+                                                                if (canAnalyze) {
+                                                                    runMicroAnalysis();
+                                                                } else {
+                                                                    startTransition(async () => {
+                                                                        await triggerStripeCheckout();
+                                                                    });
+                                                                }
+                                                            }}
+                                                            disabled={!videoReady}
+                                                            className={`w-full px-4 py-2.5 rounded font-bold text-sm transition shadow-lg whitespace-nowrap flex items-center justify-center gap-2 group h-10
+                                                                ${!videoReady
+                                                                    ? "bg-slate-800 text-slate-500 cursor-not-allowed"
+                                                                    : canAnalyze
+                                                                        ? isPremium
+                                                                            ? "bg-purple-600 hover:bg-purple-500 text-white shadow-purple-500/20"
+                                                                            : "bg-gradient-to-r from-blue-600 to-cyan-500 text-white hover:scale-105 shadow-cyan-500/20"
+                                                                        : "bg-slate-700 text-slate-400 cursor-not-allowed border border-slate-600"
+                                                                }
+                                                            `}
+                                                        >
+                                                            {isPremium ? (
+                                                                <span>🧠 {t('coachPage.analysis.analyzeButton')}</span>
+                                                            ) : hasCredits ? (
+                                                                <span>{t('coachPage.analysis.creditsRemaining').replace('{credits}', credits.toString())}</span>
+                                                            ) : (
+                                                                <span>{t('statusBadge.upgradeToPremium')}</span>
+                                                            )}
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })()
+                                        )}
                                     </div>
                                 )}
-        
-                                {/* ANALYZE BUTTON (Shared but changes function based on Tab) */}
-                                <div className="w-full flex justify-end">
-                                    {isAnalyzing || asyncStatus === 'processing' || isVisionAnalyzing ? (
-                                        <div className="flex flex-col gap-2 w-full md:w-56">
-                                            <div className="relative w-full h-10 bg-slate-800 rounded overflow-hidden border border-slate-700 transition">
-                                                <div 
-                                                    className={`absolute top-0 left-0 h-full transition-all duration-300 ease-out ${detailTab === 'MICRO' ? 'bg-purple-600/50' : 'bg-blue-600/50'}`}
-                                                    style={{ width: `${detailTab === 'MICRO' ? visionProgress : progress}%` }}
-                                                ></div>
-                                                <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white z-10">
-                                                    {t('coachPage.analysis.analyzing').replace('{progress}', Math.round(detailTab === 'MICRO' ? visionProgress : progress).toString())}
-                                                </div>
-                                            </div>
-
-                                        </div>
-                                    ) : (
-                                        (() => {
-                                            const isPremium = status?.is_premium;
-                                            const credits = status?.analysis_credits ?? 0;
-                                            const hasCredits = credits > 0;
-                                            const canAnalyze = isPremium || hasCredits;
-                                            
-                                            const canClaimReward = !!status && !status.is_premium && 
-                                                (!status.last_reward_ad_date || new Date().toDateString() !== new Date(status.last_reward_ad_date).toDateString());
-
-                                            return (
-                                                <div className="flex flex-col gap-2 w-full md:w-56">
-
-                                                    <button 
-                                                        onClick={() => {
-                                                            if (canAnalyze) {
-                                                                runAnalysis();
-                                                            } else {
-                                                                startTransition(async () => {
-                                                                    await triggerStripeCheckout();
-                                                                });
-                                                            }
-                                                        }}
-
-                                                        disabled={!videoReady} 
-                                                        className={`w-full px-4 py-2.5 rounded font-bold text-sm transition shadow-lg whitespace-nowrap flex items-center justify-center gap-2 group h-10
-                                                            ${!videoReady
-                                                                ? "bg-slate-800 text-slate-500 cursor-not-allowed"
-                                                                : canAnalyze
-                                                                    ? isPremium 
-                                                                        ? "bg-purple-600 hover:bg-purple-500 text-white shadow-purple-500/20"
-                                                                        : "bg-gradient-to-r from-blue-600 to-cyan-500 text-white hover:scale-105 shadow-cyan-500/20"
-                                                                    : "bg-slate-700 text-slate-400 cursor-not-allowed border border-slate-600"
-                                                            }
-                                                        `}
-                                                    >
-                                                        {isPremium ? (
-                                                            <span>🧠 {detailTab === 'MICRO' ? `${t('coachPage.analysis.analyzeButton')}` : `${t('coachPage.analysis.analyzeButton')}`}</span>
-                                                        ) : hasCredits ? (
-                                                            <span>{t('coachPage.analysis.creditsRemaining').replace('{credits}', credits.toString())}</span>
-                                                        ) : (
-                                                            <span>{t('statusBadge.upgradeToPremium')}</span>
-                                                        )}
-                                                    </button>
-                                                </div>
-                                            );
-                                        })()
-                                    )}
-                                </div>
 
                                 {/* NEW ERROR DISPLAY POSITION (Between Button and Video) */}
                                 {((visionError && visionError.includes("MATCH_INTEGRITY_ERROR:")) || (errorMsg && errorMsg.includes("MATCH_INTEGRITY_ERROR:"))) && (
@@ -893,65 +749,6 @@ export default function CoachPage() {
                                     )}
                                 </div>
 
-                                {/* ANALYSIS RESULTS AREA */}
-                                {/* Opponent Build & Recommendations (Visible on MACRO Tab) */}
-                                {detailTab === 'MACRO' && analysisData?.buildRecommendation && (
-                                    <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-xl p-5 shadow-lg relative overflow-hidden animate-in fade-in zoom-in-95 duration-500">
-                                        <div className="absolute top-0 right-0 p-3 opacity-10 text-6xl">⚖️</div>
-                                        <h3 className="text-lg font-black text-white mb-4 flex items-center gap-2">
-                                            <span className="text-amber-400">💡</span> {t('coachPage.results.buildTitle')}
-                                        </h3>
-                                        
-                                        <div className="flex flex-col md:flex-row gap-8 mb-6">
-                                            <div className="bg-slate-950/50 p-3 rounded border border-slate-700 flex-1">
-                                             <div className="text-[10px] font-bold text-slate-400 mb-2 uppercase">{t('coachPage.results.yourBuild')}</div>
-                                             <div className="flex flex-wrap gap-1">
-                                                 {analysisData.buildRecommendation.userItems.map((item, idx) => (
-                                                     <BuildItemCard key={idx} item={item} />
-                                                 ))}
-                                                 {analysisData.buildRecommendation.userItems.length === 0 && (
-                                                      <span className="text-xs text-slate-500">{t('coachPage.results.noItems')}</span>
-                                                 )}
-                                             </div>
-                                         </div>
-
-                                         {analysisData.buildRecommendation.opponentItems && (
-                                             <div className="bg-red-900/10 p-3 rounded border border-red-500/30 relative overflow-hidden flex-1">
-                                                 <div className="text-[10px] font-bold text-red-300 mb-2 uppercase flex justify-between">
-                                                     <span>{t('coachPage.results.opponentBuild')}</span>
-                                                     <span className="opacity-70">{analysisData.buildRecommendation.opponentChampionName}</span>
-                                                 </div>
-                                                 <div className="flex flex-wrap gap-1 relative z-10">
-                                                     {analysisData.buildRecommendation.opponentItems.map((item, idx) => (
-                                                         <BuildItemCard key={idx} item={item} />
-                                                     ))}
-                                                     {analysisData.buildRecommendation.opponentItems.length === 0 && (
-                                                          <span className="text-xs text-red-500/50">{t('coachPage.results.unknown')}</span>
-                                                     )}
-                                                 </div>
-                                             </div>
-                                         )}
-
-                                            <div className="hidden md:flex items-center justify-center text-slate-500 font-black italic text-xl">
-                                                VS
-                                            </div>
-
-                                            <div className="flex-1 bg-purple-900/10 p-4 rounded border border-purple-500/30">
-                                                <div className="text-xs font-bold text-purple-300 mb-2 uppercase">{t('coachPage.results.recommendedBuild')}</div>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {analysisData.buildRecommendation.recommendedItems.map((item, idx) => (
-                                                        <BuildItemCard key={idx} item={item} />
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="bg-slate-950/80 p-4 rounded text-sm text-slate-300 leading-relaxed whitespace-pre-wrap border-l-4 border-amber-500">
-                                            {analysisData.buildRecommendation.analysis}
-                                        </div>
-                                    </div>
-                                )}
-                                
                                 {/* MICRO TAB RESULTS (Global Vision Result) */}
                                 {detailTab === 'MICRO' && globalVisionResult && (
                                     <div className="mt-4 bg-slate-900 border border-green-500/30 p-4 rounded-xl animate-in slide-in-from-bottom-5">
@@ -967,120 +764,15 @@ export default function CoachPage() {
                         )}
                     </div>
 
-                    {/* Right Column: Insights & Reports (4 Cols) */}
+                    {/* Right Column: Promo & Ads (4 Cols) */}
                     <div className="col-span-4 flex flex-col gap-6 h-full overflow-y-auto pb-10 custom-scrollbar">
-                         {/* Show Ad at Top if Analysis Present? User likely wants Ad visible. */}
-                         {detailTab === 'MACRO' && analysisData?.insights && analysisData.insights.length > 0 ? (
-                             <div className="flex flex-col gap-6 animate-in slide-in-from-right-10 duration-500">
-                                 
-                                 {/* Result Header */}
-                                 <div className="flex items-center justify-between px-2">
-                                     <div className="flex items-center gap-2">
-                                         <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]"></div>
-                                         <span className="text-sm font-bold text-green-400">{t('coachPage.results.analysisCompleted')}</span>
-                                     </div>
-                                     <span className="text-[10px] text-slate-500 border border-slate-800 rounded px-2 py-0.5 bg-slate-900/50">
-                                         {t('coachPage.results.showingPastResults')}
-                                     </span>
-                                 </div>
-                                 {/* 1. Ad (Sponsored) */}
-                                 <div className="w-full bg-slate-900/50 p-4 rounded-xl border border-slate-800">
-                                     <div className="text-[10px] font-bold text-slate-500 mb-2 text-center uppercase tracking-widest">{t('coachPage.results.sponsored')}</div>
-                                     <AdSenseBanner slotId="1234567890" format="rectangle" />
-                                 </div>
-
-                                  
-                                  {/* 2. Summary Analysis */}
-                                  {analysisData.summaryAnalysis && (
-                                    <div className="bg-gradient-to-br from-slate-900 to-slate-800 border-2 border-amber-500/50 rounded-xl p-5 shadow-xl">
-                                      <h3 className="font-bold text-amber-400 text-sm uppercase tracking-wider mb-4 flex items-center gap-2">
-                                        {t('coachPage.results.summaryAnalysis.title')}
-                                      </h3>
-                                      
-                                      {/* Priority Focus Badge */}
-                                      <div className="flex items-center gap-2 mb-4">
-                                        <span className="text-xs text-slate-400">{t('coachPage.results.summaryAnalysis.priorityFocus')}:</span>
-                                        <span className="px-3 py-1 bg-amber-500/20 text-amber-300 text-sm font-bold rounded-full border border-amber-500/30">
-                                          {analysisData.summaryAnalysis.priorityFocus}
-                                        </span>
-                                      </div>
-                                      
-                                      {/* Root Cause */}
-                                      <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-                                        <div className="text-xs text-red-400 font-bold mb-1">{t('coachPage.results.summaryAnalysis.rootCause')}</div>
-                                        <p className="text-sm text-slate-200">{analysisData.summaryAnalysis.rootCause}</p>
-                                      </div>
-                                      
-                                      {/* Action Plan */}
-                                      <div className="mb-4">
-                                        <div className="text-xs text-green-400 font-bold mb-2">{t('coachPage.results.summaryAnalysis.actionPlan')}</div>
-                                        <ol className="space-y-2">
-                                          {analysisData.summaryAnalysis.actionPlan?.map((action: string, idx: number) => (
-                                            <li key={idx} className="flex items-start gap-2 text-sm text-slate-300">
-                                              <span className="flex-shrink-0 w-5 h-5 bg-green-500/20 text-green-400 text-xs font-bold rounded-full flex items-center justify-center">{idx + 1}</span>
-                                              <span>{action}</span>
-                                            </li>
-                                          ))}
-                                        </ol>
-                                      </div>
-                                      
-                                      {/* Summary Message */}
-                                      <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
-                                        <p className="text-sm text-slate-300 leading-relaxed">{analysisData.summaryAnalysis.message}</p>
-                                      </div>
-                                    </div>
-                                  )}
-
-                                 {/* 2. Insights List */}
-                                 <div className="flex flex-col gap-4">
-                                     <h3 className="font-bold text-slate-400 text-sm uppercase tracking-wider mb-2">
-                                         {t('coachPage.results.insightReport')}
-                                     </h3>
-                                     {analysisData.insights.map((insight, idx) => (
-                                         <div 
-                                            key={idx} 
-                                            onClick={() => seekTo(insight.timestamp)}
-                                            className="bg-slate-900 border border-slate-700 hover:border-blue-500 hover:bg-slate-800 rounded-xl p-4 shadow-lg relative overflow-hidden group transition cursor-pointer"
-                                         >
-                                             <div className="absolute top-0 right-0 p-2 opacity-10 text-4xl group-hover:scale-110 transition duration-500">
-                                                {insight.type === 'GOOD_PLAY' ? '👍' : insight.type === 'MISTAKE' ? '👎' : '💡'}
-                                             </div>
-                                             <div className="flex items-center gap-2 mb-2">
-                                                 <span className={`text-xs font-bold px-2 py-0.5 rounded ${
-                                                     insight.type === 'GOOD_PLAY' ? 'bg-green-500/20 text-green-300' :
-                                                     insight.type === 'MISTAKE' ? 'bg-red-500/20 text-red-300' :
-                                                     'bg-blue-500/20 text-blue-300'
-                                                  }`}>
-                                                     {insight.timestampStr}
-                                                 </span>
-                                                 <h4 className="font-bold text-white text-sm">{insight.title}</h4>
-                                             </div>
-                                             <p className="text-slate-300 text-xs leading-relaxed whitespace-pre-wrap">
-                                                 {insight.description}
-                                             </p>
-                                             {insight.advice && (
-                                                 <div className="mt-2 pt-2 border-t border-slate-800">
-                                                     <div className="text-[10px] text-amber-400 font-bold mb-0.5">コーチのアドバイス</div>
-                                                     <p className="text-slate-400 text-xs">
-                                                         {insight.advice}
-                                                     </p>
-                                                 </div>
-                                             )}
-                                         </div>
-                                     ))}
-                                 </div>
-                             </div>
-                         ) : (
-                             <>
-                                 <PremiumPromoCard initialStatus={status} />
-                                 <AdSenseBanner slotId="1234567890" format="rectangle" />
-                             </>
-                         )}
+                        <PremiumPromoCard initialStatus={status} />
+                        <AdSenseBanner slotId="1234567890" format="rectangle" />
                     </div>
                 </div>
             </div>
-            {/* VERIFICATION & AD OVERLAY (Free Users Only) */}
-            {((isVerifying && !status?.is_premium) || (isAnalyzing && !status?.is_premium && !asyncStatus.match(/completed|failed/))) && (
+            {/* VERIFICATION & AD OVERLAY (Free Users Only - MICRO Tab) */}
+            {detailTab === 'MICRO' && isVerifying && !status?.is_premium && (
                 <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-md animate-in fade-in duration-300">
                     <div className="flex flex-col items-center gap-8 w-full max-w-2xl px-4">
                         
