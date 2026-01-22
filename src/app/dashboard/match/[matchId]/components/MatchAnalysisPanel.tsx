@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from "@/contexts/LanguageContext";
 
 // Imports cleaned up
 // import InsightCard from './Analysis/InsightCard';
@@ -27,6 +28,7 @@ export default function MatchAnalysisPanel({
     // State for simple redirect
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
+    const { t } = useTranslation();
 
     // Context for finding opponent (simplified logic or passed props?)
     // For now we just pass what we have. Opponent calculation is expensive without full match data.
@@ -57,7 +59,7 @@ export default function MatchAnalysisPanel({
         <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl mt-6">
             <div className="bg-slate-800/80 p-4 border-b border-slate-700 flex justify-between items-center">
                 <h3 className="font-bold text-white flex items-center gap-2">
-                    <span className="text-xl">🎓</span> AI COACHING <span className="text-xs bg-blue-600 px-2 py-0.5 rounded text-white ml-2">INTERACTIVE</span>
+                    <span className="text-xl">🎓</span> {t('matchDetail.aiCoaching.title')} <span className="text-xs bg-blue-600 px-2 py-0.5 rounded text-white ml-2">{t('matchDetail.aiCoaching.interactive')}</span>
                 </h3>
             </div>
 
@@ -67,11 +69,10 @@ export default function MatchAnalysisPanel({
                 </div>
                 
                 <h2 className="text-2xl font-bold text-white mb-2">
-                    AIによるマッチ分析
+                    {t('matchDetail.aiCoaching.matchAnalysisTitle')}
                 </h2>
                 <p className="text-slate-400 max-w-lg mx-auto mb-8 leading-relaxed">
-                    この試合（<strong>{championName}</strong>）について具体的に相談します。<br/>
-                    ビルドや立ち回り、敗因についてRionコーチに詳しく聞くことができます。
+                    {t('matchDetail.aiCoaching.description').replace('{championName}', championName)}
                 </p>
 
                 <button 
@@ -81,11 +82,11 @@ export default function MatchAnalysisPanel({
                 >
                     {isLoading ? (
                         <>
-                            <span className="animate-spin text-xl">⏳</span> 準備中...
+                            <span className="animate-spin text-xl">⏳</span> {t('matchDetail.aiCoaching.preparing')}
                         </>
                     ) : (
                         <>
-                            <span className="text-xl">📊</span> マッチ情報分析
+                            <span className="text-xl">📊</span> {t('matchDetail.aiCoaching.analyzeButton')}
                         </>
                     )}
                 </button>

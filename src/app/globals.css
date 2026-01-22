@@ -1,20 +1,22 @@
 @import "tailwindcss";
 
 :root {
-  /* Default to Dark Mode styles for "Gaming" feel */
-  --background: #020617; /* Slate 950 */
-  --foreground: #f8fafc; /* Slate 50 */
+  /* Midnight Luxury Theme */
+  --background: #0a0e17; /* Midnight Gradient Base */
+  --foreground: #e2e8f0; /* Warm White */
 
-  --card-bg: rgba(30, 41, 59, 0.7); /* Slate 800 with opacity */
-  --card-border: rgba(148, 163, 184, 0.2); /* Slate 400 with opacity */
+  --card-bg: rgba(10, 14, 23, 0.85); /* Deep Midnight with high opacity */
+  --card-border: rgba(240, 230, 140, 0.15); /* Champagne Gold subtle border */
 
-  --primary: #3b82f6; /* Blue 500 */
-  --primary-glow: rgba(59, 130, 246, 0.5);
+  --primary: #F0E68C; /* Champagne Gold */
+  --primary-glow: rgba(240, 230, 140, 0.3);
 
-  --accent: #eab308; /* Yellow 500 (Gold) */
-  --accent-glow: rgba(234, 179, 8, 0.4);
+  --accent: #C17E5F; /* Muted Copper */
+  --accent-glow: rgba(193, 126, 95, 0.25);
 
-  --font-sans: var(--font-geist-sans);
+  /* Typography Strategy */
+  --font-heading: var(--font-outfit);
+  --font-body: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
@@ -26,17 +28,30 @@
   --color-primary-glow: var(--primary-glow);
   --color-accent: var(--accent);
   --color-accent-glow: var(--accent-glow);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-body);
   --font-mono: var(--font-mono);
+  --font-heading: var(--font-heading);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-body), Arial, Helvetica, sans-serif;
   min-height: 100vh;
   /* Subtle background pattern or gradient could be added here */
-  background-image: radial-gradient(circle at 50% 0%, #1e293b 0%, #020617 60%);
+  background-image: radial-gradient(circle at 50% 0%, #172033 0%, #0a0e17 70%);
+}
+
+/* Typography Strategy Application */
+h1, h2, h3, h4, h5, h6, .font-heading {
+  font-family: var(--font-heading), sans-serif;
+  letter-spacing: -0.02em; /* Tight tracking for modern feel */
+}
+
+/* Use Outfit for numbers to look techy */
+.text-numeric, .font-numeric {
+  font-family: var(--font-heading), sans-serif;
+  font-feature-settings: "tnum" on, "cv01" on; /* Tabular numbers + Alt 1 if available */
 }
 
 /* Glassmorphism Utilities */

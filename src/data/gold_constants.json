@@ -1,0 +1,566 @@
+{
+  "minions": {
+    "melee": {
+      "name": "Melee Minion",
+      "name_jp": "前衛ミニオン",
+      "name_ko": "근접 미니언",
+      "base_gold": 21,
+      "growth": 0,
+      "description": "Standard melee unit. Sources of consistent income."
+    },
+    "caster": {
+      "name": "Caster Minion",
+      "name_jp": "後衛ミニオン",
+      "name_ko": "원거리 미니언",
+      "base_gold": 14,
+      "growth": 0,
+      "description": "Fragile but numerous. Low individual value."
+    },
+    "cannon": {
+      "name": "Siege Minion",
+      "name_jp": "砲台ミニオン",
+      "name_ko": "공성 미니언",
+      "base_gold": 60,
+      "growth": 3,
+      "description": "High value asset. Prioritize securing.",
+      "tooltip": {
+        "what": "攻城兵器である大型ミニオン。",
+        "why": "金額が他のミニオンの約3〜4倍と非常に高く、これを落とすことは大きな損失になる。",
+        "how": "出現ウェーブ（3ウェーブ毎など）を意識し、スキルを使ってでも確実に取る。"
+      }
+    },
+    "super": {
+      "name": "Super Minion",
+      "name_jp": "スーパーミニオン",
+      "name_ko": "슈퍼 미니언",
+      "base_gold": 60,
+      "growth": 3,
+      "description": "Spawned after inhibitor destruction.",
+      "tooltip": {
+        "what": "インヒビター破壊後に出現する強力なミニオン。",
+        "why": "高い耐久力を持ち、レーンを自動的にプッシュしてくれる重要な戦力。",
+        "how": "相手のインヒビターを破壊することで出現。逆に相手に出された場合は素早い処理が必要。"
+      }
+    }
+  },
+  "jungle": {
+    "camps": {
+      "blue_sentinel": {
+        "name": "Blue Sentinel",
+        "base_gold": 100,
+        "name_jp": "ブルーセンチネル",
+        "name_ko": "푸른 파수꾼"
+      },
+      "red_brambleback": {
+        "name": "Red Brambleback",
+        "base_gold": 100,
+        "name_jp": "レッドブランブルバック",
+        "name_ko": "붉은 가시등 거북이"
+      },
+      "gromp": {
+        "name": "Gromp",
+        "base_gold": 80,
+        "name_jp": "グロンプ",
+        "name_ko": "두꼽비"
+      },
+      "murk_wolf": {
+        "name": "Murk Wolves",
+        "base_gold": 55,
+        "name_jp": "マークウルフ (Camp)",
+        "name_ko": "머크 늑대"
+      },
+      "raptor": {
+        "name": "Raptors",
+        "base_gold": 85,
+        "name_jp": "ラプター (Camp)",
+        "name_ko": "처형자"
+      },
+      "krug": {
+        "name": "Krugs",
+        "base_gold": 135,
+        "name_jp": "クルーグ (Camp)",
+        "name_ko": "돌거인"
+      },
+      "scuttle_crab": {
+        "name": "Rift Scuttler",
+        "base_gold": 55,
+        "name_jp": "リフトスカトル",
+        "name_ko": "협곡 게"
+      }
+    }
+  },
+  "objectives": {
+    "dragons": {
+      "infernal": {
+        "name": "Infernal Drake",
+        "name_jp": "インファーナルドレイク",
+        "name_ko": "불꽃 드래곤",
+        "tier": "S",
+        "icon_url": "https://raw.communitydragon.org/latest/game/assets/ux/minimap/icons/dragon_infernal.png",
+        "global_gold": 25,
+        "buff_value": {
+          "stat": "AD/AP",
+          "amount": "5%",
+          "buff_description": {
+            "ja": "攻撃力(AD)と魔力(AP)が 5% 増加します。",
+            "en": "Increases Attack Damage (AD) and Ability Power (AP) by 5%.",
+            "ko": "공격력(AD)과 주문력(AP)이 5% 증가합니다."
+          },
+          "educational_note": {
+            "ja": "例: 攻撃力が200の場合、+10増加します。これはロングソード(350g)約1本分に相当し、約17CS分の価値が自動的に付与される計算です。",
+            "en": "Example: With 200 AD, you gain +10 AD. This equals roughly 1 Long Sword (350g), or about 17 CS worth of free stats.",
+            "ko": "예시: 공격력이 200일 경우, +10 증가합니다. 이는 롱소드(350g) 약 1개 분량으로, 약 17CS 가치의 스탯이 자동으로 부여됩니다."
+          },
+          "gold_estimate_per_player": 175,
+          "team_gold_estimate": 875
+        },
+        "tooltip": {
+          "ja": {
+            "what": "攻撃力(AD)と魔力(AP)を上昇させるドラゴン。",
+            "why": "チーム全体の火力が底上げされるため、集団戦やキャリーの強さに直結する。",
+            "how": "視界を確保（ワード）し、味方のレーナーが主導権（プッシュ）を握っているタイミングで狩り始めましょう。スマイトのダメージ量を常に確認しておくことが重要です。"
+          },
+          "en": {
+            "what": "A dragon that increases Attack Damage (AD) and Ability Power (AP).",
+            "why": "Boosts your entire team's damage output, directly impacting teamfights and carry potential.",
+            "how": "Establish vision (wards) and start when your laners have priority (pushed lanes). Always track your Smite damage."
+          },
+          "ko": {
+            "what": "공격력(AD)과 주문력(AP)을 증가시키는 드래곤.",
+            "why": "팀 전체의 화력이 상승하여, 팀 싸움과 캐리의 강함에 직결됩니다.",
+            "how": "시야를 확보(와드)하고, 라이너가 주도권(푸시)을 잡고 있을 때 사냥을 시작하세요. 스마이트 데미지를 항상 확인하는 것이 중요합니다."
+          }
+        }
+      },
+      "mountain": {
+        "name": "Mountain Drake",
+        "name_jp": "マウンテンドレイク",
+        "name_ko": "대지 드래곤",
+        "tier": "A",
+        "icon_url": "https://raw.communitydragon.org/latest/game/assets/ux/minimap/icons/dragon_mountain.png",
+        "global_gold": 25,
+        "buff_value": {
+          "stat": "Armor/MR",
+          "amount": "8%",
+          "buff_description": {
+            "ja": "物理防御(AR)と魔法防御(MR)が 8% 増加します。",
+            "en": "Increases Armor and Magic Resist by 8%.",
+            "ko": "물리 방어력과 마법 저항력이 8% 증가합니다."
+          },
+          "educational_note": {
+            "ja": "例: 防御力が150の場合、+12増加します。これはクロスアーマー(300g)相当の耐久力UPで、約15CS分の価値があります。",
+            "en": "Example: With 150 Armor, you gain +12. This equals a Cloth Armor (300g), or about 15 CS worth of tankiness.",
+            "ko": "예시: 방어력이 150일 경우, +12 증가합니다. 이는 천 갑옷(300g) 상당의 내구력으로, 약 15CS 가치입니다."
+          },
+          "gold_estimate_per_player": 160,
+          "team_gold_estimate": 800
+        },
+        "tooltip": {
+          "ja": {
+            "what": "物理・魔法防御を上昇させるドラゴン。",
+            "why": "チーム全体の耐久力が上がり、ダメージ交換やポーク戦に強くなる。",
+            "how": "視界を確保し、味方が主導権を持っているタイミングで狩る。"
+          },
+          "en": {
+            "what": "A dragon that increases Armor and Magic Resist.",
+            "why": "Increases your team's tankiness, making you stronger in trades and poke wars.",
+            "how": "Establish vision and start when your team has priority."
+          },
+          "ko": {
+            "what": "방어력과 마법 저항력을 증가시키는 드래곤.",
+            "why": "팀 전체의 내구력이 상승하여, 교전과 포킹에 강해집니다.",
+            "how": "시야를 확보하고, 팀이 주도권을 잡고 있을 때 사냥하세요."
+          }
+        }
+      },
+      "cloud": {
+        "name": "Cloud Drake",
+        "name_jp": "クラウドドレイク",
+        "name_ko": "구름 드래곤",
+        "tier": "B",
+        "icon_url": "https://raw.communitydragon.org/latest/game/assets/ux/minimap/icons/dragon_cloud.png",
+        "global_gold": 25,
+        "buff_value": {
+          "stat": "Move Speed",
+          "amount": "5%",
+          "buff_description": {
+            "ja": "非戦闘時の移動速度が 5% 増加し、スロウ耐性が得られます。",
+            "en": "Increases out-of-combat Movement Speed by 5% and grants Slow Resist.",
+            "ko": "비전투 시 이동 속도가 5% 증가하고, 둘화 저항을 얻습니다."
+          },
+          "educational_note": {
+            "ja": "例: 移動速度があがることで、リコールからの復帰やロームが数秒早くなります。ブーツ(300g)の約2/3の効果があり、約10CS分の価値と言えます。",
+            "en": "Example: Faster movement means quicker rotations and recalls. Worth about 2/3 of Boots (300g), or roughly 10 CS.",
+            "ko": "예시: 이동 속도가 빨라져 리콜 후 복귀와 로밍이 몇 초 빨라집니다. 부츠(300g)의 약 2/3 효과로, 약 10CS 가치입니다."
+          },
+          "gold_estimate_per_player": 100,
+          "team_gold_estimate": 500
+        },
+        "tooltip": {
+          "ja": {
+            "what": "移動速度とスロウ耐性を与えるドラゴン。",
+            "why": "ロームやマクロ操作での機動力が上がる。",
+            "how": "他のドラゴンが得られない場合に確保。"
+          },
+          "en": {
+            "what": "A dragon that grants Movement Speed and Slow Resist.",
+            "why": "Improves mobility for rotations and macro plays.",
+            "how": "Secure when other dragons are unavailable."
+          },
+          "ko": {
+            "what": "이동 속도와 둘화 저항을 부여하는 드래곤.",
+            "why": "로탰과 매크로 플레이에서 기동력이 향상됩니다.",
+            "how": "다른 드래곤을 확보할 수 없을 때 확보하세요."
+          }
+        }
+      },
+      "ocean": {
+        "name": "Ocean Drake",
+        "name_jp": "オーシャンドレイク",
+        "name_ko": "바다 드래곤",
+        "tier": "A",
+        "icon_url": "https://raw.communitydragon.org/latest/game/assets/ux/minimap/icons/dragon_ocean.png",
+        "global_gold": 25,
+        "buff_value": {
+          "stat": "Health Regen",
+          "amount": "2.5%",
+          "buff_description": {
+            "ja": "5秒ごとに減少体力の 2.5% を回復します。",
+            "en": "Restores 2.5% of missing health every 5 seconds.",
+            "ko": "5초마다 감소한 체력의 2.5%를 회복합니다."
+          },
+          "educational_note": {
+            "ja": "例: 体力が減っている時、常にポーション(50g)を飲み続けているような回復効果を得られ、リコール回数を減らすことができます。",
+            "en": "Example: Like constantly drinking a Potion (50g) when low, reducing recall frequency.",
+            "ko": "예시: 체력이 낮을 때 포션(50g)을 계속 마시는 것처럼 회복 효과를 얻어, 리콜 횟수를 줄일 수 있습니다."
+          },
+          "gold_estimate_per_player": 120,
+          "team_gold_estimate": 600
+        },
+        "tooltip": {
+          "ja": {
+            "what": "体力回復を与えるドラゴン。",
+            "why": "レーンでの維持力が上がり、リコールなしで戦える。",
+            "how": "ポーク構成や消耗戦を得意とするチームに有効。"
+          },
+          "en": {
+            "what": "A dragon that grants health regeneration.",
+            "why": "Improves lane sustain, allowing you to stay without recalling.",
+            "how": "Effective for teams with poke compositions or attrition strategies."
+          },
+          "ko": {
+            "what": "체력 회복을 부여하는 드래곤.",
+            "why": "라인 유지력이 향상되어 리콜 없이 싸울 수 있습니다.",
+            "how": "포킹 구성이나 소모전을 선호하는 팀에 효과적입니다."
+          }
+        }
+      },
+      "hextech": {
+        "name": "Hextech Drake",
+        "name_jp": "ヘクステックドレイク",
+        "name_ko": "헥테크 드래곤",
+        "tier": "S",
+        "icon_url": "https://raw.communitydragon.org/latest/game/assets/ux/minimap/icons/dragon_hextech.png",
+        "global_gold": 25,
+        "buff_value": {
+          "stat": "AH / AS",
+          "amount": "5 / 5%",
+          "buff_description": {
+            "ja": "スキルヘイストが 5 、攻撃速度が 5% 増加します。",
+            "en": "Increases Ability Haste by 5 and Attack Speed by 5%.",
+            "ko": "스킬 가속이 5, 공격 속도가 5% 증가합니다."
+          },
+          "educational_note": {
+            "ja": "例: 攻撃速度+5%はダガー(300g)の約半分、つまり150g(7CS)相当の価値があります。さらにスキル回転率も上がるため、実質価値はそれ以上です。",
+            "en": "Example: +5% AS is half a Dagger (300g), or 150g (7 CS). With ability haste, the actual value is even higher.",
+            "ko": "예시: 공격 속도 +5%는 단검(300g)의 절반으로, 150g(7CS) 가치입니다. 스킬 회전율도 올라가므로 실제 가치는 그 이상입니다."
+          },
+          "gold_estimate_per_player": 180,
+          "team_gold_estimate": 900
+        },
+        "tooltip": {
+          "ja": {
+            "what": "スキルヘイストと攻撃速度を上げるドラゴン。",
+            "why": "ADCやスキル強依存チャンピオンに非常に有効。",
+            "how": "味方にスケーリングキャリーがいる場合は優先的に確保。"
+          },
+          "en": {
+            "what": "A dragon that increases Ability Haste and Attack Speed.",
+            "why": "Highly effective for ADCs and skill-dependent champions.",
+            "how": "Prioritize when your team has scaling carries."
+          },
+          "ko": {
+            "what": "스킬 가속과 공격 속도를 즌주는 드래곤.",
+            "why": "ADC나 스킬 의존 챔피언에게 매우 효과적입니다.",
+            "how": "팀에 스케일링 캐리가 있을 때 우선시하세요."
+          }
+        }
+      },
+      "chemtech": {
+        "name": "Chemtech Drake",
+        "name_jp": "ケミテックドレイク",
+        "name_ko": "화학기술 드래곤",
+        "tier": "B",
+        "icon_url": "https://raw.communitydragon.org/latest/game/assets/ux/minimap/icons/dragon_chemtech.png",
+        "global_gold": 25,
+        "buff_value": {
+          "stat": "Tenacity / Heal Power",
+          "amount": "5%",
+          "buff_description": {
+            "ja": "行動妨害耐性(Tenacity)と回復・シールド効果が 5% 増加します。",
+            "en": "Increases Tenacity and Heal/Shield Power by 5%.",
+            "ko": "군중 제어 감소와 회복/보호막 효과가 5% 증가합니다."
+          },
+          "educational_note": {
+            "ja": "例: 回復・シールド量増加はフォビドゥンアイドル(800g)の効果の約半分以上に相当し、約400g(20CS)分の価値があります。",
+            "en": "Example: Heal/Shield power increase is worth about half a Forbidden Idol (800g), or roughly 400g (20 CS).",
+            "ko": "예시: 회복/보호막 증가는 금지된 우상(800g)의 약 절반 이상으로, 약 400g(20CS) 가치입니다."
+          },
+          "gold_estimate_per_player": 150,
+          "team_gold_estimate": 750
+        },
+        "tooltip": {
+          "ja": {
+            "what": "CC耐性と回復・シールドを強化するドラゴン。",
+            "why": "エンゲージ・ピール構成で特に有効。",
+            "how": "ヒーラーやサポートがいるチームに適する。"
+          },
+          "en": {
+            "what": "A dragon that enhances CC resistance and heal/shield power.",
+            "why": "Particularly effective for engage and peel compositions.",
+            "how": "Suitable for teams with healers or supports."
+          },
+          "ko": {
+            "what": "CC 저항과 회복/보호막을 강화하는 드래곤.",
+            "why": "인게이지/필 구성에 특히 효과적입니다.",
+            "how": "힘러나 서포터가 있는 팀에 적합합니다."
+          }
+        }
+      },
+      "elder": {
+        "name": "Elder Dragon",
+        "name_jp": "エルダードラゴン",
+        "name_ko": "장로 드래곤",
+        "tier": "GOD",
+        "icon_url": "https://raw.communitydragon.org/latest/game/assets/ux/minimap/icons/dragon_elder.png",
+        "global_gold": 300,
+        "buff_value": {
+          "stat": "Execute / Burn",
+          "amount": "20%",
+          "buff_description": {
+            "ja": "体力が 20% 以下の敵に対して、確定ダメージを与えて処刑します。",
+            "en": "Executes enemies below 20% health with true damage.",
+            "ko": "체력이 20% 이하인 적에게 고정 피해를 주어 처형합니다."
+          },
+          "educational_note": {
+            "ja": "最強のバフです。お金で買えるアイテム（コレクター等）を遥かに凌駕する効果であり、実質的に「全チャンピオンのキルライン」を20%引き上げます。",
+            "en": "The strongest buff. Far exceeds any purchasable item (like Collector). Effectively raises the kill threshold for all champions by 20%.",
+            "ko": "가장 강력한 버프입니다. 구매 가능한 아이템(수집가 등)을 훨씬 능가하며, 실질적으로 모든 챔피언의 킬 라인을 20% 올립니다."
+          },
+          "gold_estimate_per_player": 1500,
+          "team_gold_estimate": 7500
+        },
+        "tooltip": {
+          "ja": {
+            "what": "ドラゴンソウル獲得後に出現する究極のオブジェクト。",
+            "why": "処刑効果で試合を決定づける力を持つ。これを取れば勝ち。",
+            "how": "チーム全員でコントロールし、絶対に取られないようにする。"
+          },
+          "en": {
+            "what": "The ultimate objective that spawns after a team gets Dragon Soul.",
+            "why": "The execute effect can decide games. Get this and you win.",
+            "how": "Control it as a team and never let the enemy take it."
+          },
+          "ko": {
+            "what": "드래곤 영혼 획득 후 출현하는 궁극의 오브젝트.",
+            "why": "처형 효과로 게임을 결정짓는 힘을 가집니다. 이것을 얻으면 승리.",
+            "how": "팀 전원으로 컨트롤하고, 절대 뺏기지 않도록 하세요."
+          }
+        }
+      }
+    },
+    "baron": {
+      "name": "Baron Nashor",
+      "name_jp": "バロンナッシャー",
+      "name_ko": "바론 내쉬",
+      "icon_url": "https://raw.communitydragon.org/latest/game/assets/ux/minimap/icons/baron.png",
+      "global_gold": 300,
+      "local_gold": 1500,
+      "buff_value": {
+        "stat": "AD/AP & Minion Buff",
+        "buff_description": {
+          "ja": "ADとAPが大幅に増加し、近くのミニオンを強化してタワー破壊を助けます。",
+          "en": "Greatly increases AD and AP, and empowers nearby minions to help destroy towers.",
+          "ko": "AD와 AP가 크게 증가하고, 근처 미니언을 강화하여 타워 파괴를 돕습니다."
+        },
+        "educational_note": {
+          "ja": "例: バロンバフはミニオンを強化し、タワーを1～2本分破壊する力を与えます。これはゴールド換算で750～1500g以上の価値。さらにチーム全員がステータスバフを得るため、実質アイテム2、3個分の差が生まれます。",
+          "en": "Example: Baron buff empowers minions, giving the power to destroy 1-2 towers. Worth 750-1500g+ in gold. Plus the entire team gets stat buffs, creating an effective 2-3 item difference.",
+          "ko": "예시: 바론 버프는 미니언을 강화하여 타워 1~2개를 파괴할 힘을 줍니다. 골드로 750~1500g 이상의 가치. 팀 전원이 스탯 버프를 받아 실질적으로 아이템 2-3개 차이가 납니다."
+        },
+        "gold_estimate_per_player": 800,
+        "team_gold_estimate": 4000
+      },
+      "tooltip": {
+        "ja": {
+          "what": "20分以降に出現するサモナーズリフト最強の中立モンスター。",
+          "why": "倒すと大量のゴールドに加え、強力なバフを獲得。ミニオンが強化され、試合を終わらせる決定的な力を持つ。",
+          "how": "相手チームが人数不利な時や、視界を制圧した後にチーム全員で狩るのが基本。スマイト争いに備える。"
+        },
+        "en": {
+          "what": "The strongest neutral monster on Summoner's Rift, spawning after 20 minutes.",
+          "why": "Defeating it grants massive gold and a powerful buff. Empowered minions can end games.",
+          "how": "Take it when the enemy team is at a numbers disadvantage or after controlling vision. Prepare for Smite fights."
+        },
+        "ko": {
+          "what": "20분 이후 출현하는 소환사의 협곡 최강의 중립 몰스터.",
+          "why": "처치하면 대량의 골드와 강력한 버프를 획득. 강화된 미니언으로 게임을 끝낼 수 있습니다.",
+          "how": "적 팀이 인원 불리일 때나 시야를 장악한 후 팀 전원이 함께 사냥하세요. 스마이트 싸움에 대비하세요."
+        }
+      }
+    },
+    "herald": {
+      "name": "Rift Herald",
+      "name_jp": "リフトヘラルド",
+      "name_ko": "협곡의 전령",
+      "icon_url": "https://raw.communitydragon.org/latest/game/assets/ux/minimap/icons/riftherald.png",
+      "local_gold": 100,
+      "plate_value_estimate": 350,
+      "buff_value": {
+        "buff_description": {
+          "ja": "獲得後に召喚でき、タワーに大ダメージを与えます。",
+          "en": "Can be summoned after acquisition to deal massive damage to towers.",
+          "ko": "획득 후 소환할 수 있으며, 타워에 큰 피해를 줍니다."
+        },
+        "educational_note": {
+          "ja": "例: ヘラルドのチャージはタワープレートを約2～3枚破壊できます。これは350～525gの価値があり、約25CS分に相当します。序盤の有利を広げる最高の手段です。",
+          "en": "Example: Herald's charge can destroy 2-3 tower plates. Worth 350-525g, or about 25 CS. The best way to snowball an early lead.",
+          "ko": "예시: 헤랄드의 충돌은 타워 플레이트를 2~3개 파괴할 수 있습니다. 350~525g 가치로, 약 25CS에 해당합니다. 초반 우위를 넓히는 최고의 수단입니다."
+        }
+      },
+      "tooltip": {
+        "ja": {
+          "what": "20分まで出現する、タワー破壊を支援するモンスター。",
+          "why": "召喚するとタワーに大ダメージを与え、多額のプレートゴールドを獲得できる。",
+          "how": "序盤の有利を広げるために獲得し、プレートが残っているタワーに使用する。"
+        },
+        "en": {
+          "what": "A monster that spawns until 20 minutes and helps destroy towers.",
+          "why": "Summoning it deals massive tower damage and earns significant plate gold.",
+          "how": "Secure to extend early advantages and use on towers with plates remaining."
+        },
+        "ko": {
+          "what": "20분까지 출현하는, 타워 파괴를 지원하는 몰스터.",
+          "why": "소환하면 타워에 큰 피해를 주고, 많은 플레이트 골드를 획득할 수 있습니다.",
+          "how": "초반 우위를 넓히기 위해 획득하고, 플레이트가 남아있는 타워에 사용하세요."
+        }
+      }
+    },
+    "void_grubs": {
+      "name": "Void Grubs",
+      "name_jp": "ヴォイドグラブ",
+      "name_ko": "공허 유충",
+      "icon_url": "https://raw.communitydragon.org/latest/game/assets/ux/minimap/icons/grub.png",
+      "local_gold": 20,
+      "global_xp": "High",
+      "buff_value": {
+        "buff_description": {
+          "ja": "タワー攻撃時に持続ダメージを与えます。最大(6体)でヴォイドマイト召喚効果が追加。",
+          "en": "Deals damage over time to towers when attacking. At max stacks (6), summons Voidmites.",
+          "ko": "타워 공격 시 지속 피해를 줍니다. 최대(6마리)에서 보이드마이트 소환 효과가 추가됩니다."
+        },
+        "educational_note": {
+          "ja": "例: タワープレート獲得戦争において、グラブの効果があれば1枚多く獲得できる可能性が高まり、実質+175g以上の価値を生みます。",
+          "en": "Example: In the tower plate race, having grubs can help secure 1 extra plate, worth effectively 175g+.",
+          "ko": "예시: 타워 플레이트 경쟁에서 그럽 효과가 있으면 1장 더 획득할 가능성이 높아져, 실질 +175g 이상의 가치를 만듭니다."
+        }
+      },
+      "tooltip": {
+        "ja": {
+          "what": "3体ずつ、計6体出現するヴォイドの幼生。",
+          "why": "倒すとタワーへの追加確定ダメージを獲得。5体以上でヴォイドマイトを召喚し、タワー破壊速度が劇的に向上する。",
+          "how": "序盤のジャングル主導権がカギ。味方Top/Midの状況を見て、数が取れる時に確実に狩る。"
+        },
+        "en": {
+          "what": "Void larvae that spawn in groups of 3, up to 6 total.",
+          "why": "Killing them grants bonus true damage to towers. At 5+, summons Voidmites that dramatically speed up tower destruction.",
+          "how": "Early jungle priority is key. Watch your Top/Mid state and secure as many as possible."
+        },
+        "ko": {
+          "what": "3마리씩, 총 6마리 출현하는 공허의 유충.",
+          "why": "처치하면 타워에 추가 고정 피해를 획득. 5마리 이상에서 보이드마이트를 소환하여 타워 파괴 속도가 극적으로 향상됩니다.",
+          "how": "초반 정글 주도권이 핵심. 아군 탑/미드 상황을 보고 확보할 수 있을 때 확실히 사냥하세요."
+        }
+      }
+    }
+  },
+  "structures": {
+    "plate": {
+      "name": "Turret Plate",
+      "name_jp": "タワープレート",
+      "name_ko": "타워 플레이트",
+      "gold": 175,
+      "limit_time": 14,
+      "tooltip": {
+        "what": "14分までタワーの耐久力を構成する5枚のプレート。",
+        "why": "1枚175gと非常に高額。キルを取れなくてもこれを削るだけで有利を作れる。",
+        "how": "相手がレーンを不在にしている隙や、ヘラルドを使って破壊する。"
+      }
+    },
+    "outer_turret": {
+      "name": "Outer Turret",
+      "name_jp": "アウタータワー",
+      "name_ko": "외부 타워",
+      "local_gold": 250,
+      "global_gold": 50,
+      "tooltip": {
+        "what": "最も外側にある防衛ライン。",
+        "why": "破壊することで敵ジャングルへの侵入ルートが開け、視界管理が有利になる。チーム全体への報酬も大きい。",
+        "how": "レーン戦で勝利して破壊するか、リフトヘラルドを使用して早期破壊を狙う。"
+      }
+    },
+
+    "inner_turret": {
+      "name": "Inner Turret",
+      "name_jp": "インナータワー",
+      "name_ko": "내부 타워",
+      "local_gold": 550,
+      "global_gold": 50,
+      "tooltip": {
+        "what": "二番目の防衛ライン。",
+        "why": "ローカルゴールドが非常に高い(550g)。破壊すれば敵の活動範囲を大幅に制限できる。",
+        "how": "サイドレーンのスプリットプッシュや、バロンバフを用いて攻略する。"
+      }
+    },
+
+    "inhibitor_turret": {
+      "name": "Inhibitor Turret",
+      "name_jp": "インヒビタータワー",
+      "name_ko": "윅제기 타워",
+      "local_gold": 50,
+      "global_gold": 50,
+      "tooltip": {
+        "what": "本拠地を守る最後のタワー。",
+        "why": "これを破壊しないとインヒビターに触れない。非常に硬く、攻撃力も高い。",
+        "how": "ミニオンウェーブがないと破壊困難。キャリーを守りながら集団で当たる。"
+      }
+    },
+
+    "inhibitor": {
+      "name": "Inhibitor",
+      "name_jp": "インヒビター",
+      "name_ko": "윅제기",
+      "gold": 50,
+      "tooltip": {
+        "what": "破壊するとスーパーミニオンが出現する施設。",
+        "why": "スーパーミニオンによる自動プッシュで、相手に対応を強要できる。バロン獲得の布石になる。",
+        "how": "インヒビタータワー破壊後、5分間破壊状態になる。復活前に試合を動かす。"
+      }
+    }
+  },
+  "kills": {
+    "base": 300,
+    "assist": 150,
+    "first_blood": 400
+  }
+}

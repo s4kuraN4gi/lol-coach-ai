@@ -1,8 +1,13 @@
+"use client";
+
 import DashboardCard from "../components/DashboardCard";
 import InfoTooltip from "../components/InfoTooltip";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 export default function WinConditionWidget({ stats }: { stats: any }) {
-    if (!stats) return <DashboardCard>Collecting match data...</DashboardCard>;
+    const { t } = useTranslation();
+    
+    if (!stats) return <DashboardCard>{t('widgets.winCondition.noData')}</DashboardCard>;
 
     const conditions = stats.winConditions || [];
 
@@ -34,14 +39,14 @@ export default function WinConditionWidget({ stats }: { stats: any }) {
                 </div>
                 <div>
                      <h3 className="text-sm font-bold text-slate-200 flex items-center gap-1">
-                        Win Conditions
+                        {t('widgets.winCondition.title')}
                         <InfoTooltip content={{
-                            what: "勝利に直結する3大アクション（First Blood, First Tower, Solo Kill）の達成率。",
-                            why: "これらを取得した試合の勝率が高い＝あなたの「勝ちパターン」です。",
-                            how: "勝率60%以上の項目を意識して狙うことで、勝率を安定させられます。"
+                            what: t('tooltip.winCondition.what'),
+                            why: t('tooltip.winCondition.why'),
+                            how: t('tooltip.winCondition.how')
                         }} />
                      </h3>
-                     <p className="text-xs text-slate-500">Victory Factors</p>
+                     <p className="text-xs text-slate-500">{t('widgets.winCondition.subtitle')}</p>
                 </div>
              </div>
 
@@ -50,10 +55,10 @@ export default function WinConditionWidget({ stats }: { stats: any }) {
                 <div className="flex items-center justify-between p-2 bg-slate-800/40 rounded-lg border border-slate-700/50">
                     <div className="flex items-center gap-3">
                         <span className="text-sm">🩸</span>
-                        <span className="text-xs text-slate-300">First Blood</span>
+                        <span className="text-xs text-slate-300">{t('widgets.winCondition.firstBlood')}</span>
                     </div>
                     <div className="text-right">
-                        <div className="text-xs font-mono text-slate-400">{firstBlood.wins} / {firstBlood.total} Games</div>
+                        <div className="text-xs font-mono text-slate-400">{firstBlood.wins} / {firstBlood.total} {t('widgets.winCondition.games')}</div>
                         <div className={`text-sm font-bold ${getWinRateColor(firstBlood.winRate)}`}>
                             {firstBlood.winRate}% WR
                         </div>
@@ -64,10 +69,10 @@ export default function WinConditionWidget({ stats }: { stats: any }) {
                 <div className="flex items-center justify-between p-2 bg-slate-800/40 rounded-lg border border-slate-700/50">
                     <div className="flex items-center gap-3">
                         <span className="text-sm">🏯</span>
-                        <span className="text-xs text-slate-300">First Tower</span>
+                        <span className="text-xs text-slate-300">{t('widgets.winCondition.firstTower')}</span>
                     </div>
                     <div className="text-right">
-                        <div className="text-xs font-mono text-slate-400">{firstTower.wins} / {firstTower.total} Games</div>
+                        <div className="text-xs font-mono text-slate-400">{firstTower.wins} / {firstTower.total} {t('widgets.winCondition.games')}</div>
                         <div className={`text-sm font-bold ${getWinRateColor(firstTower.winRate)}`}>
                             {firstTower.winRate}% WR
                         </div>
@@ -78,10 +83,10 @@ export default function WinConditionWidget({ stats }: { stats: any }) {
                 <div className="flex items-center justify-between p-2 bg-slate-800/40 rounded-lg border border-slate-700/50">
                     <div className="flex items-center gap-3">
                          <span className="text-sm">⚔️</span>
-                         <span className="text-xs text-slate-300">Solo Kills</span>
+                         <span className="text-xs text-slate-300">{t('widgets.winCondition.soloKills')}</span>
                     </div>
                     <div className="text-right">
-                        <div className="text-xs font-mono text-slate-400">{soloKill.wins} / {soloKill.total} Games</div>
+                        <div className="text-xs font-mono text-slate-400">{soloKill.wins} / {soloKill.total} {t('widgets.winCondition.games')}</div>
                         <div className={`text-sm font-bold ${getWinRateColor(soloKill.winRate)}`}>
                             {soloKill.winRate}% WR
                         </div>
@@ -91,3 +96,4 @@ export default function WinConditionWidget({ stats }: { stats: any }) {
         </DashboardCard>
     );
 }
+

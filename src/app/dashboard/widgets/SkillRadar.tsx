@@ -1,13 +1,18 @@
+"use client";
+
 import { RadarStats } from "@/app/actions/stats";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 export default function SkillRadar({ stats }: { stats: RadarStats | null }) {
+    const { t } = useTranslation();
+    
     if (!stats) {
         return (
              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center justify-center min-h-[300px] relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-pink-500/5"></div>
                  <div className="text-center relative z-10">
-                     <div className="text-slate-500 font-bold mb-2">Analyzing Playstyle...</div>
-                     <div className="text-xs text-slate-600">Gathering battle data</div>
+                     <div className="text-slate-500 font-bold mb-2">{t('widgets.skillRadar.noData')}</div>
+                     <div className="text-xs text-slate-600">{t('widgets.skillRadar.noDataDesc')}</div>
                  </div>
             </div>
         )
@@ -17,11 +22,11 @@ export default function SkillRadar({ stats }: { stats: RadarStats | null }) {
     // 5 Axis: Top(Combat), RightTop(Objective), RightBottom(Farming), LeftBottom(Vision), LeftTop(Survival)
     // Coords at r=100
     const axes = [
-        { name: "COMBAT", key: "combat", angle: -90, color: "#f87171" }, // Top
-        { name: "OBJECTIVE", key: "objective", angle: -18, color: "#fbbf24" }, // Right Top
-        { name: "FARMING", key: "farming", angle: 54, color: "#34d399" }, // Right Bottom
-        { name: "VISION", key: "vision", angle: 126, color: "#60a5fa" }, // Left Bottom
-        { name: "SURVIVAL", key: "survival", angle: 198, color: "#a78bfa" }, // Left Top
+        { name: t('widgets.skillRadar.axes.combat'), key: "combat", angle: -90, color: "#f87171" }, // Top
+        { name: t('widgets.skillRadar.axes.objective'), key: "objective", angle: -18, color: "#fbbf24" }, // Right Top
+        { name: t('widgets.skillRadar.axes.farming'), key: "farming", angle: 54, color: "#34d399" }, // Right Bottom
+        { name: t('widgets.skillRadar.axes.vision'), key: "vision", angle: 126, color: "#60a5fa" }, // Left Bottom
+        { name: t('widgets.skillRadar.axes.survival'), key: "survival", angle: 198, color: "#a78bfa" }, // Left Top
     ];
 
     const getCoord = (value: number, angle: number) => {
@@ -48,13 +53,13 @@ export default function SkillRadar({ stats }: { stats: RadarStats | null }) {
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 relative overflow-hidden flex flex-col items-center">
             {/* Header */}
             <div className="w-full flex justify-between items-start mb-2 z-10">
-                <div className="text-slate-400 text-xs font-bold tracking-wider">SKILL RADAR</div>
+                <div className="text-slate-400 text-xs font-bold tracking-wider">{t('widgets.skillRadar.title')}</div>
                 <div className="text-[10px] flex gap-3">
                     <span className="flex items-center gap-1 text-slate-300">
-                        <span className="w-2 h-2 rounded-full bg-blue-500/50"></span> You
+                        <span className="w-2 h-2 rounded-full bg-blue-500/50"></span> {t('widgets.skillRadar.you')}
                     </span>
                     <span className="flex items-center gap-1 text-slate-500">
-                        <span className="w-2 h-2 rounded-full bg-slate-700"></span> Avg
+                        <span className="w-2 h-2 rounded-full bg-slate-700"></span> {t('widgets.skillRadar.avg')}
                     </span>
                 </div>
             </div>
@@ -119,13 +124,7 @@ export default function SkillRadar({ stats }: { stats: RadarStats | null }) {
                 {/* HTML Overlay Labels with Tooltips */}
                 {axes.map(axis => {
                     const { x, y } = getCoord(118, axis.angle);
-                    const descriptions: Record<string, string> = {
-                        combat: "KDA (キル/デス/アシスト) のバランス",
-                        objective: "タワーやドラゴンへのダメージ関与量",
-                        farming: "1分間あたりのCS (ミニオン討伐数)",
-                        vision: "1分間あたりの視界スコア (ワード設置/破壊)",
-                        survival: "デスの少なさ (生存リスク管理)"
-                    };
+                    const description = t(`widgets.skillRadar.descriptions.${axis.key}`);
 
                     return (
                         <div 
@@ -140,7 +139,7 @@ export default function SkillRadar({ stats }: { stats: RadarStats | null }) {
                             {/* Tooltip */}
                             <div className="absolute w-max max-w-[120px] bg-slate-800 text-[10px] text-slate-200 p-2 rounded border border-slate-700 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 bottom-full mb-1 text-center hidden group-hover:block">
                                 <div className="font-bold text-white mb-0.5">{axis.name}</div>
-                                {descriptions[axis.key]}
+                                {description}
                             </div>
                         </div>
                     )
@@ -154,9 +153,10 @@ export default function SkillRadar({ stats }: { stats: RadarStats | null }) {
                      const best = axes.reduce((prev, current) => 
                          (stats[current.key as keyof RadarStats] > stats[prev.key as keyof RadarStats]) ? current : prev
                      );
+                     const insightText = t('widgets.skillRadar.outstanding').replace('{stat}', best.name);
                      return (
                          <div className="text-xs text-slate-400">
-                             Your <span style={{ color: best.color }} className="font-bold">{best.name}</span> is outstanding!
+                             <span style={{ color: best.color }} className="font-bold">{best.name}</span> {insightText.includes(best.name) ? '' : insightText}
                          </div>
                      )
                  })()}
@@ -164,3 +164,4 @@ export default function SkillRadar({ stats }: { stats: RadarStats | null }) {
         </div>
     )
 }
+

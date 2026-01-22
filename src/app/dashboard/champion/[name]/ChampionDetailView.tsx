@@ -5,6 +5,7 @@ import { fetchMatchIds, fetchMatchDetail } from "@/app/actions/riot";
 import { resolveChampionId } from "@/app/actions/champion";
 import Link from "next/link";
 import { ChampionDetailsDTO } from "@/app/actions/champion";
+import { useTranslation } from "@/contexts/LanguageContext";
 // Premium Imports
 import PlanStatusBadge from "@/app/Components/subscription/PlanStatusBadge";
 import PremiumFeatureGate from "@/app/Components/subscription/PremiumFeatureGate";
@@ -30,6 +31,7 @@ function HelperTooltip({ text }: { text: string }) {
 }
 
 export default function ChampionDetailView({ puuid, championName }: { puuid: string, championName: string }) {
+    const { t } = useTranslation();
     const [loadingIds, setLoadingIds] = useState(true);
     const [matchDetails, setMatchDetails] = useState<Match[]>([]);
     const [totalMatches, setTotalMatches] = useState<number>(0);
@@ -297,7 +299,7 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                 <div className="p-8">
                      <h1 className="text-3xl font-bold text-slate-100 mb-4">{decodeURIComponent(championName)}</h1>
                      <div className="p-4 bg-slate-900/50 border border-slate-700 rounded-lg text-slate-400">
-                         No recent data found for this champion.
+                         {t('championDetail.noData')}
                      </div>
                 </div>
             )
@@ -324,7 +326,7 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
             <div className="flex justify-between items-center mb-4">
                 <Link href="/dashboard" className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors group">
                      <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                     Back to Dashboard
+                     {t('championDetail.backToDashboard')}
                 </Link>
                 {/* Upgrade Button in Header Area (Optional, or rely on internal prompts) */}
                 {!isPremium && (
@@ -345,7 +347,7 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                         </h1>
                         <div className="flex items-center gap-3 text-sm font-medium text-slate-400 mb-4">
                             <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                                {stats.summary.games} Games
+                                {stats.summary.games} {t('championDetail.games')}
                             </span>
                             <span>•</span>
                             <span className={stats.summary.winRate >= 50 ? "text-green-400" : "text-red-400"}>
@@ -368,10 +370,10 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                              <div className="text-xs font-mono text-slate-500 min-w-[80px]">
                                  {isComplete ? (
                                      <span className="text-green-400 flex items-center gap-1">
-                                         ✓ Ready
+                                         {t('championDetail.ready')}
                                      </span>
                                  ) : (
-                                     <span>Loading {loadedCount}/{totalMatches}</span>
+                                     <span>{t('championDetail.loading')} {loadedCount}/{totalMatches}</span>
                                  )}
                              </div>
                         </div>
@@ -379,11 +381,11 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                     
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
-                            <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">CS / Min</div>
+                            <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">{t('championDetail.stats.csPerMin')}</div>
                             <div className="text-xl font-bold text-slate-200">{stats.summary.csPerMin}</div>
                         </div>
                         <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
-                            <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Gold Diff</div>
+                            <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">{t('championDetail.stats.goldDiff')}</div>
                             <div className={`text-xl font-bold ${stats.laning.goldDiff > 0 ? "text-green-400" : "text-red-400"}`}>
                                 {stats.laning.goldDiff > 0 ? "+" : ""}{stats.laning.goldDiff}
                             </div>
@@ -398,13 +400,13 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                 <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
                     <div className="flex items-center gap-2 mb-4">
                          <span className="text-xl">⚔️</span>
-                         <h3 className="font-bold text-slate-100">Laning Phase</h3>
+                         <h3 className="font-bold text-slate-100">{t('championDetail.sections.laningPhase')}</h3>
                     </div>
                     <div className="space-y-4">
                         <div className="flex justify-between items-center">
                              <span className="text-sm text-slate-400 flex items-center">
-                                CS Diff @ 10 
-                                <HelperTooltip text="Difference in Creep Score (minions) at 10 minutes vs your lane opponent." />
+                                {t('championDetail.laning.csDiff10')} 
+                                <HelperTooltip text={t('championDetail.tooltips.csDiff10')} />
                              </span>
                              <span className={`text-lg font-bold ${stats.laning.csDiff10 > 0 ? 'text-green-400' : 'text-red-400'}`}>
                                 {stats.laning.csDiff10 > 0 ? '+' : ''}{stats.laning.csDiff10}
@@ -412,8 +414,8 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                         </div>
                         <div className="flex justify-between items-center">
                              <span className="text-sm text-slate-400 flex items-center">
-                                Gold Diff
-                                <HelperTooltip text="Average Gold difference vs opponent per game." />
+                                {t('championDetail.laning.goldDiff')}
+                                <HelperTooltip text={t('championDetail.tooltips.goldDiff')} />
                              </span>
                              <span className={`text-lg font-bold ${stats.laning.goldDiff > 0 ? 'text-green-400' : 'text-red-400'}`}>
                                 {stats.laning.goldDiff > 0 ? '+' : ''}{stats.laning.goldDiff}
@@ -421,8 +423,8 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                         </div>
                         <div className="flex justify-between items-center">
                              <span className="text-sm text-slate-400 flex items-center">
-                                XP Diff
-                                <HelperTooltip text="Experience difference vs opponent. Higher means you are out-leveling them." />
+                                {t('championDetail.laning.xpDiff')}
+                                <HelperTooltip text={t('championDetail.tooltips.xpDiff')} />
                              </span>
                              <span className={`text-lg font-bold ${stats.laning.xpDiff > 0 ? 'text-green-400' : 'text-red-400'}`}>
                                 {stats.laning.xpDiff > 0 ? '+' : ''}{stats.laning.xpDiff}
@@ -435,13 +437,13 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                 <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
                     <div className="flex items-center gap-2 mb-4">
                          <span className="text-xl">💥</span>
-                         <h3 className="font-bold text-slate-100">Combat Identity</h3>
+                         <h3 className="font-bold text-slate-100">{t('championDetail.sections.combatIdentity')}</h3>
                     </div>
                     <div className="space-y-4">
                         <div className="flex justify-between items-center">
                              <span className="text-sm text-slate-400 flex items-center">
-                                Damage Share
-                                <HelperTooltip text="Percentage of your team's total damage to champions that you dealt." />
+                                {t('championDetail.combat.damageShare')}
+                                <HelperTooltip text={t('championDetail.tooltips.damageShare')} />
                              </span>
                              <span className="text-lg font-bold text-blue-400">{stats.combat.damageShare}%</span>
                         </div>
@@ -451,8 +453,8 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                         
                          <div className="flex justify-between items-center">
                              <span className="text-sm text-slate-400 flex items-center">
-                                Kill Participation
-                                <HelperTooltip text="Percentage of team kills you were involved in (Kills + Assists)." />
+                                {t('championDetail.combat.killParticipation')}
+                                <HelperTooltip text={t('championDetail.tooltips.killParticipation')} />
                              </span>
                              <span className="text-lg font-bold text-purple-400">{stats.combat.killParticipation}%</span>
                         </div>
@@ -463,16 +465,16 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                 <div className="bg-slate-900 border border-slate-800 rounded-xl p-0 overflow-hidden relative">
                     <PremiumFeatureGate 
                         isPremium={isPremium} 
-                        title="Unlock Power Spikes" 
-                        description="See when you are strongest in the game."
+                        title={t('championDetail.premium.unlockSpikes')} 
+                        description={t('championDetail.premium.spikesDesc')}
                         onUpgrade={() => getAnalysisStatus().then(setAnalysisStatus)}
                     >
                         <div className="p-5">
                             <div className="flex items-center gap-2 mb-4">
                                 <span className="text-xl">📈</span>
                                 <h3 className="font-bold text-slate-100 flex items-center">
-                                    Power Spikes
-                                    <HelperTooltip text="Win Rate based on game duration. Shows if you are better in Early, Mid, or Late game." />
+                                    {t('championDetail.sections.powerSpikes')}
+                                    <HelperTooltip text={t('championDetail.tooltips.powerSpikes')} />
                                 </h3>
                             </div>
                             <div className="flex items-end justify-between h-32 gap-2 mt-2">
@@ -521,26 +523,26 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-0 relative">
                  <PremiumFeatureGate 
                     isPremium={isPremium} 
-                    title="Unlock Matchup Analysis" 
-                    description="Deep dive into your performance against specific champions."
+                    title={t('championDetail.premium.unlockMatchup')} 
+                    description={t('championDetail.premium.matchupDesc')}
                     onUpgrade={() => getAnalysisStatus().then(setAnalysisStatus)}
                 >
                     <div className="p-6">
                         <div className="flex items-center gap-2 mb-4">
-                            <h3 className="text-xl font-bold text-slate-100">Matchup Analysis</h3>
-                            <HelperTooltip text="直近の対戦履歴から、対戦数の多い上位10体を表示しています。" />
+                            <h3 className="text-xl font-bold text-slate-100">{t('championDetail.sections.matchupAnalysis')}</h3>
+                            <HelperTooltip text={t('championDetail.tooltips.matchupNote')} />
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left text-slate-400">
                                 <thead className="text-xs text-slate-500 uppercase bg-slate-800/50">
                                     <tr>
-                                        <th className="px-4 py-3 rounded-l-lg">Opponent</th>
-                                        <th className="px-4 py-3">Games</th>
-                                        <th className="px-4 py-3">Win Rate</th>
-                                        <th className="px-4 py-3">Key Items</th>
-                                        <th className="px-4 py-3">Gold Diff</th>
-                                        <th className="px-4 py-3">CS Diff</th>
-                                        <th className="px-4 py-3 text-right rounded-r-lg">Kill Diff</th>
+                                        <th className="px-4 py-3 rounded-l-lg">{t('championDetail.matchup.opponent')}</th>
+                                        <th className="px-4 py-3">{t('championDetail.matchup.games')}</th>
+                                        <th className="px-4 py-3">{t('championDetail.matchup.winRate')}</th>
+                                        <th className="px-4 py-3">{t('championDetail.matchup.keyItems')}</th>
+                                        <th className="px-4 py-3">{t('championDetail.matchup.goldDiff')}</th>
+                                        <th className="px-4 py-3">{t('championDetail.matchup.csDiff')}</th>
+                                        <th className="px-4 py-3 text-right rounded-r-lg">{t('championDetail.matchup.killDiff')}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-800">

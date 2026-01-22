@@ -59,7 +59,7 @@ export default function LoginPage() {
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="glass-panel p-8 rounded-2xl shadow-2xl w-full max-w-sm border border-slate-800 backdrop-blur-xl relative z-10 transition-all hover:shadow-[0_0_30px_rgba(59,130,246,0.1)]">
             <div className="mb-6 text-center">
-                <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300 tracking-tighter mb-2">
+                <h1 className="text-3xl font-black text-foreground tracking-tighter mb-2">
                     LoL Coach AI
                 </h1>
                 <p className="text-slate-400 text-sm">Welcome back, Summoner.</p>

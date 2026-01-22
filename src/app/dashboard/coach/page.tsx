@@ -14,6 +14,7 @@ import { ModeSelector } from "../components/Analysis/ModeSelector";
 import { AnalysisMode } from "@/app/actions/promptUtils";
 import { useVisionAnalysis } from "@/app/Providers/VisionAnalysisProvider";
 import { useCoachUI } from "@/app/Providers/CoachUIProvider";
+import { useTranslation } from "@/contexts/LanguageContext";
 import { FaEye, FaChartBar, FaUpload, FaYoutube, FaMagic, FaClock } from "react-icons/fa"; // Added icons
 
 declare global {
@@ -33,6 +34,7 @@ function extractVideoId(url: string) {
 export default function CoachPage() {
     // Context
     const { activeSummoner, loading: summonerLoading } = useSummoner();
+    const { t } = useTranslation();
 
     // --- VISION PROVIDER INTEGRATION ---
     const { 
@@ -189,7 +191,7 @@ export default function CoachPage() {
         // Allow loading without match (Video Mode)
         const videoId = extractVideoId(youtubeUrl);
         if (!videoId) {
-            alert("Invalid YouTube URL");
+            alert(t('coachPage.controls.invalidYoutube'));
             return;
         }
 
@@ -232,11 +234,11 @@ export default function CoachPage() {
         // --- VISION MODE CHECK ---
         if (detailTab === 'MICRO') {
             if (!localFile && !youtubeUrl) {
-                alert("解析する動画を選択してください");
+                alert(t('coachPage.controls.selectVideo'));
                 return;
             }
             if (!selectedMatch || !activeSummoner?.puuid) {
-                alert("試合データが選択されていません");
+                alert(t('coachPage.list.selectMatch'));
                 return;
             }
              if (localFile) {
@@ -244,7 +246,7 @@ export default function CoachPage() {
                 await startGlobalAnalysis(localFile, selectedMatch, activeSummoner.puuid, specificQuestion, startTime);
                 refreshStatus(); // Refresh credits immediately
             } else if (youtubeUrl) {
-                alert("YouTube動画のVision解析は現在準備中です。ローカルファイルを使用してください。");
+                alert(t('coachPage.micro.youtubeNotSupported'));
                 return;
             }
             return;
@@ -278,9 +280,9 @@ export default function CoachPage() {
             
             setAsyncStatus('failed'); // Ensure status is failed
             // Show duplicate error message in a way user sees it
-            const msg = e.message || "動画の整合性チェックに失敗しました。";
+            const msg = e.message || t('coachPage.analysis.verificationFailed');
             setErrorMsg(msg);
-            alert("動画の照合に失敗しました。\n選択した試合と動画の内容が一致しません。"); // Localized Popup
+            alert(t('coachPage.analysis.verificationFailed')); // Localized Popup
             
             refreshStatus(); // Refund check triggers on server but UI refresh good here
             return; // STOP Analysis
@@ -328,20 +330,38 @@ export default function CoachPage() {
             }
         }).catch(err => {
             console.error("Launch Error", err);
-            setErrorMsg("Failed to launch analysis.");
+            setErrorMsg(t('coachPage.analysis.launchFailed'));
             setAsyncStatus('failed');
             refreshStatus();
         });
     }
 
     const seekTo = (timestampMs: number) => {
-        const seconds = timestampMs / 1000;
+        // [TIME SYNC] Apply Offset
+        // Video Time = Game Time + Offset
+        // timestampMs is Game Time (from Macro or Vision Result)
+        
+        // 1. Get Offset
+        // - Priority 1: Micro Vision Result (Most accurate for video)
+        // - Priority 2: Macro Analysis saved info (if available, currently mostly via Vision)
+        let offset = 0;
+        if (detailTab === 'MICRO' && globalVisionResult?.timeOffset) {
+            offset = globalVisionResult.timeOffset;
+        } else if (analysisData && (analysisData as any).time_offset) {
+             // Fallback if we save it to main analysis too
+            offset = (analysisData as any).time_offset;
+        }
+
+        const gameTimeSec = timestampMs / 1000;
+        const targetVideoTime = Math.max(0, gameTimeSec + offset);
+
+        console.log(`[Seek] GameTime: ${gameTimeSec}s, Offset: ${offset}s -> VideoTime: ${targetVideoTime}s`);
 
         if (videoSourceType === "YOUTUBE" && ytPlayer && ytPlayer.seekTo) {
-            ytPlayer.seekTo(seconds, true);
+            ytPlayer.seekTo(targetVideoTime, true);
             ytPlayer.playVideo();
         } else if (videoSourceType === "LOCAL" && localVideoRef.current) {
-            localVideoRef.current.currentTime = seconds;
+            localVideoRef.current.currentTime = targetVideoTime;
             localVideoRef.current.play();
         }
     }
@@ -375,10 +395,10 @@ export default function CoachPage() {
             <div className="max-w-7xl mx-auto h-[calc(100vh-100px)] flex flex-col animate-fadeIn relative">
                 <header className="mb-6 flex justify-between items-center bg-slate-900/50 p-4 rounded-xl border border-white/5 backdrop-blur-sm">
                      <div>
-                        <h1 className="text-3xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-300">
-                             AI COACH <span className="text-sm not-italic font-normal text-slate-500 ml-2 border border-slate-700 px-2 rounded">TIMELINE SYNC & VIDEO</span>
+                        <h1 className="text-3xl font-black italic tracking-tighter text-foreground">
+                             AI COACH <span className="text-sm not-italic font-normal text-slate-500 ml-2 border border-slate-700 px-2 rounded">{t('coachPage.header.subtitle')}</span>
                         </h1>
-                        <p className="text-slate-400 text-sm">Riotの試合データとリプレイ動画を同期し、AIが徹底コーチング。</p>
+                        <p className="text-slate-400 text-sm">{t('coachPage.header.description')}</p>
                      </div>
                      
                      <div className="flex items-center gap-4">
@@ -393,7 +413,7 @@ export default function CoachPage() {
                                         : 'text-slate-400 hover:text-white hover:bg-slate-700'
                                     }`}
                                 >
-                                    <FaChartBar /> マクロ (Timeline)
+                                    <FaChartBar /> {t('coachPage.tabs.macro')}
                                 </button>
                                 <button
                                     onClick={() => setDetailTab('MICRO')}
@@ -403,7 +423,7 @@ export default function CoachPage() {
                                         : 'text-slate-400 hover:text-white hover:bg-slate-700'
                                     }`}
                                 >
-                                    <FaEye /> ミクロ (Vision)
+                                    <FaEye /> {t('coachPage.tabs.micro')}
                                 </button>
                             </div>
                         )}
@@ -422,14 +442,14 @@ export default function CoachPage() {
                              <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 h-full flex items-center justify-center min-h-[300px]">
                                  <div className="flex flex-col items-center gap-4">
                                      <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
-                                     <p className="text-slate-400 font-bold animate-pulse">セッションを復元中...</p>
+                                     <p className="text-slate-400 font-bold animate-pulse">{t('coachPage.list.restoring')}</p>
                                  </div>
                              </div>
                         ) : !selectedMatch ? (
                             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
-                                <h2 className="text-xl font-bold text-slate-200 mb-4">分析する試合を選択</h2>
+                                <h2 className="text-xl font-bold text-slate-200 mb-4">{t('coachPage.list.selectMatch')}</h2>
                                 {loadingIds ? (
-                                     <div className="text-slate-500">試合履歴を読み込み中 ({activeSummoner?.summoner_name})...</div>
+                                     <div className="text-slate-500">{t('coachPage.list.loadingHistory').replace('{name}', activeSummoner?.summoner_name || '')}</div>
                                 ) : (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {matches.map(m => (
@@ -470,7 +490,7 @@ export default function CoachPage() {
                                                 </div>
                                                 <div>
                                                     <div className={`font-bold ${m.win ? "text-blue-400" : "text-red-400"}`}>
-                                                        {m.win ? "勝利 (WIN)" : "敗北 (LOSE)"}
+                                                        {m.win ? t('coachPage.list.win') : t('coachPage.list.lose')}
                                                     </div>
                                                     <div className="text-sm text-slate-400">
                                                         {m.championName} • {m.kda} KDA
@@ -479,7 +499,7 @@ export default function CoachPage() {
                                                         {new Date(m.timestamp).toLocaleDateString()}
                                                         {analyzedMatchIds.includes(m.matchId) && (
                                                             <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-500/20 text-green-400 border border-green-500/30">
-                                                                MACRO済み
+                                                                {t('coachPage.list.macroDone')}
                                                             </span>
                                                         )}
                                                     </div>
@@ -510,7 +530,7 @@ export default function CoachPage() {
                                                     ? "bg-blue-500/20 text-blue-400 border-blue-500/30" 
                                                     : "bg-red-500/20 text-red-400 border-red-500/30"
                                                 }`}>
-                                                    {selectedMatch.win ? "VICTORY" : "DEFEAT"}
+                                                    {selectedMatch.win ? t('coachPage.list.win') : t('coachPage.list.lose')}
                                                 </span>
                                             </div>
                                             <div className="flex items-center gap-3 text-xs text-slate-400 font-medium">
@@ -533,7 +553,7 @@ export default function CoachPage() {
                                         }}
                                         className="text-slate-400 hover:text-white font-bold text-sm bg-slate-800 px-3 py-1.5 rounded border border-slate-700 hover:border-slate-500 transition shadow-sm flex items-center gap-1"
                                     >
-                                        <span>←</span> 戻る
+                                        <span>←</span> {t('coachPage.controls.back')}
                                     </button>
                                     <div className="h-6 w-px bg-slate-700 mx-2"></div>
                                     
@@ -559,7 +579,7 @@ export default function CoachPage() {
                                                 <span className="text-red-500 text-lg"><FaYoutube /></span>
                                                 <input 
                                                     type="text" 
-                                                    placeholder="YouTube URL..." 
+                                                    placeholder={t('coachPage.controls.youtubePlaceholder')} 
                                                     className="bg-transparent text-white w-full transition-all outline-none text-sm py-2"
                                                     value={youtubeUrl}
                                                     onChange={(e) => setYoutubeUrl(e.target.value)}
@@ -569,14 +589,14 @@ export default function CoachPage() {
                                                     disabled={!youtubeUrl}
                                                     className="text-xs bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded text-white whitespace-nowrap"
                                                 >
-                                                    読込
+                                                    {t('coachPage.controls.load')}
                                                 </button>
                                             </div>
                                         ) : (
                                             <div className="flex flex-col gap-1 w-full max-w-sm">
                                                 <label className={`flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border ${!videoPreviewUrl && analysisData ? 'border-amber-500/50' : 'border-slate-700'} px-3 py-1.5 rounded cursor-pointer transition whitespace-nowrap overflow-hidden`}>
                                                     <span className="text-lg"><FaUpload /></span>
-                                                    <span className="text-sm font-bold truncate">{videoPreviewUrl ? "動画選択済み" : "動画ファイルを選択"}</span>
+                                                    <span className="text-sm font-bold truncate">{videoPreviewUrl ? t('coachPage.controls.fileSelected') : t('coachPage.controls.selectFile')}</span>
                                                     <input 
                                                         type="file" 
                                                         accept="video/*" 
@@ -594,10 +614,10 @@ export default function CoachPage() {
                                      <div className="bg-slate-900 border border-purple-500/30 p-4 rounded-xl relative overflow-hidden">
                                         <div className="absolute -top-10 -right-10 w-40 h-40 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
                                         <h3 className="font-bold text-purple-300 mb-2 flex items-center gap-2">
-                                            <FaMagic /> ミクロ解析 (Vision Analysis)
+                                            <FaMagic /> {t('coachPage.micro.title')}
                                         </h3>
                                         <p className="text-xs text-slate-400 mb-4">
-                                            動画の指定位置から30秒間を解析し、キル/デスや集団戦の評価を行います。
+                                            {t('coachPage.micro.description')}
                                         </p>
                                         
                                         {/* Local Video Preview & Seek UI */}
@@ -611,9 +631,9 @@ export default function CoachPage() {
                                                 />
                                                 <div className="flex items-center justify-between">
                                                     <div className="text-xs text-slate-400">
-                                                        <p>ファイル: {localFile.name}</p>
+                                                        <p>{t('coachPage.micro.fileInfo').replace('{name}', localFile.name)}</p>
                                                         <p className="text-purple-400 font-bold mt-1">
-                                                            解析開始位置: {startTime.toFixed(1)}秒 〜 {(startTime + 30).toFixed(1)}秒
+                                                            {t('coachPage.micro.rangeInfo').replace('{start}', startTime.toFixed(1)).replace('{end}', (startTime + 30).toFixed(1))}
                                                         </p>
                                                     </div>
                                                     <button
@@ -625,7 +645,7 @@ export default function CoachPage() {
                                                         }}
                                                         className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded flex items-center gap-1 transition"
                                                     >
-                                                        <FaClock /> この位置から30秒を解析
+                                                        <FaClock /> {t('coachPage.micro.analyzeRange')}
                                                     </button>
                                                 </div>
                                             </div>
@@ -634,7 +654,7 @@ export default function CoachPage() {
                                         {/* Status & Results */}
                                         {!localFile && !youtubeUrl ? (
                                              <div className="p-8 text-center border-2 border-dashed border-slate-700 rounded-lg bg-slate-800/50">
-                                                <p className="text-slate-400 text-sm">解析する動画を選択してください（Local File推奨）</p>
+                                                <p className="text-slate-400 text-sm">{t('coachPage.micro.noVideo')}</p>
                                              </div>
                                         ) : (
                                             localFile && (
@@ -642,7 +662,7 @@ export default function CoachPage() {
                                                     {isVisionAnalyzing && (
                                                         <div className="mt-2">
                                                             <div className="flex justify-between text-xs text-slate-400 mb-1">
-                                                                <span>Processing...</span>
+                                                                <span>{t('coachPage.micro.processing')}</span>
                                                                 <span>{Math.round(visionProgress)}%</span>
                                                             </div>
                                                             <div className="w-full bg-slate-800 rounded-full h-2">
@@ -654,7 +674,7 @@ export default function CoachPage() {
                                                     {/* Inline Vision Error display kept for non-mismatch errors */}
                                                     {visionError && !visionError.includes("MATCH_INTEGRITY_ERROR:") && (
                                                         <div className="mt-2 p-2 bg-red-900/20 text-red-300 text-xs rounded border border-red-500/20 flex justify-between items-center">
-                                                            <span>{visionError}</span>
+                                                            <span>{t('coachPage.micro.visionError')}: {visionError}</span>
                                                             <button onClick={clearVisionError} className="text-white hover:text-red-200">✕</button>
                                                         </div>
                                                     )}
@@ -668,16 +688,16 @@ export default function CoachPage() {
                                         {globalVisionResult && (
                                             <div className="mt-4 space-y-4 animate-fadeIn">
                                                 <div className="bg-slate-950 p-4 rounded border border-slate-700">
-                                                    <h4 className="font-bold text-white mb-2 border-b border-slate-800 pb-2">解析結果レポート</h4>
+                                                    <h4 className="font-bold text-white mb-2 border-b border-slate-800 pb-2">{t('coachPage.micro.reportTitle')}</h4>
                                                     <div className="space-y-4">
                                                         {/* Summary */}
                                                         <div>
-                                                           <h5 className="text-xs font-bold text-purple-400 mb-1">サマリー</h5>
+                                                           <h5 className="text-xs font-bold text-purple-400 mb-1">{t('coachPage.micro.summary')}</h5>
                                                            <p className="text-sm text-slate-300 leading-relaxed">{globalVisionResult.summary}</p>
                                                         </div>
                                                         {/* Step-by-Step Advice from Mistakes */}
                                                         <div>
-                                                            <h5 className="text-xs font-bold text-red-400 mb-1">検出された課題</h5>
+                                                            <h5 className="text-xs font-bold text-red-400 mb-1">{t('coachPage.micro.mistakes')}</h5>
                                                             <ul className="space-y-2">
                                                                 {globalVisionResult.mistakes.map((mk, idx) => (
                                                                     <li key={idx} className="text-sm text-slate-300 bg-slate-900/50 p-2 rounded border-l-2 border-red-500">
@@ -688,7 +708,7 @@ export default function CoachPage() {
                                                             </ul>
                                                             {globalVisionResult.finalAdvice && (
                                                                 <div className="mt-4 p-3 bg-blue-900/20 border border-blue-500/30 rounded">
-                                                                    <h5 className="text-xs font-bold text-blue-400 mb-1">総評</h5>
+                                                                    <h5 className="text-xs font-bold text-blue-400 mb-1">{t('coachPage.micro.finalAdvice')}</h5>
                                                                     <p className="text-sm text-slate-300">{globalVisionResult.finalAdvice}</p>
                                                                 </div>
                                                             )}
@@ -699,7 +719,7 @@ export default function CoachPage() {
                                                             onClick={runAnalysis} // Re-run
                                                             className="text-xs text-slate-400 hover:text-white underline"
                                                          >
-                                                             別の場面を解析する
+                                                             {t('coachPage.micro.analyzeAnother')}
                                                          </button>
                                                     </div>
                                                 </div>
@@ -713,7 +733,7 @@ export default function CoachPage() {
                                     <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
                                         <div className="flex flex-col gap-4">
                                             <div className="w-full">
-                                                <label className="text-xs text-slate-400 font-bold block mb-2">分析モード (Analysis Mode)</label>
+                                                <label className="text-xs text-slate-400 font-bold block mb-2">{t('coachPage.macro.modeLabel')}</label>
                                                 <ModeSelector 
                                                     selectedMode={analysisMode} 
                                                     onSelect={setAnalysisMode} 
@@ -724,20 +744,20 @@ export default function CoachPage() {
                                             <div className="flex flex-col md:flex-row gap-4">
                                                 <div className="flex-1 grid grid-cols-2 gap-4">
                                                     <div className="col-span-2 md:col-span-1">
-                                                        <label className="text-xs text-slate-400 font-bold block mb-1">時間 (任意)</label>
+                                                        <label className="text-xs text-slate-400 font-bold block mb-1">{t('coachPage.macro.timeLabel')}</label>
                                                         <input 
                                                             type="text" 
-                                                            placeholder="例: 12:30" 
+                                                            placeholder={t('coachPage.macro.timePlaceholder')} 
                                                             className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-blue-500 outline-none"
                                                             value={focusTime}
                                                             onChange={(e) => setFocusTime(e.target.value)}
                                                         />
                                                     </div>
                                                     <div className="col-span-2 md:col-span-1">
-                                                        <label className="text-xs text-slate-400 font-bold block mb-1">具体的な悩み・質問 (任意)</label>
+                                                        <label className="text-xs text-slate-400 font-bold block mb-1">{t('coachPage.macro.questionLabel')}</label>
                                                         <input 
                                                             type="text"
-                                                            placeholder="例: この場面の立ち位置はどうだった？"
+                                                            placeholder={t('coachPage.macro.questionPlaceholder')}
                                                             className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-blue-500 outline-none"
                                                             value={specificQuestion}
                                                             onChange={(e) => setSpecificQuestion(e.target.value)}
@@ -759,7 +779,7 @@ export default function CoachPage() {
                                                     style={{ width: `${detailTab === 'MICRO' ? visionProgress : progress}%` }}
                                                 ></div>
                                                 <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white z-10">
-                                                    Analyzing... {Math.round(detailTab === 'MICRO' ? visionProgress : progress)}%
+                                                    {t('coachPage.analysis.analyzing').replace('{progress}', Math.round(detailTab === 'MICRO' ? visionProgress : progress).toString())}
                                                 </div>
                                             </div>
 
@@ -801,11 +821,11 @@ export default function CoachPage() {
                                                         `}
                                                     >
                                                         {isPremium ? (
-                                                            <span>🧠 {detailTab === 'MICRO' ? 'Vision分析開始' : '分析開始'}</span>
+                                                            <span>🧠 {detailTab === 'MICRO' ? `${t('coachPage.analysis.analyzeButton')}` : `${t('coachPage.analysis.analyzeButton')}`}</span>
                                                         ) : hasCredits ? (
-                                                            <span>🎫 分析 (残: {credits}/3)</span>
+                                                            <span>{t('coachPage.analysis.creditsRemaining').replace('{credits}', credits.toString())}</span>
                                                         ) : (
-                                                            <span>🔒 PREMIUMで分析</span>
+                                                            <span>{t('statusBadge.upgradeToPremium')}</span>
                                                         )}
                                                     </button>
                                                 </div>
@@ -823,12 +843,12 @@ export default function CoachPage() {
                                             </div>
                                             <div className="flex-1">
                                                 <h3 className="text-lg font-bold text-red-100 flex items-center gap-2">
-                                                    動画の照合に失敗しました
+                                                    {t('coachPage.results.matchVerificationError')}
                                                     <span className="text-[10px] bg-red-500/20 text-red-300 px-2 py-0.5 rounded uppercase tracking-wider border border-red-500/20">Error</span>
                                                 </h3>
                                                 <p className="text-red-200/70 text-sm mt-1 mb-3">
-                                                    選択された試合データと動画の内容が一致しません。<br/>
-                                                    <span className="text-xs opacity-70">選択した試合: {selectedMatch?.championName} (KDA: {selectedMatch?.kda})</span>
+                                                    {t('coachPage.results.matchVerificationErrorDetail')}<br/>
+                                                    <span className="text-xs opacity-70">{t('coachPage.results.selectedMatch').replace('{name}', selectedMatch?.championName || '').replace('{kda}', selectedMatch?.kda || '')}</span>
                                                 </p>
                                                 
                                                 {/* REMOVED DETAILS AS REQUESTED */}
@@ -843,7 +863,7 @@ export default function CoachPage() {
                                                     }}
                                                     className="mt-3 text-xs text-red-400 hover:text-red-300 underline underline-offset-4 decoration-red-500/30 hover:decoration-red-400 transition-colors"
                                                 >
-                                                    エラーを閉じる
+                                                    {t('coachPage.results.closeError')}
                                                 </button>
                                             </div>
                                         </div>
@@ -868,7 +888,7 @@ export default function CoachPage() {
                                     {!videoReady && (
                                         <div className="absolute inset-0 flex items-center justify-center text-slate-500 flex-col gap-2 pointer-events-none bg-slate-950/80 z-10">
                                             <span className="text-4xl">📺</span>
-                                            <span>動画ファイルを選択するか、YouTube URLを入力してください</span>
+                                            <span>{t('coachPage.results.placeholder')}</span>
                                         </div>
                                     )}
                                 </div>
@@ -879,18 +899,18 @@ export default function CoachPage() {
                                     <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700 rounded-xl p-5 shadow-lg relative overflow-hidden animate-in fade-in zoom-in-95 duration-500">
                                         <div className="absolute top-0 right-0 p-3 opacity-10 text-6xl">⚖️</div>
                                         <h3 className="text-lg font-black text-white mb-4 flex items-center gap-2">
-                                            <span className="text-amber-400">💡</span> AI ビルド診断
+                                            <span className="text-amber-400">💡</span> {t('coachPage.results.buildTitle')}
                                         </h3>
                                         
                                         <div className="flex flex-col md:flex-row gap-8 mb-6">
                                             <div className="bg-slate-950/50 p-3 rounded border border-slate-700 flex-1">
-                                             <div className="text-[10px] font-bold text-slate-400 mb-2 uppercase">あなたのビルド</div>
+                                             <div className="text-[10px] font-bold text-slate-400 mb-2 uppercase">{t('coachPage.results.yourBuild')}</div>
                                              <div className="flex flex-wrap gap-1">
                                                  {analysisData.buildRecommendation.userItems.map((item, idx) => (
                                                      <BuildItemCard key={idx} item={item} />
                                                  ))}
                                                  {analysisData.buildRecommendation.userItems.length === 0 && (
-                                                      <span className="text-xs text-slate-500">No items found</span>
+                                                      <span className="text-xs text-slate-500">{t('coachPage.results.noItems')}</span>
                                                  )}
                                              </div>
                                          </div>
@@ -898,7 +918,7 @@ export default function CoachPage() {
                                          {analysisData.buildRecommendation.opponentItems && (
                                              <div className="bg-red-900/10 p-3 rounded border border-red-500/30 relative overflow-hidden flex-1">
                                                  <div className="text-[10px] font-bold text-red-300 mb-2 uppercase flex justify-between">
-                                                     <span>対面のビルド (VS)</span>
+                                                     <span>{t('coachPage.results.opponentBuild')}</span>
                                                      <span className="opacity-70">{analysisData.buildRecommendation.opponentChampionName}</span>
                                                  </div>
                                                  <div className="flex flex-wrap gap-1 relative z-10">
@@ -906,7 +926,7 @@ export default function CoachPage() {
                                                          <BuildItemCard key={idx} item={item} />
                                                      ))}
                                                      {analysisData.buildRecommendation.opponentItems.length === 0 && (
-                                                          <span className="text-xs text-red-500/50">Unknown</span>
+                                                          <span className="text-xs text-red-500/50">{t('coachPage.results.unknown')}</span>
                                                      )}
                                                  </div>
                                              </div>
@@ -917,7 +937,7 @@ export default function CoachPage() {
                                             </div>
 
                                             <div className="flex-1 bg-purple-900/10 p-4 rounded border border-purple-500/30">
-                                                <div className="text-xs font-bold text-purple-300 mb-2 uppercase">AI推奨ビルド (Recommended)</div>
+                                                <div className="text-xs font-bold text-purple-300 mb-2 uppercase">{t('coachPage.results.recommendedBuild')}</div>
                                                 <div className="flex flex-wrap gap-2">
                                                     {analysisData.buildRecommendation.recommendedItems.map((item, idx) => (
                                                         <BuildItemCard key={idx} item={item} />
@@ -935,7 +955,7 @@ export default function CoachPage() {
                                 {/* MICRO TAB RESULTS (Global Vision Result) */}
                                 {detailTab === 'MICRO' && globalVisionResult && (
                                     <div className="mt-4 bg-slate-900 border border-green-500/30 p-4 rounded-xl animate-in slide-in-from-bottom-5">
-                                        <h3 className="text-lg font-bold text-green-400 mb-2">解析完了 (Vision Result)</h3>
+                                        <h3 className="text-lg font-bold text-green-400 mb-2">{t('coachPage.results.analysisCompleted')}</h3>
                                         <pre className="text-xs text-slate-300 whitespace-pre-wrap font-mono bg-black p-4 rounded overflow-auto max-h-96">
                                             {JSON.stringify(globalVisionResult, null, 2)}
                                         </pre>
@@ -957,22 +977,64 @@ export default function CoachPage() {
                                  <div className="flex items-center justify-between px-2">
                                      <div className="flex items-center gap-2">
                                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]"></div>
-                                         <span className="text-sm font-bold text-green-400">分析完了 (Analysis Completed)</span>
+                                         <span className="text-sm font-bold text-green-400">{t('coachPage.results.analysisCompleted')}</span>
                                      </div>
                                      <span className="text-[10px] text-slate-500 border border-slate-800 rounded px-2 py-0.5 bg-slate-900/50">
-                                         ※過去の分析結果を表示中
+                                         {t('coachPage.results.showingPastResults')}
                                      </span>
                                  </div>
                                  {/* 1. Ad (Sponsored) */}
                                  <div className="w-full bg-slate-900/50 p-4 rounded-xl border border-slate-800">
-                                     <div className="text-[10px] font-bold text-slate-500 mb-2 text-center uppercase tracking-widest">SPONSORED</div>
+                                     <div className="text-[10px] font-bold text-slate-500 mb-2 text-center uppercase tracking-widest">{t('coachPage.results.sponsored')}</div>
                                      <AdSenseBanner slotId="1234567890" format="rectangle" />
                                  </div>
+
+                                  
+                                  {/* 2. Summary Analysis */}
+                                  {analysisData.summaryAnalysis && (
+                                    <div className="bg-gradient-to-br from-slate-900 to-slate-800 border-2 border-amber-500/50 rounded-xl p-5 shadow-xl">
+                                      <h3 className="font-bold text-amber-400 text-sm uppercase tracking-wider mb-4 flex items-center gap-2">
+                                        {t('coachPage.results.summaryAnalysis.title')}
+                                      </h3>
+                                      
+                                      {/* Priority Focus Badge */}
+                                      <div className="flex items-center gap-2 mb-4">
+                                        <span className="text-xs text-slate-400">{t('coachPage.results.summaryAnalysis.priorityFocus')}:</span>
+                                        <span className="px-3 py-1 bg-amber-500/20 text-amber-300 text-sm font-bold rounded-full border border-amber-500/30">
+                                          {analysisData.summaryAnalysis.priorityFocus}
+                                        </span>
+                                      </div>
+                                      
+                                      {/* Root Cause */}
+                                      <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                                        <div className="text-xs text-red-400 font-bold mb-1">{t('coachPage.results.summaryAnalysis.rootCause')}</div>
+                                        <p className="text-sm text-slate-200">{analysisData.summaryAnalysis.rootCause}</p>
+                                      </div>
+                                      
+                                      {/* Action Plan */}
+                                      <div className="mb-4">
+                                        <div className="text-xs text-green-400 font-bold mb-2">{t('coachPage.results.summaryAnalysis.actionPlan')}</div>
+                                        <ol className="space-y-2">
+                                          {analysisData.summaryAnalysis.actionPlan?.map((action: string, idx: number) => (
+                                            <li key={idx} className="flex items-start gap-2 text-sm text-slate-300">
+                                              <span className="flex-shrink-0 w-5 h-5 bg-green-500/20 text-green-400 text-xs font-bold rounded-full flex items-center justify-center">{idx + 1}</span>
+                                              <span>{action}</span>
+                                            </li>
+                                          ))}
+                                        </ol>
+                                      </div>
+                                      
+                                      {/* Summary Message */}
+                                      <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                                        <p className="text-sm text-slate-300 leading-relaxed">{analysisData.summaryAnalysis.message}</p>
+                                      </div>
+                                    </div>
+                                  )}
 
                                  {/* 2. Insights List */}
                                  <div className="flex flex-col gap-4">
                                      <h3 className="font-bold text-slate-400 text-sm uppercase tracking-wider mb-2">
-                                         🔍 分析レポート (クリックでジャンプ)
+                                         {t('coachPage.results.insightReport')}
                                      </h3>
                                      {analysisData.insights.map((insight, idx) => (
                                          <div 

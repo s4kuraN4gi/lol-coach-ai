@@ -21,6 +21,7 @@ import { useAuth } from "../Providers/AuthProvider";
 import { type MatchStatsDTO, type BasicStatsDTO } from "@/app/actions/stats";
 import DashboardSkeleton from "./components/skeletons/DashboardSkeleton";
 import DashboardUpdater from "./components/DashboardUpdater";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 type DashboardStatsDTO = MatchStatsDTO & BasicStatsDTO;
 
@@ -31,6 +32,7 @@ export default function DashboardPage() {
     const [currentQueue, setCurrentQueue] = useState<"SOLO" | "FLEX">("SOLO");
     const [error, setError] = useState<string | null>(null);
     const [debugLogs, setDebugLogs] = useState<string[]>([]);
+    const { t } = useTranslation();
     
     // ... (rest of logic) ...
 
@@ -58,7 +60,7 @@ export default function DashboardPage() {
         
         if (!puuid) {
             if (isMounted.current) {
-                setError("アカウント情報が不完全です（PUUID欠落）。アカウントを再連携してください。");
+                setError(t('dashboard.errors.puuidMissing'));
                 setIsFetching(false);
             }
             return;
@@ -85,7 +87,7 @@ export default function DashboardPage() {
         } catch (error: any) {
             console.error("Failed to fetch dashboard stats", error);
             if (isMounted.current) {
-                setError("データの読み込みに失敗しました。");
+                setError(t('dashboard.errors.loadFailed'));
                 setDebugLogs(prev => [...prev, `[Client] Error: ${error.message}`]);
             }
         }
@@ -135,10 +137,10 @@ export default function DashboardPage() {
             <DashboardLayout>
                 <div className="flex flex-col items-center justify-center p-12 text-center h-[60vh]">
                     <div className="bg-slate-800/50 p-8 rounded-2xl border border-slate-700 max-w-lg w-full">
-                        <div className="text-4xl mb-4">📭</div>
-                        <h2 className="text-xl font-bold text-white mb-2">対戦データが見つかりませんでした</h2>
+                        <div className="text-4xl mb-4">📬</div>
+                        <h2 className="text-xl font-bold text-white mb-2">{t('dashboard.noData.title')}</h2>
                         <p className="text-slate-400 mb-6">
-                            連携されたアカウントの直近の対戦履歴（過去10戦）が存在しないか、キャッシュされていません。
+                            {t('dashboard.noData.description')}
                         </p>
                         
                          <button 
@@ -146,7 +148,7 @@ export default function DashboardPage() {
                             disabled={isFetching}
                             className="bg-primary-500 hover:bg-primary-600 px-6 py-2 rounded-lg text-white font-bold transition-colors w-full"
                         >
-                            {isFetching ? "更新中..." : "データを取得 (API)"}
+                            {isFetching ? t('dashboard.refreshing') : t('dashboard.noData.button')}
                         </button>
                     </div>
                 </div>
@@ -159,9 +161,9 @@ export default function DashboardPage() {
         return (
             <DashboardLayout>
                 <div className="text-center py-20">
-                    <h2 className="text-xl font-bold mb-4">サモナーアカウントが連携されていません</h2>
+                    <h2 className="text-xl font-bold mb-4">{t('dashboard.noAccount.title')}</h2>
                     <button onClick={() => router.push('/account')} className="bg-primary-500 hover:bg-primary-600 px-6 py-2 rounded-lg">
-                        アカウント連携へ
+                        {t('dashboard.noAccount.button')}
                     </button>
                 </div>
             </DashboardLayout>
@@ -175,8 +177,8 @@ export default function DashboardPage() {
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div>
-                <h1 className="text-2xl font-bold font-display uppercase tracking-wider text-white">Dashboard</h1>
-                <p className="text-slate-400 text-sm">Your Growth Center</p>
+                <h1 className="text-2xl font-bold font-display uppercase tracking-wider text-white">{t('dashboard.title')}</h1>
+                <p className="text-slate-400 text-sm">{t('dashboard.subtitle')}</p>
             </div>
             <div className="flex justify-end">
                 <button 
@@ -186,10 +188,10 @@ export default function DashboardPage() {
                 >
                     {isFetching ? (
                         <>
-                            <span className="w-2 h-2 bg-blue-500 rounded-full animate-ping"></span> 更新中...
+                            <span className="w-2 h-2 bg-blue-500 rounded-full animate-ping"></span> {t('dashboard.refreshing')}
                         </>
                     ) : (
-                        "↻ データを更新"
+                        `↻ ${t('dashboard.refresh')}`
                     )}
                 </button>
             </div>

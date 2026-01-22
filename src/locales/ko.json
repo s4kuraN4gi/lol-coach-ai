@@ -1,0 +1,550 @@
+{
+  "common": {
+    "backToOverview": "← 개요로 돌아가기",
+    "backToList": "← 목록으로 돌아가기",
+    "readMore": "가이드 보기 →",
+    "goldReward": "획득 골드",
+    "priority": "우선순위",
+    "buffEffect": "( + 버프 효과 )"
+  },
+  "footer": {
+    "terms": "이용약관",
+    "privacy": "개인정보처리방침",
+    "contact": "문의하기",
+    "riotDisclaimer": "LoL Coach AI는 Riot Games의 승인을 받지 않았으며, Riot Games 또는 Riot Games 재산의 제작 또는 관리에 공식적으로 관여하는 사람의 견해나 의견을 반영하지 않습니다. Riot Games 및 모든 관련 자산은 Riot Games, Inc.의 상표 또는 등록 상표입니다.",
+    "copyright": "© {year} LoL Coach AI. All rights reserved."
+  },
+  "sidebar": {
+    "nav": {
+      "dashboard": "대시보드",
+      "stats": "전적 기록",
+      "economy": "골드 경제학",
+      "coach": "AI 코치",
+      "analysis": "소환사 분석",
+      "account": "계정"
+    },
+    "footer": {
+      "terms": "이용약관",
+      "privacy": "개인정보처리방침",
+      "legal": "법적 고지"
+    },
+    "logout": "로그아웃"
+  },
+  "dashboard": {
+    "title": "대시보드",
+    "subtitle": "당신의 성장 센터",
+    "refresh": "데이터 새로고침",
+    "refreshing": "새로고침 중...",
+    "noData": {
+      "title": "매치 데이터를 찾을 수 없습니다",
+      "description": "연결된 계정의 최근 매치 기록(최근 10게임)이 없거나 캐시되지 않았습니다.",
+      "button": "데이터 가져오기 (API)"
+    },
+    "noAccount": {
+      "title": "소환사 계정이 연결되지 않았습니다",
+      "button": "계정 연결"
+    },
+    "errors": {
+      "puuidMissing": "계정 정보가 불완전합니다(PUUID 누락). 계정을 다시 연결해주세요.",
+      "loadFailed": "데이터 로드에 실패했습니다."
+    }
+  },
+  "championsPage": {
+    "backToDashboard": "대시보드로 돌아가기",
+    "title": "전체 챔피언",
+    "subtitle": "플레이한 모든 챔피언의 성능 통계",
+    "searchPlaceholder": "챔피언 검색...",
+    "sortOptions": {
+      "games": "플레이 수",
+      "winRate": "승률",
+      "kda": "KDA",
+      "name": "이름"
+    },
+    "games": "게임",
+    "noSummoner": "소환사가 선택되지 않았습니다.",
+    "noChampions": "챔피언을 찾을 수 없습니다."
+  },
+  "statsPage": {
+    "title": "상세 전적 & 기록",
+    "noAccountTitle": "계정 미연결",
+    "noAccountDesc": "설정에서 라이엇 계정을 연결하여 전적을 확인하세요.",
+    "goToSettings": "설정으로 이동",
+    "errorTitle": "전적 로딩 오류",
+    "tryRefreshing": "새로고침 시도",
+    "unlockTitle": "고급 통계 잠금 해제",
+    "unlockDesc": "승률, KDA 트렌드, 성능 지표에 대한 심층 분석을 얻으세요.",
+    "stats": {
+      "winRate": "승률",
+      "kdaRatio": "KDA 비율",
+      "avgPerformance": "평균 성능",
+      "csPerMin": "분당 CS",
+      "visionScore": "시야 점수",
+      "top15": "상위 15%",
+      "excellent": "우수"
+    },
+    "matchGallery": "매치 갤러리",
+    "filters": {
+      "all": "전체",
+      "solo": "솔로",
+      "flex": "자유",
+      "normal": "일반",
+      "aram": "칼바람"
+    },
+    "victory": "승리",
+    "defeat": "패배",
+    "analyze": "분석 →",
+    "noMatches": "이 필터에 해당하는 매치가 없습니다."
+  },
+  "championDetail": {
+    "backToDashboard": "대시보드로 돌아가기",
+    "noData": "이 챔피언의 최근 데이터를 찾을 수 없습니다.",
+    "games": "게임",
+    "ready": "✓ 준비 완료",
+    "loading": "로딩 중",
+    "stats": {
+      "csPerMin": "분당 CS",
+      "goldDiff": "골드 차이"
+    },
+    "sections": {
+      "laningPhase": "라인전",
+      "combatIdentity": "전투 스타일",
+      "powerSpikes": "파워 스파이크",
+      "matchupAnalysis": "매치업 분석"
+    },
+    "laning": {
+      "csDiff10": "CS 차이 @ 10분",
+      "goldDiff": "골드 차이",
+      "xpDiff": "경험치 차이"
+    },
+    "combat": {
+      "damageShare": "데미지 비율",
+      "killParticipation": "킬 관여율"
+    },
+    "matchup": {
+      "opponent": "상대",
+      "games": "게임",
+      "winRate": "승률",
+      "keyItems": "핵심 아이템",
+      "goldDiff": "골드 차이",
+      "csDiff": "CS 차이",
+      "killDiff": "킬 차이"
+    },
+    "tooltips": {
+      "csDiff10": "10분 시점의 라인 상대와의 CS(미니언) 차이",
+      "goldDiff": "게임당 평균 골드 차이",
+      "xpDiff": "상대와의 경험치 차이. 높을수록 레벨 우위",
+      "damageShare": "팀 전체 챔피언 데미지 중 당신이 기여한 비율",
+      "killParticipation": "팀 킬에 관여한 비율(킬+어시스트)",
+      "powerSpikes": "게임 시간별 승률. 초반/중반/후반 중 언제 강한지 보여줍니다",
+      "matchupNote": "최근 매치 기록에서 대전 횟수가 많은 상위 10명을 표시합니다"
+    },
+    "premium": {
+      "unlockSpikes": "파워 스파이크 잠금 해제",
+      "spikesDesc": "게임에서 언제가장 강한지 확인하세요.",
+      "unlockMatchup": "매치업 분석 잠금 해제",
+      "matchupDesc": "특정 챔피언에 대한 성능을 심층 분석합니다."
+    }
+  },
+  "matchDetail": {
+    "errorTitle": "매치 로딩 실패",
+    "returnToDashboard": "대시보드로 돌아가기",
+    "backToStats": "← 전적으로 돌아가기",
+    "matchReport": "매치 리포트",
+    "aiBeta": "AI BETA",
+    "victory": "승리",
+    "defeat": "패배",
+    "patch": "패치",
+    "teamsOverview": "팀 개요",
+    "blueTeam": "블루팀",
+    "redTeam": "레드팀",
+    "trinket": "장신구",
+    "aiCoaching": {
+      "title": "AI 코칭",
+      "interactive": "대화형",
+      "matchAnalysisTitle": "AI 매치 분석",
+      "description": "이 매치({championName})에 대해 구체적으로 상담합니다. 빌드, 운영, 패인에 대해 리온 코치에게 자세히 물어볼 수 있습니다.",
+      "preparing": "준비 중...",
+      "analyzeButton": "매치 분석"
+    }
+  },
+  "accountPage": {
+    "title": "계정 설정",
+    "notice": "알림",
+    "success": "성공",
+    "newSummonerLink": "새 소환사 연결",
+    "inputDescription": "라이엇 ID를 입력하여 계정 소유권을 확인합니다.",
+    "inputPlaceholder": "라이엇 ID 입력 (예: Hide on bush#KR1)",
+    "search": "검색",
+    "verification": {
+      "title": "본인 확인 (아이콘 인증)",
+      "instruction": "LoL 클라이언트에서 프로필 아이콘을 오른쪽 지정 아이콘으로 변경하세요.",
+      "current": "현재",
+      "target": "대상",
+      "changeToThis": "이것으로 변경!",
+      "timeLimit": "제한 시간",
+      "verifyWithin": "10분 이내에 인증하세요.",
+      "failedAttempts": "실패 횟수"
+    },
+    "buttons": {
+      "cancel": "취소",
+      "checking": "확인 중...",
+      "iChangedIt": "변경했습니다!",
+      "switch": "전환",
+      "remove": "삭제",
+      "goToDashboard": "대시보드로 이동"
+    },
+    "linkedAccounts": "연결된 계정",
+    "noAccountsLinked": "아직 연결된 계정이 없습니다.",
+    "active": "사용 중",
+    "messages": {
+      "formatError": "라이엇 ID는 'Name#Tag' 형식으로 입력하세요 (예: Hide on bush#KR1)",
+      "error": "오류: ",
+      "verificationSuccess": "인증 성공! 계정이 추가되었습니다.",
+      "unexpectedError": "예기치 않은 오류가 발생했습니다",
+      "switchFailed": "전환 실패: ",
+      "deleteFailed": "삭제 실패: ",
+      "deleteConfirm": "{name}을(를) 삭제하시겠습니까?"
+    }
+  },
+  "chatPage": {
+    "premiumTitle": "AI 코칭 채팅",
+    "premiumDesc": "고급 AI 코치와 채팅하여 맞춤형 조언, 빌드 상담, 게임 지식 향상을 받으세요.",
+    "history": "기록",
+    "clearAll": "전체 삭제",
+    "newChat": "새 채팅",
+    "newChatTitle": "새 채팅",
+    "noHistory": "기록이 없습니다.",
+    "historyLoadFailed": "채팅 기록을 불러오는 데 실패했습니다.",
+    "deleteConfirm": "정말 삭제하시겠습니까?",
+    "deleteSessionConfirm": "\"{title}\"을(를) 삭제하시겠습니까?",
+    "you": "나",
+    "aiCoach": "AI 코치",
+    "aiThinking": "AI 생각 중...",
+    "coachTitle": "LOLE COACH AI",
+    "selectOrStart": "채팅 기록을 선택하거나 새 대화를 시작하세요.",
+    "inputPlaceholder": "AI 코치에게 무엇이든 물어보세요...",
+    "send": "전송",
+    "consulting": {
+      "on": "상담 중: {championName}",
+      "win": "승리",
+      "loss": "패배",
+      "stopContext": "컨텍스트 해제"
+    },
+    "matchConsultPrompt": "이 매치({championName} {kda})에서 개선할 점을 알려주세요.",
+    "messages": {
+      "aiError": "AI 오류: ",
+      "noResponse": "AI로부터 응답이 없습니다.",
+      "connectionFailed": "AI와 통신에 실패했습니다."
+    }
+  },
+  "premium": {
+    "featureGate": {
+      "title": "프리미엄 기능",
+      "defaultDesc": "이 기능을 사용하려면 프리미엄 플랜으로 업그레이드해야 합니다.",
+      "unlockNow": "지금 잠금 해제",
+      "checkoutFailed": "결제를 시작하지 못했습니다.",
+      "error": "오류가 발생했습니다."
+    },
+    "promoCard": {
+      "title": "프리미엄 잠금 해제",
+      "description": "AI 코치의 무제한 분석, 상세 데이터 잠금 해제, 우선 처리 등 실력 향상을 위한 모든 기능을 해제하세요.",
+      "upgradeNow": "지금 업그레이드",
+      "processing": "처리 중...",
+      "activeMember": "활성 멤버 💎",
+      "activeUntil": "유효 기간: {date}",
+      "manageSubscription": "구독 관리",
+      "restoreBilling": "복원 / 청구",
+      "autoRenewOff": "자동 갱신 OFF",
+      "confirmPortal": "구독 관리(취소/플랜 변경) 화면으로 이동하시겠습니까?",
+      "error": "오류가 발생했습니다"
+    },
+    "statusBadge": {
+      "plan": "플랜",
+      "premium": "💎 프리미엄",
+      "freeAgent": "무료 플랜",
+      "credits": "크레딧",
+      "remaining": "남음",
+      "upgrading": "업그레이드 중...",
+      "upgradeToPremium": "프리미엄으로 업그레이드"
+    }
+  },
+  "coachPage": {
+    "header": {
+      "subtitle": "TIMELINE SYNC & VIDEO",
+      "description": "Riot 경기 데이터와 리플레이 영상을 동기화하여 AI가 철저하게 코칭합니다."
+    },
+    "tabs": {
+      "macro": "매크로 (Timeline)",
+      "micro": "마이크로 (Vision)"
+    },
+    "list": {
+      "restoring": "세션 복원 중...",
+      "selectMatch": "분석할 경기 선택",
+      "loadingHistory": "경기 기록 불러오는 중 ({name})...",
+      "win": "승리 (WIN)",
+      "lose": "패배 (LOSE)",
+      "macroDone": "MACRO 완료",
+      "noMatches": "경기 기록을 찾을 수 없습니다"
+    },
+    "controls": {
+      "back": "뒤로",
+      "youtubePlaceholder": "YouTube URL...",
+      "load": "로드",
+      "fileSelected": "동영상 선택됨",
+      "selectFile": "동영상 파일 선택",
+      "invalidYoutube": "유효하지 않은 YouTube URL입니다",
+      "selectVideo": "분석할 동영상을 선택해주세요"
+    },
+    "micro": {
+      "title": "마이크로 분석 (Vision Analysis)",
+      "description": "동영상의 지정된 위치에서 30초간을 분석하여 킬/데스 및 한타를 평가합니다.",
+      "fileInfo": "파일: {name}",
+      "rangeInfo": "분석 범위: {start}초 ~ {end}초",
+      "analyzeRange": "이 위치부터 30초 분석",
+      "noVideo": "분석할 동영상을 선택해주세요 (로컬 파일 권장)",
+      "processing": "처리 중...",
+      "reportTitle": "분석 결과 보고서",
+      "summary": "요약",
+      "mistakes": "지적 사항",
+      "finalAdvice": "총평",
+      "analyzeAnother": "다른 장면 분석하기",
+      "visionError": "Vision 분석 오류",
+      "youtubeNotSupported": "YouTube Vision 분석은 준비 중입니다. 로컬 파일을 사용해주세요."
+    },
+    "macro": {
+      "modeLabel": "분석 모드 (Analysis Mode)",
+      "timeLabel": "시간 (선택)",
+      "timePlaceholder": "예: 12:30",
+      "questionLabel": "구체적인 고민/질문 (선택)",
+      "questionPlaceholder": "예: 이 장면에서 포지셔닝은 어땠나요?"
+    },
+    "analysis": {
+      "analyzing": "분석 중... {progress}%",
+      "analyzeButton": "경기 분석하기 (Analyze)",
+      "creditsRemaining": "🎫 분석 (잔여: {credits}/3)",
+      "watchAd": "📺 광고 시청 (보상 획득)",
+      "waitReward": "🕒 다음 보상 대기",
+      "noCredits": "크레딧 부족",
+      "premiumUnlimited": "💎 PREMIUM UNLIMITED",
+      "verificationFailed": "동영상 검증에 실패했습니다.\n선택한 경기와 동영상 내용이 일치하지 않습니다.",
+      "launchFailed": "분석을 시작할 수 없습니다."
+    },
+    "results": {
+      "matchVerificationError": "동영상 검증 실패",
+      "matchVerificationErrorDetail": "선택한 경기와 동영상 내용이 일치하지 않습니다.",
+      "selectedMatch": "선택한 경기: {name} (KDA: {kda})",
+      "closeError": "에러 닫기",
+      "placeholder": "동영상 파일을 선택하거나 YouTube URL을 입력하세요",
+      "buildTitle": "💡 AI 빌드 진단",
+      "yourBuild": "나의 빌드",
+      "opponentBuild": "상대의 빌드 (VS)",
+      "recommendedBuild": "AI 추천 빌드",
+      "unknown": "알 수 없음",
+      "noItems": "아이템 없음",
+      "analysisCompleted": "분석 완료 (Analysis Completed)",
+      "showingPastResults": "※과거 분석 결과를 표시 중입니다",
+      "sponsored": "SPONSORED",
+      "insightReport": "🔍 분석 리포트 (클릭하여 이동)",
+      "summaryAnalysis": {
+        "title": "📋 종합 분석",
+        "rootCause": "근본 원인",
+        "priorityFocus": "우선 개선 포인트",
+        "actionPlan": "액션 플랜",
+        "priorities": {
+          "REDUCE_DEATHS": "데스 감소",
+          "OBJECTIVE_CONTROL": "오브젝트 관리",
+          "WAVE_MANAGEMENT": "웨이브 관리",
+          "VISION_CONTROL": "시야 관리",
+          "TRADING": "트레이드 판단",
+          "POSITIONING": "포지셔닝"
+        }
+      }
+    },
+    "modeSelector": {
+      "LANING": {
+        "label": "라인전",
+        "desc": "CS, 견제, 갱킹 회피 등 초반 움직임"
+      },
+      "MACRO": {
+        "label": "매크로",
+        "desc": "맵 이동, 오브젝트 관리, 시야 관리"
+      },
+      "TEAMFIGHT": {
+        "label": "한타",
+        "desc": "포지셔닝, 스킬 활용, 타겟 선정"
+      }
+    }
+  },
+  "widgets": {
+    "lpWidget": {
+      "title": "랭크 진행",
+      "unranked": "언랭크",
+      "unrankedDesc": "랭크 게임을 플레이하여 LP 진행을 확인하세요",
+      "currentLp": "현재 LP",
+      "nextRank": "다음 랭크 (100 LP)",
+      "promotionZone": "🔥 승급 구간!",
+      "recentForm": "최근 폼 (순승)",
+      "notEnoughMatches": "트렌드 표시에 충분한 매치가 없습니다"
+    },
+    "championPerformance": {
+      "title": "탑 챔피언",
+      "noData": "챔피언 데이터 없음",
+      "noDataDesc": "매치를 플레이하여 탑 퍼포머를 확인하세요",
+      "viewAll": "전체 보기",
+      "games": "게임"
+    },
+    "skillRadar": {
+      "title": "스킬 레이더",
+      "noData": "플레이스타일 분석 중...",
+      "noDataDesc": "배틀 데이터 수집 중",
+      "you": "나",
+      "avg": "평균",
+      "outstanding": "당신의 {stat}이 압도적입니다!",
+      "axes": {
+        "combat": "전투력",
+        "objective": "오브젝트",
+        "farming": "파밍",
+        "vision": "시야",
+        "survival": "생존력"
+      },
+      "descriptions": {
+        "combat": "KDA (킬/데스/어시스트) 밸런스",
+        "objective": "타워와 드래곤 데미지 기여도",
+        "farming": "분당 CS (크립 스코어)",
+        "vision": "분당 시야 점수 (와드 설치/파괴)",
+        "survival": "낮은 데스율 (리스크 관리)"
+      }
+    },
+    "winCondition": {
+      "title": "승리 조건",
+      "subtitle": "승리 팩터",
+      "noData": "매치 데이터 수집 중...",
+      "firstBlood": "퍼스트 블러드",
+      "firstTower": "퍼스트 타워",
+      "soloKills": "솔로 킬",
+      "games": "게임"
+    },
+    "laningPhase": {
+      "title": "라인전",
+      "subtitle": "초반 안정성",
+      "last": "최근",
+      "csAdvantage": "CS 유리",
+      "dominating": "압도",
+      "behind": "열세",
+      "even": "대등",
+      "target": "목표"
+    },
+    "nemesis": {
+      "title": "천적 & 먹잇감",
+      "subtitle": "매치업 분석",
+      "noData": "매치 데이터 수집 중...",
+      "nemesisLabel": "☠️ 천적 (낮은 승률)",
+      "preyLabel": "🍔 호구 (높은 승률)",
+      "noNemesis": "명확한 천적이 없습니다.",
+      "noPrey": "호구를 찾을 수 없습니다.",
+      "games": "게임"
+    },
+    "clutch": {
+      "title": "클러치력",
+      "subtitle": "게임 영향력",
+      "noData": "매치 데이터 수집 중...",
+      "closeGames": "🤝 접전 (<5k 골드)",
+      "stompGames": "💥 대승 (>10k 골드)",
+      "icyUnderPressure": "❄️ 압박 속에서도 냉정함",
+      "relyOnSnowball": "🔥 스노우볼 의존형"
+    }
+  },
+  "tooltip": {
+    "labels": {
+      "what": "What (정의)",
+      "why": "Why (중요성)",
+      "how": "How (기준)"
+    },
+    "winCondition": {
+      "what": "퍼스트 블러드, 퍼스트 타워, 솔로킬 3가지 핵심 액션의 달성률.",
+      "why": "이것들을 획득한 게임의 승률이 높다면, 이것이 당신의 '승리 패턴'입니다.",
+      "how": "60% 이상 승률을 목표로 하여 전체 승률을 안정시키세요."
+    },
+    "laningPhase": {
+      "what": "초반 10분간의 CS 유리(상대와의 차이)와 파밍 능력을 종합 평가합니다.",
+      "why": "상대보다 더 많은 CS를 확보하는 것이 아이템 격차를 만드는 가장 확실한 방법입니다.",
+      "how": "항상 상대방보다 +10 CS 이상 리드를 목표로 하세요."
+    },
+    "nemesis": {
+      "what": "상대했을 때 승률이 가장 낮은 '천적(Nemesis)'과 높은 '호구(Prey)'",
+      "why": "밴 선택이나 카운터픽 전략에 참고할 수 있습니다.",
+      "how": "여기에 있는 천적 챔피언은 무리하게 싸우지 않고 밴하는 것도 현명한 선택입니다."
+    },
+    "clutch": {
+      "what": "접전(<5k 골드 차)과 대승(>10k 골드 차) 시의 승률",
+      "why": "접전 승률은 압박 상황에서의 판단력을 보여줍니다.",
+      "how": "접전 승률 50% 이상을 목표로, 이길 수 있는 게임을 확실히 잡는 능력을 키우세요."
+    }
+  },
+  "economy": {
+    "title": "골드 경제학 입문",
+    "subtitle": "골드 = 파워의 기본 원칙",
+    "principle1": {
+      "title": "골드 = 파워",
+      "description": "LoL은 골드를 벌어 아이템을 구매하고 강해지는 게임입니다. 같은 챔피언이라도 골드 차이가 있으면 압도적인 힘의 차이가 생깁니다."
+    },
+    "principle2": {
+      "title": "모든 행동에는 가치가 있다",
+      "description": "킬, CS, 오브젝트... 모든 것이 골드로 환산됩니다. '지금 무엇을 해야 하나'를 판단하는 기준이 골드 효율입니다."
+    },
+    "comparison": {
+      "title": "가치 기준",
+      "killEqualsCs": "1킬 ≒ 15CS",
+      "killEqualsCsDesc": "킬 1개는 약 300골드. 미니언 15마리 가치입니다.",
+      "plateEqualsWaves": "1플레이트 ≒ 3웨이브",
+      "plateEqualsWavesDesc": "타워 플레이트 1개는 175골드. 미니언 3웨이브에 해당합니다.",
+      "dragonEqualsKill": "드래곤 ≒ 스케일링",
+      "dragonEqualsKillDesc": "드래곤 가치는 % 버프입니다. 아이템이 쌓일수록 효과가 증가합니다."
+    },
+    "cta": "골드 단가표 보기"
+  },
+  "market": {
+    "title": "골드 획득표",
+    "description": "소환사의 협곡 모든 유닛과 오브젝트의 기본 골드 가치 목록입니다. 무엇을 처치하면 얼마를 얻는지 확인하세요.",
+    "dragonIndex": "드래곤 인덱스 (주요 자산)",
+    "scaling": "스케일링",
+    "multiplier": "배율",
+    "growthTooltip": "시간이 지나면 골드가 증가합니다 (90초마다 +{growth}g). 후반에 더 가치가 높습니다.",
+    "categories": {
+      "minions": "미니언 (기본 수입)",
+      "jungle": "정글 (중립 몬스터)",
+      "objectives": "오브젝트 (전략 자산)",
+      "structures": "건물 (구조물)"
+    }
+  },
+  "detail": {
+    "category": {
+      "dragon": "드래곤 가이드",
+      "objective": "오브젝트 가이드"
+    },
+    "sections": {
+      "whatWhy": "개요 및 중요성 (무엇과 왜)",
+      "basicEffect": "기본 효과:",
+      "whyImportant": "왜 중요한가:",
+      "concreteValue": "구체적인 가치 예시",
+      "csItemExample": "CS 및 아이템 환산:",
+      "howToSecure": "획득 방법",
+      "scaling": "가치 변동"
+    },
+    "scalingDragon": {
+      "title": "곱셈의 힘",
+      "description": "드래곤 버프는 스탯을 퍼센트(%)로 강화합니다. 즉, 아이템이 적은 초반에는 효과가 약하지만, 아이템이 쌓일수록 가치가 급상승합니다.",
+      "note": "단순한 골드(덧셈)가 아닌, 팀 전체의 최종 파워를 증폭시키는 '곱셈(Multiplier)'으로 평가하세요."
+    },
+    "scalingFixed": {
+      "title": "고정 가치 (변동 없음)",
+      "description": "이 오브젝트의 가치는 게임 시간에 관계없이 일정합니다. 획득 가능한 골드와 버프 효과는 고정되어 있으며, 타이밍에 따른 변동이 없습니다. 일찍 확보할수록 그 우위를 오래 활용할 수 있습니다."
+    },
+    "defaultHow": "시야를 확보(와드)하고, 라이너가 주도권(푸시)을 잡고 있을 때 오브젝트를 시작하세요. 항상 스마이트 데미지를 확인하세요.",
+    "defaultWhy": "이 오브젝트를 확보하면 골드 차이 이상의 스탯 우위를 팀 전체가 얻습니다. 게임이 길어질수록 효과가 커집니다."
+  },
+  "settings": {
+    "language": "언어",
+    "selectLanguage": "언어 선택"
+  }
+}

@@ -8,6 +8,7 @@ import PremiumFeatureGate from "../Components/subscription/PremiumFeatureGate";
 import { useSummoner } from "../Providers/SummonerProvider";
 import { useRouter } from "next/navigation";
 import { fetchBasicStats, fetchMatchStats } from "@/app/actions/stats";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 const CHAT_KEY = "chat:message";
 
@@ -28,6 +29,7 @@ type ChatSession = {
 export default function ChatPage() {
   const {activeSummoner, loading} = useSummoner();
   const router = useRouter();
+  const { t } = useTranslation();
 
   // Premium Status State
   const [analysisStatus, setAnalysisStatus] = useState<AnalysisStatus | null>(null);
@@ -83,7 +85,7 @@ export default function ChatPage() {
         const parsed = JSON.parse(saved);
         setSessions(parsed);
       } catch {
-        console.warn("履歴の読み込みに失敗しました。");
+        console.warn(t('chatPage.historyLoadFailed'));
       }
     }
   }, [activeSummoner]);
@@ -161,7 +163,7 @@ export default function ChatPage() {
               // Set UI
               setConsultingMatch(matchCtx);
               // Pre-fill input (User friendly)
-              setInput(`この試合(${matchCtx.championName} ${matchCtx.kda})の改善点を教えてください。`);
+              setInput(t('chatPage.matchConsultPrompt').replace('{championName}', matchCtx.championName).replace('{kda}', matchCtx.kda));
               
               // Clear storage so it doesn't persist forever
               sessionStorage.removeItem("activeMatchContext");
@@ -260,12 +262,12 @@ export default function ChatPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || `AIエラー: ${res.status}`);
+        throw new Error(data.error || t('chatPage.messages.aiError') + res.status);
       }
 
       const aiMsg = {
         role: "ai" as const,
-        text: data.advice ?? "AIからの返答がありません。",
+        text: data.advice ?? t('chatPage.messages.noResponse'),
         ts: Date.now(),
       };
       //   全ての履歴を取得
@@ -295,7 +297,7 @@ export default function ChatPage() {
       setMessage(updatedSession.message);
     } catch (err: any) {
       console.log("AI接続エラー:", err);
-      const errMsg = err.message || "AIとの通信に失敗しました。";
+      const errMsg = err.message || t('chatPage.messages.connectionFailed');
       
       const errorMsg: ChatMsg = { 
           role: "ai", 
@@ -326,7 +328,7 @@ export default function ChatPage() {
 
   // 履歴全削除ボタン処理
   const handleClearHistory = () => {
-    if (confirm("本当に削除しますか？")) {
+    if (confirm(t('chatPage.deleteConfirm'))) {
       localStorage.removeItem(`chatSessions_${activeSummoner?.summoner_name}`);
       setSessions([]);
       setSelectedSession(null);
@@ -339,14 +341,14 @@ export default function ChatPage() {
     <DashboardLayout>
       <PremiumFeatureGate
         isPremium={analysisStatus?.is_premium ?? false}
-        title="AI Coaching Chat"
-        description="Chat with our advanced AI Coach to get personalized advice, build discussions, and improve your game knowledge."
+        title={t('chatPage.premiumTitle')}
+        description={t('chatPage.premiumDesc')}
       >
       <div className="flex h-[85vh] gap-6">
         <aside className="w-72 glass-panel p-4 flex flex-col rounded-xl overflow-hidden border border-slate-700/50">
           <div className="flex items-center justify-between mb-4 px-2">
             <h3 className="text-lg font-bold text-slate-200 flex items-center gap-2">
-                <span className="text-xl">💬</span> HISTORY
+                <span className="text-xl">💬</span> {t('chatPage.history')}
             </h3>
 
             {/* 全削除ボタン */}
@@ -354,7 +356,7 @@ export default function ChatPage() {
               onClick={handleClearHistory}
               className="text-xs text-red-400 hover:text-red-300 hover:bg-red-900/20 px-2 py-1 rounded transition"
             >
-              CLEAR ALL
+              {t('chatPage.clearAll')}
             </button>
           </div>
 
@@ -363,7 +365,7 @@ export default function ChatPage() {
             onClick={() => {
               const newSession: ChatSession = {
                 id: crypto.randomUUID(),
-                title: "新しいチャット",
+                title: t('chatPage.newChatTitle'),
                 message: [],
               };
               const updated = [newSession, ...sessions];
@@ -375,14 +377,14 @@ export default function ChatPage() {
             }}
             className="mb-6 w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold py-2.5 rounded-lg hover:from-blue-500 hover:to-cyan-500 transition shadow-lg shadow-blue-900/20 active:scale-95 flex items-center justify-center gap-2"
           >
-            <span className="text-lg">+</span> NEW CHAT
+            <span className="text-lg">+</span> {t('chatPage.newChat')}
           </button>
 
           {/* チャット履歴一覧 */}
           {sessions.length === 0 ? (
             <div className="text-center mt-10 opacity-50">
                 <p className="text-4xl mb-2">📜</p>
-                <p className="text-slate-400 text-sm">No history yet.</p>
+                <p className="text-slate-400 text-sm">{t('chatPage.noHistory')}</p>
             </div>
           ) : (
             <ul className="space-y-2 flex-1 overflow-y-auto custom-scrollbar pr-1">
@@ -406,7 +408,7 @@ export default function ChatPage() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation(); //チャットの選択イベントを阻止
-                      if (confirm(`「${s.title}」を削除しますか？`)) {
+                      if (confirm(t('chatPage.deleteSessionConfirm').replace('{title}', s.title))) {
                         const updated = sessions.filter(
                           (chat) => chat.id !== s.id
                         );
@@ -452,7 +454,7 @@ export default function ChatPage() {
                     }`}
                   >
                     <p className={`text-xs font-bold mb-1 opacity-50 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-                        {msg.role === 'user' ? 'YOU' : 'AI COACH'}
+                        {msg.role === 'user' ? t('chatPage.you') : t('chatPage.aiCoach')}
                     </p>
                     {msg.text.split("\n").map((line,i) => (
                         <span key={i} className="block min-h-[1.2em]">
@@ -465,7 +467,7 @@ export default function ChatPage() {
                 {loadingAI && (
                   <div className="self-start p-4 bg-slate-800/50 rounded-xl rounded-bl-none border border-slate-700 flex items-center gap-3 animate-pulse">
                      <span className="text-2xl animate-spin">🤖</span>
-                     <span className="text-slate-400 text-sm font-bold">AI IS THINKING...</span>
+                     <span className="text-slate-400 text-sm font-bold">{t('chatPage.aiThinking')}</span>
                   </div>
                 )}
                 {/* 自動スクロール用ダミー要素 (不要になったがレイアウト崩れ防止のため一旦残すか、削除するか。削除でOK) */}
@@ -476,8 +478,8 @@ export default function ChatPage() {
                     <div className="w-24 h-24 bg-slate-800 rounded-full flex items-center justify-center mb-6 shadow-inner">
                         <span className="text-4xl grayscale">🤖</span>
                     </div>
-                    <h3 className="text-xl font-bold text-slate-400 mb-2">LOLE COACH AI</h3>
-                    <p className="text-sm">Select a chat history or start a new conversation.</p>
+                    <h3 className="text-xl font-bold text-slate-400 mb-2">{t('chatPage.coachTitle')}</h3>
+                    <p className="text-sm">{t('chatPage.selectOrStart')}</p>
                 </div>
             )}
           </div>
@@ -491,8 +493,8 @@ export default function ChatPage() {
                         <div className="flex items-center gap-3">
                             <span className="text-2xl">🎓</span>
                             <div>
-                                <p className="text-blue-100 font-bold text-sm">Consulting on: {consultingMatch.championName}</p>
-                                <p className="text-blue-300 text-xs">{consultingMatch.kda} • {consultingMatch.win ? "WIN" : "LOSS"}</p>
+                                <p className="text-blue-100 font-bold text-sm">{t('chatPage.consulting.on').replace('{championName}', consultingMatch.championName)}</p>
+                                <p className="text-blue-300 text-xs">{consultingMatch.kda} • {consultingMatch.win ? t('chatPage.consulting.win') : t('chatPage.consulting.loss')}</p>
                             </div>
                         </div>
                         <button 
@@ -503,7 +505,7 @@ export default function ChatPage() {
                             }}
                             className="text-slate-400 hover:text-white text-xs underline"
                         >
-                            Stop Context
+                            {t('chatPage.consulting.stopContext')}
                         </button>
                     </div>
                 </div>
@@ -522,7 +524,7 @@ export default function ChatPage() {
                         handleSubmit(e)
                     }
                 }}
-                placeholder="Ask your AI Coach anything..."
+                placeholder={t('chatPage.inputPlaceholder')}
                 onChange={(e) => setInput(e.target.value)}
                 className="flex-1 bg-slate-800 border-slate-700 text-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-slate-500 resize-none transition shadow-inner"
                 rows={1}
@@ -533,7 +535,7 @@ export default function ChatPage() {
                 className="bg-blue-600 text-white px-6 py-2 rounded-xl hover:bg-blue-500 transition font-bold shadow-lg shadow-blue-900/20 disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-95"
                 disabled={loadingAI || !input.trim() || !selectedSession}
                 >
-                SEND
+                {t('chatPage.send')}
                 </button>
             </form>
           </div>

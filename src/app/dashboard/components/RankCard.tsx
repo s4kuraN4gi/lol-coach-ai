@@ -65,7 +65,7 @@ export default function RankCard({
                         {currentQueue === "SOLO" ? "Ranked Solo" : "Ranked Flex"}
                     </p>
                     <div className="flex items-baseline gap-3">
-                        <p className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-200">
+                        <p className="text-3xl font-black text-primary">
                             {rank.tier} {rank.rank}
                         </p>
                         <p className="text-xl text-slate-300 font-mono">{rank.leaguePoints} LP</p>

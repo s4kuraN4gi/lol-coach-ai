@@ -162,17 +162,23 @@ export class VideoProcessor {
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
                 
+                // Verification check: Focus on first few minutes BUT skip loading screen
                 const duration = video.duration;
-                // Verification check: Focus on first 3 minutes (180s) or full duration
-                const checkRange = Math.min(duration, 180);
                 
-                // Points: 5%, 25%, 50%, 75%, 95% of the checkRange
+                // Safety: Skip first 60s if video is long (>3m), or 20% if short
+                const safeStart = duration > 180 ? 60 : duration * 0.2;
+                
+                // Check window: Analyze up to 3 mins of content AFTER safeStart
+                // (or remaining duration)
+                const checkWindow = Math.min(duration - safeStart, 180);
+                
+                // Extract 5 frames evenly distributed in the safe window
                 const timePoints = [
-                    checkRange * 0.05,
-                    checkRange * 0.25,
-                    checkRange * 0.50,
-                    checkRange * 0.75,
-                    checkRange * 0.95,
+                    safeStart + (checkWindow * 0.05),
+                    safeStart + (checkWindow * 0.25),
+                    safeStart + (checkWindow * 0.50),
+                    safeStart + (checkWindow * 0.75),
+                    safeStart + (checkWindow * 0.95),
                 ];
 
                 try {

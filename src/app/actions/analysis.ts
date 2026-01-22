@@ -305,7 +305,7 @@ export async function getLatestActiveAnalysis() {
 
 // 動画解析を実行 (Gemini Vision)
 // 動画解析を実行 (Mock: Riot API based)
-export async function analyzeVideo(formData: FormData, userApiKey?: string, mode: AnalysisMode = 'MACRO') {
+export async function analyzeVideo(formData: FormData, userApiKey?: string, mode: AnalysisMode = 'MACRO', locale: string = 'ja') {
   const supabase = await createClient();
   const {
     data: { user },
@@ -438,7 +438,7 @@ export async function analyzeVideo(formData: FormData, userApiKey?: string, mode
 
     try {
         // Assume analyzeMatchTimeline is robust
-        const res = await analyzeMatchTimeline(matchId, summoner.puuid, useEnvKey ? undefined : apiKey, focus);
+        const res = await analyzeMatchTimeline(matchId, summoner.puuid, useEnvKey ? undefined : apiKey, focus, locale);
 
         if (!res.success || !res.data) {
             throw new Error(res.error || "Timeline analysis failed.");
@@ -554,7 +554,7 @@ export async function analyzeMatchQuick(
   if (!apiKey) return { error: "API Key missing." };
 
   // 3. Fetch Data (Match V5 Only)
-  const { fetchMatchDetail, fetchDDItemData } =await import("./riot"); // Lazy import
+  const { fetchMatchDetail, fetchDDItemData, fetchLatestVersion } =await import("./riot"); // Lazy import
   const matchRes = await fetchMatchDetail(matchId);
   if (!matchRes.success || !matchRes.data) return { error: "Failed to fetch match data." };
   
@@ -578,8 +578,12 @@ export async function analyzeMatchQuick(
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
       const genAI = new GoogleGenerativeAI(apiKey);
 
+      const version = await fetchLatestVersion();
+
       const prompt = `
       League of Legendsの試合結果から、プレイヤーの「即時評価」をJSONで出力してください。
+      
+      **現在のLoLバージョン: ${version} (最新メタを前提)**
       
       プレイヤー: ${participant.championName} (${participant.teamPosition}), KDA: ${participant.kills}/${participant.deaths}/${participant.assists}, 勝敗: ${participant.win ? "WIN" : "LOSS"}
       対面: ${opponent ? opponent.championName : "Unknown"}, KDA: ${opponent ? `${opponent.kills}/${opponent.deaths}/${opponent.assists}` : "?"}

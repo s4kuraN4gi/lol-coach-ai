@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 
 type Props = {
@@ -22,9 +23,10 @@ export default function PremiumFeatureGate({
     blurAmount = "md",
     onUpgrade
 }: Props) {
+    const { t } = useTranslation();
     
     // Use description if provided, otherwise fallback, otherwise default
-    const descText = description || fallbackDescription || "この機能を利用するにはプレミアムプランへのアップグレードが必要です。";
+    const descText = description || fallbackDescription || t('premium.featureGate.defaultDesc');
 
     const handleUpgrade = async () => {
         if (onUpgrade) {
@@ -45,7 +47,7 @@ export default function PremiumFeatureGate({
 
             if (!response.ok) {
                 console.error('Checkout error:', response.statusText);
-                alert('決済の開始に失敗しました。');
+                alert(t('premium.featureGate.checkoutFailed'));
                 return;
             }
 
@@ -57,7 +59,7 @@ export default function PremiumFeatureGate({
             }
         } catch (error) {
             console.error('Checkout error:', error);
-            alert('エラーが発生しました。');
+            alert(t('premium.featureGate.error'));
         }
     };
 
@@ -87,7 +89,7 @@ export default function PremiumFeatureGate({
                         onClick={handleUpgrade}
                         className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-3 px-8 rounded-full shadow-[0_0_20px_rgba(99,102,241,0.5)] transition-all hover:shadow-[0_0_30px_rgba(168,85,247,0.6)]"
                     >
-                        UNLOCK NOW
+                        {t('premium.featureGate.unlockNow')}
                     </button>
                 </div>
             </div>

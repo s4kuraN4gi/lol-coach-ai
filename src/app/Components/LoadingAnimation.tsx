@@ -24,7 +24,7 @@ export default function LoadingAnimation() {
 
     return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] w-full">
-            <h2 className="text-4xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300 mb-12 animate-pulse">
+            <h2 className="text-4xl font-black italic tracking-tighter text-primary mb-12 animate-pulse">
                 LOL COACH AI
             </h2>
             

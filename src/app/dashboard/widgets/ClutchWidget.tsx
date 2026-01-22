@@ -1,9 +1,14 @@
+"use client";
+
 import { UniqueStats } from "@/app/actions/stats";
 import DashboardCard from "../components/DashboardCard";
 import InfoTooltip from "../components/InfoTooltip";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 export default function ClutchWidget({ stats }: { stats: UniqueStats | null }) {
-    if (!stats) return <DashboardCard>Collecting match data...</DashboardCard>;
+    const { t } = useTranslation();
+    
+    if (!stats) return <DashboardCard>{t('widgets.clutch.noData')}</DashboardCard>;
 
     const { clutch } = stats;
 
@@ -27,14 +32,14 @@ export default function ClutchWidget({ stats }: { stats: UniqueStats | null }) {
                 </div>
                 <div>
                      <h3 className="text-sm font-bold text-slate-200 flex items-center gap-1">
-                        Clutch Factor
+                        {t('widgets.clutch.title')}
                         <InfoTooltip content={{
-                            what: "接戦（5kゴールド差以内）および圧勝（10k差以上）時の勝率",
-                            why: "接戦での勝率は、プレッシャーのかかる場面での判断力を示します。",
-                            how: "接戦勝率50%以上を目指し、勝てる試合を確実に拾う力をつけましょう。"
+                            what: t('tooltip.clutch.what'),
+                            why: t('tooltip.clutch.why'),
+                            how: t('tooltip.clutch.how')
                         }} />
                      </h3>
-                     <p className="text-xs text-slate-500">Game Impact</p>
+                     <p className="text-xs text-slate-500">{t('widgets.clutch.subtitle')}</p>
                 </div>
              </div>
 
@@ -42,7 +47,7 @@ export default function ClutchWidget({ stats }: { stats: UniqueStats | null }) {
                  {/* Close Games */}
                  <div>
                      <div className="flex justify-between text-xs text-slate-300 mb-1">
-                         <span className="flex items-center gap-2"><span className="text-sm">🤝</span> Close Games (&lt;5k Gold)</span>
+                         <span className="flex items-center gap-2">{t('widgets.clutch.closeGames')}</span>
                          <span className={getColor(clutch.closeWr)}>{clutch.closeWr}% WR ({clutch.closeGames})</span>
                      </div>
                      <div className="h-2 bg-slate-800 rounded-full ">
@@ -53,7 +58,7 @@ export default function ClutchWidget({ stats }: { stats: UniqueStats | null }) {
                  {/* Stomp Games */}
                  <div>
                      <div className="flex justify-between text-xs text-slate-300 mb-1">
-                         <span className="flex items-center gap-2"><span className="text-sm">💥</span> Stomp Games (&gt;10k Gold)</span>
+                         <span className="flex items-center gap-2">{t('widgets.clutch.stompGames')}</span>
                          <span className={getColor(clutch.stompWr)}>{clutch.stompWr}% WR ({clutch.stompGames})</span>
                      </div>
                      <div className="h-2 bg-slate-800 rounded-full ">
@@ -62,9 +67,10 @@ export default function ClutchWidget({ stats }: { stats: UniqueStats | null }) {
                  </div>
                  
                  <div className="p-2 bg-slate-800/50 rounded text-[10px] text-slate-400 text-center italic mt-2">
-                     {clutch.closeWr > clutch.stompWr + 10 ? "❄️ You are icy under pressure." : "🔥 You rely on snowballing."}
+                     {clutch.closeWr > clutch.stompWr + 10 ? t('widgets.clutch.icyUnderPressure') : t('widgets.clutch.relyOnSnowball')}
                  </div>
             </div>
         </DashboardCard>
     );
 }
+

@@ -9,11 +9,14 @@ type Props = {
     disabled?: boolean;
 };
 
+import { useTranslation } from "@/contexts/LanguageContext";
+
 export function ModeSelector({ selectedMode, onSelect, disabled }: Props) {
+    const { t } = useTranslation();
     const modes: { id: Mode; label: string; icon: string; desc: string }[] = [
-        { id: 'LANING', label: 'Laning', icon: '⚔️', desc: 'CS, Trades, Early Game' },
-        { id: 'MACRO', label: 'Macro', icon: '🗺️', desc: 'Vision, Objectives, Rotations' },
-        { id: 'TEAMFIGHT', label: 'Teamfight', icon: '💥', desc: 'Positioning, Focus' },
+        { id: 'LANING', label: t('coachPage.modeSelector.LANING.label'), icon: '⚔️', desc: t('coachPage.modeSelector.LANING.desc') },
+        { id: 'MACRO', label: t('coachPage.modeSelector.MACRO.label'), icon: '🗺️', desc: t('coachPage.modeSelector.MACRO.desc') },
+        { id: 'TEAMFIGHT', label: t('coachPage.modeSelector.TEAMFIGHT.label'), icon: '💥', desc: t('coachPage.modeSelector.TEAMFIGHT.desc') },
     ];
 
     return (

@@ -1,12 +1,17 @@
+"use client";
+
 import { LeagueEntryDTO } from "@/app/actions/riot";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 export default function LPWidget({ rank, recentMatches }: { rank: LeagueEntryDTO | null, recentMatches: { win: boolean }[] }) {
+    const { t } = useTranslation();
+    
     if (!rank) {
         return (
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col items-center justify-center min-h-[200px] text-center">
                  <div className="w-16 h-16 bg-slate-800 rounded-full mb-4 animate-pulse"></div>
-                 <div className="text-slate-500 font-bold mb-2">Unranked</div>
-                 <div className="text-xs text-slate-600">Play ranked games to see LP progression</div>
+                 <div className="text-slate-500 font-bold mb-2">{t('widgets.lpWidget.unranked')}</div>
+                 <div className="text-xs text-slate-600">{t('widgets.lpWidget.unrankedDesc')}</div>
             </div>
         );
     }
@@ -44,7 +49,7 @@ export default function LPWidget({ rank, recentMatches }: { rank: LeagueEntryDTO
 
             <div className="flex justify-between items-start mb-6 z-10 relative">
                 <div>
-                   <div className="text-slate-400 text-xs font-bold tracking-wider mb-1">RANK PROGRESSION</div>
+                   <div className="text-slate-400 text-xs font-bold tracking-wider mb-1">{t('widgets.lpWidget.title')}</div>
                    <div className="flex items-baseline gap-2">
                        <span className="text-3xl font-black text-white italic">{tier} {division}</span>
                        <span className="text-lg text-slate-300 font-bold">{leaguePoints} LP</span>
@@ -73,8 +78,8 @@ export default function LPWidget({ rank, recentMatches }: { rank: LeagueEntryDTO
             {/* LP Progress Bar (To Next Rank = 100 LP) */}
             <div className="mb-6 relative z-10">
                 <div className="flex justify-between text-xs text-slate-400 mb-1">
-                    <span>Current LP</span>
-                    <span>Next Rank (100 LP)</span>
+                    <span>{t('widgets.lpWidget.currentLp')}</span>
+                    <span>{t('widgets.lpWidget.nextRank')}</span>
                 </div>
                 <div className="h-4 bg-slate-800 rounded-full overflow-hidden border border-slate-700/50">
                     <div 
@@ -84,7 +89,7 @@ export default function LPWidget({ rank, recentMatches }: { rank: LeagueEntryDTO
                 </div>
                 {leaguePoints >= 100 && (
                      <div className="text-xs text-yellow-500 font-bold mt-1 animate-pulse">
-                         🔥 PROMOTION ZONE!
+                         {t('widgets.lpWidget.promotionZone')}
                      </div>
                 )}
             </div>
@@ -92,7 +97,7 @@ export default function LPWidget({ rank, recentMatches }: { rank: LeagueEntryDTO
             {/* Recent Form Trend */}
             <div className="relative z-10">
                  <div className="text-xs text-slate-500 font-bold mb-2 flex justify-between">
-                     <span>RECENT FORM (NET WINS)</span>
+                     <span>{t('widgets.lpWidget.recentForm')}</span>
                      <span className={trendData[trendData.length-1] > 0 ? "text-blue-400" : "text-red-400"}>
                          {trendData[trendData.length-1] > 0 ? "+" : ""}{trendData[trendData.length-1]} Net
                      </span>
@@ -117,10 +122,11 @@ export default function LPWidget({ rank, recentMatches }: { rank: LeagueEntryDTO
                             {/* Area under curve? Optional */}
                          </svg>
                      ) : (
-                         <div className="text-slate-600 text-[10px] w-full text-center py-4">Not enough matches for trend</div>
+                         <div className="text-slate-600 text-[10px] w-full text-center py-4">{t('widgets.lpWidget.notEnoughMatches')}</div>
                      )}
                  </div>
             </div>
         </div>
     );
 }
+

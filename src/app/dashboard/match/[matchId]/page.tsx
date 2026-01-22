@@ -6,7 +6,7 @@ import { fetchMatchDetail, fetchLatestVersion } from "@/app/actions/riot";
 import { getMatchAnalysis } from "@/app/actions/analysis";
 import DashboardLayout from "@/app/Components/layout/DashboardLayout";
 import Link from "next/link";
-
+import { useTranslation } from "@/contexts/LanguageContext";
 
 import TeamOverviewCard from "./components/TeamOverviewCard";
 import LoadingAnimation from "@/app/Components/LoadingAnimation";
@@ -17,6 +17,7 @@ export default function MatchDetailsPage() {
     const params = useParams();
     const matchId = params?.matchId as string;
     const { activeSummoner, loading: summonerLoading } = useSummoner();
+    const { t } = useTranslation();
     
     // Dynamic Version
     const [ddVersion, setDdVersion] = useState("14.24.1");
@@ -77,13 +78,13 @@ export default function MatchDetailsPage() {
          return (
             <DashboardLayout>
                 <div className="p-10 text-center text-red-400">
-                    <h2 className="text-2xl font-bold mb-4">Failed to Load Match</h2>
+                                    <h2 className="text-2xl font-bold mb-4">{t('matchDetail.errorTitle')}</h2>
                     <p className="font-mono bg-slate-900 border border-slate-800 p-4 rounded inline-block text-left text-sm max-w-2xl whitespace-pre-wrap">
                         <span className="text-slate-500">ID:</span> {matchId}<br/>
                         <span className="text-slate-500">Error:</span> {error}
                     </p>
                     <div className="mt-6">
-                        <Link href="/dashboard" className="text-blue-400 hover:underline">Return to Dashboard</Link>
+                        <Link href="/dashboard" className="text-blue-400 hover:underline">{t('matchDetail.returnToDashboard')}</Link>
                     </div>
                 </div>
             </DashboardLayout>
@@ -113,7 +114,7 @@ export default function MatchDetailsPage() {
                 {/* Header / Nav */}
                 <div className="flex items-center gap-4 mb-8 text-sm text-slate-400">
                     <Link href="/dashboard/stats" className="hover:text-blue-400 transition flex items-center gap-1">
-                        ← Back to Stats
+                        {t('matchDetail.backToStats')}
                     </Link>
                     <span className="text-slate-600">/</span>
                     <span className="text-slate-200 font-mono">{matchId}</span>
@@ -134,11 +135,11 @@ export default function MatchDetailsPage() {
                              </div>
                              <div>
                                 <h1 className="text-3xl font-black italic tracking-tighter text-white flex items-center gap-2">
-                                    MATCH REPORT <span className="text-blue-500 text-sm font-normal py-0.5 px-2 bg-blue-500/10 rounded-full border border-blue-500/30">AI BETA</span>
+                                    {t('matchDetail.matchReport')} <span className="text-blue-500 text-sm font-normal py-0.5 px-2 bg-blue-500/10 rounded-full border border-blue-500/30">{t('matchDetail.aiBeta')}</span>
                                 </h1>
                                 <div className="flex items-center gap-3 text-sm font-mono mt-1">
                                     <span className={`font-bold ${win ? 'text-blue-400' : 'text-red-400'}`}>
-                                        {win ? "VICTORY" : "DEFEAT"}
+                                        {win ? t('matchDetail.victory') : t('matchDetail.defeat')}
                                     </span>
                                     <span className="text-slate-600">•</span>
                                     <span className="text-slate-300">{kda} KDA</span>
@@ -149,7 +150,7 @@ export default function MatchDetailsPage() {
                         </div>
 
                         <div className="text-xs font-mono text-slate-500 border border-slate-800 bg-slate-900/50 px-3 py-1.5 rounded-full">
-                            PATCH {matchData.info.gameVersion.split('.').slice(0, 2).join('.')} (View: {ddVersion})
+                            {t('matchDetail.patch')} {matchData.info.gameVersion.split('.').slice(0, 2).join('.')} (View: {ddVersion})
                         </div>
                     </div>
 
@@ -163,7 +164,7 @@ export default function MatchDetailsPage() {
                                 onClick={() => setIsTeamsExpanded(!isTeamsExpanded)}
                              >
                                 <h3 className="font-bold text-white flex items-center gap-2">
-                                    <span>👥</span> Teams Overview
+                                    <span>👥</span> {t('matchDetail.teamsOverview')}
                                 </h3>
                                 <button className="w-6 h-6 flex items-center justify-center rounded bg-black/20 text-slate-400 hover:text-white transition">
                                      {isTeamsExpanded ? (
@@ -178,14 +179,14 @@ export default function MatchDetailsPage() {
                                 <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 items-start border-t border-slate-800">
                                     <TeamOverviewCard 
                                         teamId={100} 
-                                        teamName="BLUE TEAM" 
+                                        teamName={t('matchDetail.blueTeam')} 
                                         participants={team100} 
                                         win={team100Win} 
                                         version={ddVersion}
                                     />
                                     <TeamOverviewCard 
                                         teamId={200} 
-                                        teamName="RED TEAM" 
+                                        teamName={t('matchDetail.redTeam')} 
                                         participants={team200} 
                                         win={team200Win}
                                         version={ddVersion} 

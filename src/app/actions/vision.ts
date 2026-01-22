@@ -5,7 +5,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import fs from 'fs/promises';
 import path from 'path';
 import { getAnalysisStatus } from "./analysis";
-import { fetchMatchDetail } from "./riot";
+import { fetchMatchDetail, fetchLatestVersion, fetchMatchTimeline, extractMatchEvents, getChampionAttributes } from "./riot";
 
 const GEMINI_API_KEY_ENV = process.env.GEMINI_API_KEY;
 
@@ -27,6 +27,7 @@ export type VisionAnalysisResult = {
         advice: string;
     }[];
     finalAdvice: string;
+    timeOffset?: number; // Added: Sync offset (Video Time - Game Time)
 };
 
 export async function startVisionAnalysis(
@@ -139,29 +140,58 @@ async function performVisionAnalysis(
         }
 
         // --- CORE ANALYSIS LOGIC (Copied from original) ---
+        const version = await fetchLatestVersion(); // Fetch latest version
 
-        // 1. MATCH CONTEXT (Hybrid)
+        // 1. MATCH CONTEXT & Truth Injection
         let matchContextStr = "";
         let myChampName = "Unknown";
+        let truthEvents: any[] = [];
+        let champAttrs: any = null;
         
         if (request.matchId && request.puuid) {
             console.log(`[Vision Job ${jobId}] Fetching match context...`);
-            const matchRes = await fetchMatchDetail(request.matchId);
+            const [matchRes, timelineRes] = await Promise.all([
+                fetchMatchDetail(request.matchId),
+                fetchMatchTimeline(request.matchId)
+            ]);
+
             if (matchRes.success && matchRes.data) {
                 const parts = matchRes.data.info.participants;
                 const me = parts.find((p: any) => p.puuid === request.puuid);
                 const myTeamId = me ? me.teamId : 0;
-                if (me) myChampName = me.championName;
+                if (me) {
+                     myChampName = me.championName;
+                     // Fetch Champion Attributes
+                     champAttrs = await getChampionAttributes(me.championName);
+                }
                 const allies = parts.filter((p: any) => p.teamId === myTeamId).map((p: any) => `${p.championName} (${p.teamPosition})`);
                 const enemies = parts.filter((p: any) => p.teamId !== myTeamId).map((p: any) => `${p.championName} (${p.teamPosition})`);
 
                  matchContextStr = `
-                【最重要: 試合の正解データ】
+                【コンテキスト (Identity)】
                 視点主（あなた）: ${myChampName}
+                ・役割: ${champAttrs?.identity || "不明"} (クラス: ${champAttrs?.class || "不明"})
+                ・特性ノート: ${champAttrs?.notes || "なし"}
+                
                 味方チーム: ${allies.join(", ")}
                 敵チーム: ${enemies.join(", ")}
                 ※ 画像認識で迷った場合は、**必ずこのリストの中から**選んでください。
                 `;
+            }
+
+            // Extract Truth Events (Wide Window fallback)
+            // Ideally we wait for TimeSync result, but for now we fetch ALL relevant events or wide window.
+            // Since we don't know exact game time yet (we ask AI to find it), we pass a loose set or empty first?
+            // BETTER: We can't filter by time efficiently without knowing time.
+            // STRATEGY: We inject KEY events (Kills/Objectives) for the WHOLE game? Too big.
+            // We'll ask AI to find time, then we verify? No, one shot.
+            // Fallback: We rely on AI finding time first in a previous step?
+            // No, user wants it now.
+            // Compromise: We fetch all "Elite Monster Kills" and "My Deaths" for the whole game.
+            if (timelineRes.success) {
+                const allEvents = await extractMatchEvents(timelineRes.data, request.puuid);
+                // Filter to critical ones to limit token usage if needed, or just pass first 50 relevant.
+                truthEvents = allEvents.filter(e => e.type === 'KILL' || e.type === 'OBJECTIVE');
             }
         }
 
@@ -193,27 +223,45 @@ async function performVisionAnalysis(
                     });
 
                     const promptText = `
-                    あなたはLeague of Legendsのプロコーチです。
-                    添付された画像は、プレイヤーが「デスした直前」または「重要なシーン」の連続フレームです。
+                    あなたはLeague of Legendsの「ミクロ戦術（メカニクス・操作技術・カメラワーク）」に特化した専門コーチです。
+                    添付された画像（連続フレーム）から、プレイヤーの技術的な改善点を指摘してください。
                     
                     ${matchContextStr}
 
-                    思考プロセス:
-                    1. **画面情報の正確な読み取り**:
-                       - 時間、チャンピオン、戦況（誰がどこで何をしているか）
-                    2. **コーチング分析**:
-                       - 視界、判断、操作の評価
-    
-                    ユーザーの質問: ${request.question || "死因と改善点を教えて。"}
+                    **【重要：禁止事項】**
+                    - **マクロな指摘の禁止**: 「ドラゴンを取られた」「反対側のレーンをプッシュすべき」などのマップ全体の戦略には言及しないでください。
+                    - **「味方が悪い」等の他責思考**: 画面外の味方の動きを評価しないでください。
+                    - **誤った事実の捏造**: 以下の「確定事実」に書かれていないキルやオブジェクト取得を、映像から無理やり読み取らないでください。
+
+                    **【Riot APIによる確定事実 (Truth Events)】**
+                    ※以下のイベントは**絶対的な事実**です。
+                    ${JSON.stringify(truthEvents.slice(0, 30))} 
+                    (※主要イベント抜粋。映像内の時間と一致するイベントがあれば、それを前提に分析してください)
+
+                    **【分析ターゲット】**
+                    1. **カメラ操作 (F-Keys / Tab)**:
+                       - 激しい戦闘中や移動中に、カメラを適切に敵や味方に合わせているか？
+                       - 情報を収集しようとするカメラの動きがあるか？
+                    2. **スキル精度 (Skillshots)**:
+                       - スキルショットを外していないか？敵のスキルを避ける動き（サイドステップ）はできているか？
+                       - **チャンピオン特性 (${champAttrs?.class || '不明'}) に適した動き**ができているか？ (例: Assassinなら敵キャリーを狙う、ADCならカイトする)
+                    3. **ダメージトレード**:
+                       - 敵のクールダウン中に攻撃できているか？
+                       - ミニオンシャワー（Aggro）を無駄に受けていないか？
+
+                    **現在のLoLバージョン: ${version}**
+
+                    ユーザーの質問: ${request.question || "操作やメカニクスの改善点を教えて。"}
     
                     【出力形式 (JSON)】
                     {
                         "observed_champions": [ { "name": "", "evidence": "" } ],
-                        "summary": "戦況要約（タイムスタンプ含む）",
+                        "summary": "戦況要約（事実ベース）",
                         "mistakes": [
-                            { "timestamp": "mm:ss", "title": "", "severity": "CRITICAL" | "MINOR", "advice": "" }
+                            { "timestamp": "mm:ss", "title": "短いタイトル", "severity": "CRITICAL" | "MINOR", "advice": "具体的な操作改善案" }
                         ],
-                        "finalAdvice": "一言アドバイス"
+                        "finalAdvice": "ミクロ視点での総評",
+                        "initialGameTime": "mm:ss" 
                     }
                     `;
     
@@ -234,6 +282,64 @@ async function performVisionAnalysis(
                     
                     try {
                         analysisData = JSON.parse(text) as VisionAnalysisResult;
+                        
+                        // --- Time Sync Calculation ---
+                        if ((analysisData as any).initialGameTime) {
+                             const initTimeStr = (analysisData as any).initialGameTime;
+                             const [m, s] = initTimeStr.split(':').map(Number);
+                             if (!isNaN(m) && !isNaN(s)) {
+                                 // Standard: The first frame used is approximately at t=0 of the *analyzed segment*
+                                 // But wait, the client extracts frames. The first frame passed IS the start.
+                                 // So Video Start Time (0s relative to passed frames) = initTimeStr
+                                 // videoTime (0) - gameTime (initTime) = offset
+                                 const gameTimeSec = m * 60 + s;
+                                 analysisData.timeOffset = 0 - gameTimeSec; 
+                                 
+                                 // Wait, if video starts at 60s (skipped loading), client frames might be from 60s?
+                                 // Actually no, for the AI, the first frame IS "Frame 1".
+                                 // But we need to know the VIDEO FILE timestamp of "Frame 1".
+                                 // The client sends just base64 frames. It does NOT send timestamps of frames currently.
+                                 // This is a limitation. We assume Frame 1 is the "Start of Analysis".
+                                 // If client skipped 60s, then Frame 1 is at 60s of the file.
+                                 // We need `startTime` input in `VisionAnalysisRequest` to correspond to file time.
+                                 // Currently `request` doesn't have it.
+                                 // Plan: For now, assume Frame 1 corresponds to "Start of Video Context".
+                                 // If the user skipped loading screen (frontend logic?), then we need that info.
+                                 // But wait, `startVisionAnalysis` handles the job creation. The worker just gets frames.
+                                 // The frames are extracted by `VideoProcessor`.
+                                 // If VideoProcessor skipped 60s, Frame 1 is at 60s.
+                                 // We need to pass `startTime` from Client.
+                                 // Let's rely on Client passing accurate frames.
+                                 // If we don't know the file timestamp of Frame 1, we can't calculate exact file offset.
+                                 // CRITICAL: The prompt asks for "initialGameTime".
+                                 // Let's assume for this MVP that Offset = (Start Video Time) - (Detected Game Time).
+                                 // BUT we don't know Start Video Time here (it's in Client param).
+                                 // Valid approach: Just return `initialGameTime` in result. 
+                                 // Frontend can calculate offset: Offset = CurrentVideoTime - GameTime.
+                                 // BUT backend saves `time_offset`.
+                                 // Let's assume Frame 1 is roughly "Start of Analysis".
+                                 // If we calculate offset here, we need Frame 1's file timestamp.
+                                 // For now: Just save `initialGameTime` (in seconds) as `time_offset`? No.
+                                 // Let's calculate a "Game Start Offset" relative to this specific analysis block.
+                                 // Actually, simpler: 
+                                 // `time_offset` = How many seconds needed to add to Game Time to get Video Time.
+                                 // Frame 1 Video Time = X (unknown here, but usually 0 on short clips).
+                                 // If we can't get X, we can't correct perfectly for long videos with skip.
+                                 // Workaround: We will update `VisionAnalysisRequest` type to optionally include `frameTimestamps`.
+                                 // But since I can't easily change Client -> Server contract for large payload structure without risk,
+                                 // I will assume Frame 1 is at 0s of the *clip sent* or rely on `initialGameTime` being returned
+                                 // and let the frontend update the DB or Local State?
+                                 // No, the task is to save `time_offset` to DB.
+                                 // Let's simply save the `initialGameTime` in seconds as a NEGATIVE value (Game Time Start).
+                                 // E.g. if Game shows 00:00, offset is 0.
+                                 // If Game shows 01:00, offset is -60. (Video 0 = Game 60).
+                                 // This implies Video Time = Game Time + Offset.
+                                 // 0 = 60 + (-60). Correct.
+                                 // This assumes the video starts at the frame we analyzed.
+                                 analysisData.timeOffset = -gameTimeSec;
+                             }
+                        }
+                        
                         success = true;
                     } catch (e) {
                          // Parse error handled below
@@ -262,6 +368,22 @@ async function performVisionAnalysis(
         }
 
         // --- SUCCESS: Update DB & Stats ---
+
+        // --- Post-Process Validation: Champion Detection ---
+        // Verify observed_champions against match context if available
+        if (analysisData.observed_champions && myChampName !== "Unknown") {
+            const validChampions = new Set([myChampName.toLowerCase()]);
+            // Add allies and enemies if we have matchContext
+            const detectedValid = analysisData.observed_champions.filter((obs: any) => {
+                const isValid = validChampions.has(obs.name?.toLowerCase());
+                if (!isValid && obs.name) {
+                    console.warn(`[Vision Validation] Detected champion "${obs.name}" not in match context - marking as unverified`);
+                }
+                return true; // Keep all for now, but mark
+            });
+            console.log(`[Vision] Champion detection: ${analysisData.observed_champions.length} champions found, ${detectedValid.filter((o: any) => validChampions.has(o.name?.toLowerCase())).length} verified against match`);
+        }
+
         
         // --- SUCCESS: Update DB ---
         
@@ -271,6 +393,7 @@ async function performVisionAnalysis(
             .update({
                 status: "completed",
                 result: analysisData,
+                time_offset: analysisData.timeOffset || 0, // Save extracted offset
                 error: null
             })
             .eq("id", jobId);

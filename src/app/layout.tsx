@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Outfit } from "next/font/google";
 import "./globals.css";
 import { SummonerProvider } from "./Providers/SummonerProvider";
 import { AuthProvider } from "./Providers/AuthProvider";
+import { VisionAnalysisProvider } from "./Providers/VisionAnalysisProvider";
+import { CoachUIProvider } from "./Providers/CoachUIProvider";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -12,6 +15,12 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+const outfit = Outfit({
+  variable: "--font-outfit",
+  subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -39,13 +48,19 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${outfit.variable} antialiased`}
       >
-        <AuthProvider>
-          <SummonerProvider>
-            {children}
-          </SummonerProvider>
-        </AuthProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            <SummonerProvider>
+              <VisionAnalysisProvider>
+                <CoachUIProvider>
+                  {children}
+                </CoachUIProvider>
+              </VisionAnalysisProvider>
+            </SummonerProvider>
+          </AuthProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

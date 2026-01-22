@@ -1,9 +1,9 @@
 'use server';
 
 import { createClient } from "@/utils/supabase/server";
-import { fetchMatchTimeline, fetchMatchDetail, fetchDDItemData, fetchRank, fetchLatestVersion } from "./riot";
+import { fetchMatchTimeline, fetchMatchDetail, fetchDDItemData, fetchRank, fetchLatestVersion, extractMatchEvents, getChampionAttributes, ChampionAttributes } from "./riot";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { AnalysisMode, getPersonaPrompt, getModePrompt } from './promptUtils';
+import { AnalysisMode, getPersonaPrompt } from './promptUtils';
 
 const GEMINI_API_KEY_ENV = process.env.GEMINI_API_KEY;
 
@@ -81,9 +81,17 @@ export type BuildComparison = {
     analysis: string; // "Why X is better than Y"
 };
 
+
+export type SummaryAnalysis = {
+    rootCause: string; // 根本原因
+    priorityFocus: "REDUCE_DEATHS" | "OBJECTIVE_CONTROL" | "WAVE_MANAGEMENT" | "VISION_CONTROL" | "TRADING" | "POSITIONING";
+    actionPlan: string[]; // 優先順位付きアクションプラン
+    message: string; // 総括メッセージ
+};
 export type AnalysisResult = {
     insights: CoachingInsight[];
-    buildRecommendation?: BuildComparison; // Renamed from BuildRecommendation
+    buildRecommendation?: BuildComparison;
+    summaryAnalysis?: SummaryAnalysis; // 総括分析
 };
 
 // Fallback sequence: Stable 2.0 -> New 2.5 -> Legacy Standard
@@ -100,7 +108,8 @@ export async function analyzeMatchTimeline(
     matchId: string, 
     puuid: string, 
     userApiKey?: string,
-    focus?: AnalysisFocus 
+    focus?: AnalysisFocus,
+    locale: string = "ja" 
 ): Promise<{ success: boolean, data?: AnalysisResult, error?: string }> {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -221,24 +230,48 @@ export async function analyzeMatchTimeline(
             }));
         }
 
-        // 4. Summarize Timeline (Filter by Mode)
-        const mode = focus?.mode || 'MACRO'; // Default to Macro if not specified
-        const events = summarizeTimeline(timeline, userPart.participantId, opponentPart?.participantId, mode);
+        // 4. Summarize Timeline (Truth Injection)
+        // Extract events with mode-based time filtering for reduced hallucination
+        let timeRange: { startMs: number, endMs: number } | undefined;
+        if (focus?.mode === 'LANING') {
+            timeRange = { startMs: 0, endMs: 900000 }; // 0-15 min
+        } else if (focus?.mode === 'TEAMFIGHT') {
+            timeRange = { startMs: 900000, endMs: 3600000 }; // 15min+
+        }
+        // For MACRO mode, no filter (full game analysis)
+        
+        const rawEvents = await extractMatchEvents(timeline, puuid, timeRange);
+        
+        // Priority sorting: OBJECTIVE > TURRET > KILL (Macro focus)
+        const priorityOrder: Record<string, number> = { 'OBJECTIVE': 1, 'TURRET': 2, 'KILL': 3 };
+        const sortedEvents = rawEvents.sort((a, b) => {
+            const aPriority = priorityOrder[a.type] || 99;
+            const bPriority = priorityOrder[b.type] || 99;
+            if (aPriority !== bPriority) return aPriority - bPriority;
+            return a.timestamp - b.timestamp;
+        });
+        
+        // Limit to 40 events to avoid token overflow while keeping quality
+        const events = sortedEvents.slice(0, 40);
 
-        // 5. Prompt Gemini
+        // 5. Fetch Champion Attributes
+        const champAttrs = await getChampionAttributes(userPart.championName);
+
+        // 6. Prompt Gemini
         const genAI = new GoogleGenerativeAI(apiKeyToUse);
         
         // Use the new versatile prompt generator
         const systemPrompt = generateSystemPrompt(
             rankTier, 
-            mode, 
             userItems, 
             opponentItemsStr, 
             events, 
             userPart, 
-            opponentPart, 
+            opponentPart,
+            champAttrs, // Pass attributes 
             focus,
-            latestVersion
+            latestVersion,
+            locale
         );
 
         let responseText = "";
@@ -250,7 +283,15 @@ export async function analyzeMatchTimeline(
             try {
                 console.log(`Trying Gemini Model: ${modelName}`);
                 const genAI = new GoogleGenerativeAI(apiKeyToUse);
-                const model = genAI.getGenerativeModel({ model: modelName, generationConfig: { responseMimeType: "application/json" } });
+                
+                // Note: JSON Schema constraint removed due to SDK type compatibility.
+                // Using prompt-based instruction for output format instead.
+                const model = genAI.getGenerativeModel({ 
+                    model: modelName, 
+                    generationConfig: { 
+                        responseMimeType: "application/json"
+                    } 
+                });
 
                 const result = await model.generateContent(systemPrompt);
                 const response = await result.response;
@@ -299,19 +340,51 @@ export async function analyzeMatchTimeline(
              
              return {
                  ...item,
-                 id: id // 0 if not found, UI should handle missing icon
+                 id: id
              };
         });
+        
+        // Filter out items not found in DDragon (id = 0) and log warning
+        const validatedRecommendedItems = recommendedWithIds.filter((item: any) => {
+            if (item.id === 0) {
+                console.warn(`[Item Validation] Unknown item "${item.itemName}" - possibly hallucinated or outdated`);
+                return false; // Exclude unknown items
+            }
+            return true;
+        });
+        
+        if (recommendedWithIds.length > validatedRecommendedItems.length) {
+            console.log(`[Post-Process] Removed ${recommendedWithIds.length - validatedRecommendedItems.length} unknown item recommendations.`);
+        }
+
+        // --- Post-Process Validation: Cross-check insights with Truth Events ---
+        // Filter out insights that reference timestamps not present in Truth Events (±60s tolerance)
+        const validatedInsights = analysisResult.insights.filter((insight: any) => {
+            const insightTs = insight.timestamp as number;
+            // Check if any Truth Event exists within 60 seconds of this insight timestamp
+            const hasMatchingEvent = events.some(e => Math.abs(e.timestamp - insightTs) < 60000);
+            if (!hasMatchingEvent) {
+                console.warn(`[Validation] Filtered insight at ${insight.timestampStr}: No matching Truth Event`);
+            }
+            return hasMatchingEvent;
+        });
+        
+        // Log validation stats
+        const removedCount = analysisResult.insights.length - validatedInsights.length;
+        if (removedCount > 0) {
+            console.log(`[Post-Process] Removed ${removedCount} potentially hallucinated insights.`);
+        }
 
         const finalResult: AnalysisResult = {
-            insights: analysisResult.insights,
+            insights: validatedInsights,
             buildRecommendation: {
                 userItems: userItems,
                 opponentItems: opponentItems,
                 opponentChampionName: opponentPart?.championName || "Unknown",
-                recommendedItems: recommendedWithIds,
+                recommendedItems: validatedRecommendedItems,
                 analysis: analysisResult.buildRecommendation.analysis
-            }
+            },
+            summaryAnalysis: analysisResult.summaryAnalysis
         };
 
 
@@ -361,116 +434,200 @@ function getMatchContext(match: any, puuid: string) {
 // Helper: Generate System Prompt based on Mode and Rank
 
 function generateSystemPrompt(
-    rank: string, // e.g. "GOLD", "IRON", "CHALLENGER"
-    mode: 'LANING' | 'MACRO' | 'TEAMFIGHT',
+    rank: string, 
     userItems: BuildItem[],
     opponentItemsStr: string,
     events: any[],
     userPart: any,
     opponentPart: any,
+    champAttrs: ChampionAttributes | null,
     focus?: AnalysisFocus,
-    patchVersion: string = "14.24.1"
+    patchVersion: string = "14.24.1",
+    locale: string = "ja"
 ) {
     // 1. Determine Persona based on Rank (Shared Logic)
     const personaInstruction = getPersonaPrompt(rank);
 
-    // 2. Mode Specific Instructions (Shared Logic)
-    const modeInstruction = getModePrompt(mode);
-
-    // 3. User Focus
+    // 2. User Focus
     let focusInstruction = "";
     if (focus) {
         focusInstruction = `
-        【ユーザーからの具体的な質問】
-        興味ある領域: ${focus.focusArea || "指定なし"}
-        ${focus.specificQuestion ? `具体的な悩み: "${focus.specificQuestion}"` : ""}
+        [User's Specific Question]
+        Area of Interest: ${focus.focusArea || "Not specified"}
+        ${focus.specificQuestion ? `Specific Concern: "${focus.specificQuestion}"` : ""}
         
-        この質問に対する回答を最優先に含めてください。
+        Prioritize answering this question in your response.
         `;
     }
+
+    // 3. Match Context & Attributes
+    let roleInstruction = "";
+    if (champAttrs) {
+        roleInstruction = `
+        **[IMPORTANT: Champion Role Identity]**
+        The user's champion (${userPart.championName}) has the following characteristics.
+        Strictly evaluate whether the player's actions aligned with this role.
+
+        - **Win Condition (Identity)**: ${champAttrs.identity} 
+           (e.g., SPLIT_PUSHER should avoid teamfights, TEAMFIGHT should not over-sidelane)
+        - **Power Spike**: ${champAttrs.powerSpike} 
+           (e.g., LATE means avoiding early fights is correct, LEVEL_6 means avoid fighting before ult)
+        - **Wave Clear**: ${champAttrs.waveClear} 
+           (e.g., POOR wave clear means don't criticize for not roaming)
+        - **Mobility**: ${champAttrs.mobility}
+        `;
+    } else {
+        roleInstruction = `
+        User's Champion: ${userPart.championName}
+        (No attribute data: Evaluate as a general ${userPart.teamPosition})
+        `;
+    }
+
+    // Determine output language
+    const outputLanguage = locale === "ja" ? "Japanese" : locale === "ko" ? "Korean" : "English";
 
     return `
     ${personaInstruction}
     
-    【重要：前提条件】
-    - 現在のパッチバージョン: **${patchVersion}**
-    - **禁止事項**: 以下の削除されたアイテムは絶対に推奨しないでください。
-      - ミシックアイテム全般（ディヴァイン サンダラー、ゴアドリンカー、エバーフロスト、ガレッドフォース等）
-      - ヘクステック・ガンブレード (Hextech Gunblade)
-      - 削除されたルーン（リーサルテンポ等）
-    - 必ず最新のアイテム環境（Map 14, Season 2024/2025）に基づいてアドバイスしてください。
+    [IMPORTANT: Prerequisites]
+    - Current Patch Version: **${patchVersion}**
+    - **Target**: Focus on **MACRO analysis (decision-making, game state awareness)**.
+    - **PROHIBITED**: 
+      - Do NOT comment on CS count or skill accuracy (micro operations).
+      - Do NOT mention "missed skillshots" or "slow reactions".
+      - Do NOT recommend removed items (e.g., Divine Sunderer).
+      - Do NOT mention other lane players (e.g., "Your jungler should have...").
+      - Do NOT suggest actions impossible for the user's role.
+    - Base all advice on the current item meta (Map 14, Season 2024/2025).
 
-    以下の試合データに基づき、選択されたモード「${mode}」に特化したコーチングを行ってください。
+    Based on the match data below, provide coaching aimed at **individual player growth**.
 
-    ${modeInstruction}
+    ${roleInstruction}
+
+    [Role-Based Analysis - CRITICAL]
+    The user played as **${userPart.teamPosition}**.
+    Analyze ONLY actions this role could have taken:
+    
+    ■ TOP:
+      - Split push pressure, TP to objectives
+    ■ JUNGLE:
+      - Positioning before objectives spawn, gank timing  
+    ■ MIDDLE:
+      - Roaming to side lanes, movement after wave push
+    ■ BOTTOM:
+      - Dragon fight participation, lane priority
+    ■ UTILITY:
+      - Vision control, ADC protection, warding around objectives
+
+    [Truth Events from Riot API]
+    The following events are **absolute facts**. Prioritize these over AI assumptions.
+    ${JSON.stringify(events.slice(0, 50))} 
+    (Abbreviated for token efficiency. Major kills, towers, objectives only.)
+
+    [Analysis Procedure - Fact-Based Only]
+    1. **Fact Verification (CRITICAL)**: Review the event list above. Only state "what happened".
+    
+    2. **[STRICTLY PROHIBITED] Speculation**:
+       - The term "gank" or "jungler intervention" can ONLY be used if participants include a jungler.
+       - NEVER describe a solo kill (no assists) as "getting ganked".
+       - NEVER use speculative phrases like "probably", "might have", "I think".
+       - NEVER invent information not in Truth Events (positions, causes, intentions).
+    
+    3. **Gank Detection Rules**:
+       - 3+ participants → Teamfight or gank possibility
+       - 2 participants only (killer + victim) → Solo kill, NOT a gank
+       - With assists → Can describe as "multi-person attack"
+    
+    4. **Macro Evaluation (Fact-Based)**:
+       - Evaluate objective gains/losses timing and sequence
+       - Evaluate build path and recall timing
+       - Note actions contradicting the champion's role
+
     ${focusInstruction}
 
-    1. **タイムライン分析 (Insights)**:
-       試合の流れに沿ったアドバイス。最大2〜3文で、具体的かつ説得力のある内容にしてください。
-       **【超重要】必ず「6個以上」のインサイトを出力してください。数が少ないと分析として不十分です。**
+    1. **Timeline Analysis (Insights) - Fact-Based Format**:
+       **[ABSOLUTELY PROHIBITED] Situation Description/Fabrication**
+       - Do NOT describe situations like "overextended" or "bad positioning" (you cannot see the video)
+       - Instead, state ONLY confirmed facts from Truth Events
+       
+       **[Correct Output Format]**
+       - title: Fact-based titles like "2v1 Death" or "Objective Secured"
+       - description: Confirmed facts like "Kill with X participants" or "Y level difference"
+       - advice: General advice based on numbers disadvantage/level difference/gold difference
+       
+       **[Role-Specific Advice - Based on User's Role]**
+       - On objective loss (as ${userPart.teamPosition}) → "How could you have contributed to this objective as your role"
+       - On tower destruction → "Push timing, awareness of opposite side of map"
+       - On kill/death → "Macro decision at that time (should you rotate or farm)"
+       
+       **[Advice Format]**
+       - Output in format: "As ${userPart.teamPosition}, you should have..."
+       - Do NOT mention other lane players
 
-    2. **ビルド比較 (Build Comparison)**:
-       ユーザーが実際に購入したアイテムと、この試合（対面・敵構成・敵のビルド状況）で理想的だったアイテム構成を比較し、
-       「なぜユーザーの選択が間違いだったのか（あるいは正しかったのか）」を解説してください。
-       - 実際のビルド: ${userItems.map(i => i.itemName).join(', ')}
-       - 対面のビルド: ${opponentItemsStr}
-       - 特に「靴」「コアアイテム(1-3手目)」の選択ミスがあれば厳しく指摘してください。
-       - **【重要】「対面（${opponentPart ? opponentPart.championName : '不明'}）のアイテム状況（MR/Armor積みなど）を加味して、なぜそのアイテムが有効か」を具体的に述べてください。**
+       **[CRITICAL] Output at least 6 insights.**
 
-    【重要：出力スタイルの制約】
-    - **日本語**: 自然な日本語で出力してください。
-    - **アイテム名**: 正式な日本語名（例：ディヴァイン サンダラー）を使用してください。
+    2. **Build Comparison & Recall Timing**:
+       Evaluate the user's actual item purchases, timing, and recall decisions.
+       - Actual Build: ${userItems.map(i => i.itemName).join(', ')}
+       - Opponent Build: ${opponentItemsStr}
+       - **[IMPORTANT]** Check if recalls/item updates align with power spike (${champAttrs?.powerSpike || 'unknown'}).
+       - **[IMPORTANT]** Specifically state if the build was advantageous against the opponent (${opponentPart ? opponentPart.championName : 'unknown'}) and if recall timing was appropriate.
 
-    【コンテキスト】
-    - ユーザー: ${userPart.championName} (${userPart.teamPosition})
-    - ランク帯: ${rank.toUpperCase()}
+    3. **Summary Analysis - MOST IMPORTANT**:
+       After analyzing all insights, identify the **root cause** and **priority improvement area**.
+       
+       **[Causal Analysis]**
+       Example: Couldn't join dragon → Why? → Gap with lane opponent → Why? → Early deaths
+       Trace back like this to identify the **root cause**.
+       
+       **[priorityFocus Selection Criteria]**
+       - REDUCE_DEATHS: Deaths are frequent and causing other problems
+       - OBJECTIVE_CONTROL: Issues with objective decisions
+       - WAVE_MANAGEMENT: Poor wave management
+       - VISION_CONTROL: Insufficient vision control
+       - TRADING: Issues with lane trading decisions
+       - POSITIONING: Positioning problems
+
+    [CRITICAL: Output Style]
+    - **Language**: Output in natural **${outputLanguage}**.
+    - **Assertive tone**: Use definitive statements like "You should have..." instead of "I think...".
+
+    [Context]
+    - User: ${userPart.championName} (${userPart.teamPosition})
+    - Rank: ${rank.toUpperCase()}
     - KDA: ${userPart.kills}/${userPart.deaths}/${userPart.assists}
-    - 対面: ${opponentPart ? opponentPart.championName : '不明'}
+    - Opponent: ${opponentPart ? opponentPart.championName : 'Unknown'}
 
-    【重要: マクロ分析とデス診断のルール】
-    提供されたデータには詳細なコンテキストが含まれています。以下の基準で厳密に分析してください。
-
-    1. **カテゴリ: SOLO_KILL_LOSS (1v1敗北)**
-       - コンテキスト: \`isSolo: true\`
-       - **厳禁**: 「ガンク」や「人数差」を言い訳にすること。
-       - **指摘点**: スキル精度、ダメージ計算ミス、無理なトレード、サモナースペルの差、カウンター関係の理解不足。
-
-    2. **カテゴリ: GANK_OR_TEAMFIGHT (ガンク/集団戦敗北)**
-       - **Check 1: 視界 (\`nearbyVision: false\`)**:
-         - 文字通り「直近90秒間、周辺2000ユニット以内にワードが置かれていない」ことを検知済みです。
-         - アドバイス: 「ワードを置いていれば防げた」「視界管理の甘さ」を強く指摘してください。
-       - **Check 2: 所持ゴールド (\`goldOnHand > 1000\`)**:
-         - 1000G以上持った（=装備更新可能な）状態でデスしています。
-         - アドバイス: 「リコールタイミングの遅れ」「装備差（相手は買い物済みかも）による敗北」を指摘してください。
-       - **Check 3: 生存時間 (\`timeAliveMins\`)**:
-         - 極端に長時間生存していた後のデスなら「欲張りすぎ（Overstay）」を指摘。
-         - 復帰直後のデスなら「プレイの雑さ」を指摘。
-
-    【タイムラインイベント (解析済みデータ)】
-    ${JSON.stringify(events)}
-
-    【出力形式 (JSON)】
-    以下のJSON形式のみを出力してください。Markdownバッククォートは不要です。
+    [Output Format (JSON)]
+    Output ONLY the following JSON format. No markdown backticks.
 
     {
         "insights": [
             {
                 "timestamp": number (ms),
                 "timestampStr": string ("mm:ss"),
-                "title": string (短い見出し),
-                "description": string (状況説明),
+                "title": string (short headline),
+                "description": string (confirmed facts only: e.g., "2v1 kill", "1 assist"),
                 "type": "MISTAKE" | "TURNING_POINT" | "GOOD_PLAY" | "INFO",
-                "advice": string (2-3文のアドバイス)
+                "advice": string (general advice based on numbers/level difference)
             }
         ],
         "buildRecommendation": {
             "recommendedItems": [
-                { "itemName": "アイテム名(日本語)", "reason": "短い採用理由" },
-                { "itemName": "アイテム名", "reason": "短い採用理由" },
-                { "itemName": "アイテム名", "reason": "短い採用理由" }
-                // 3〜4つ程度（靴含む）
+                { "itemName": "Item Name", "reason": "Short reason" },
+                { "itemName": "Item Name", "reason": "Short reason" }
             ],
-            "analysis": string (ユーザーのビルドと推奨ビルドの比較解説。200文字程度。)
+            "analysis": string (Comparison of user build vs recommended. ~200 chars.)
+        },
+        "summaryAnalysis": {
+            "rootCause": string (Root cause of issues this match),
+            "priorityFocus": "REDUCE_DEATHS" | "OBJECTIVE_CONTROL" | "WAVE_MANAGEMENT" | "VISION_CONTROL" | "TRADING" | "POSITIONING",
+            "actionPlan": [
+                string (1. Top priority improvement),
+                string (2. Second priority),
+                string (3. Third priority)
+            ],
+            "message": string (~200 chars summary. Start with "The most important improvement for this match is...")
         }
     }
     `;

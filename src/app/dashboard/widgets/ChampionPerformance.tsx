@@ -1,12 +1,17 @@
+"use client";
+
 import { ChampionStat } from "@/app/actions/stats";
 import Link from "next/link";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }) {
+    const { t } = useTranslation();
+    
     if (!stats || stats.length === 0) {
         return (
              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col items-center justify-center min-h-[200px] text-center">
-                 <div className="text-slate-500 font-bold mb-2">No Champion Data</div>
-                 <div className="text-xs text-slate-600">Play matches to see your top performers</div>
+                 <div className="text-slate-500 font-bold mb-2">{t('widgets.championPerformance.noData')}</div>
+                 <div className="text-xs text-slate-600">{t('widgets.championPerformance.noDataDesc')}</div>
             </div>
         )
     }
@@ -28,9 +33,9 @@ export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }
 
              <div className="relative z-10">
                  <div className="flex justify-between items-center mb-4">
-                    <div className="text-slate-400 text-xs font-bold tracking-wider">TOP CHAMPIONS</div>
+                    <div className="text-slate-400 text-xs font-bold tracking-wider">{t('widgets.championPerformance.title')}</div>
                     <Link href="/dashboard/champions" className="text-[10px] text-blue-400 hover:text-blue-300 bg-blue-500/10 px-2 py-1 rounded">
-                        VIEW ALL
+                        {t('widgets.championPerformance.viewAll')}
                     </Link>
                  </div>
 
@@ -52,7 +57,7 @@ export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }
                                  {topChamp.winRate}% WR
                              </span>
                              <span className="text-slate-500">•</span>
-                             <span className="text-slate-300">{topChamp.games} Games</span>
+                             <span className="text-slate-300">{topChamp.games} {t('widgets.championPerformance.games')}</span>
                          </div>
                          <div className="text-xs text-slate-400 mt-0.5 font-mono">
                              KDA {topChamp.avgKda}
@@ -77,7 +82,7 @@ export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }
                                  </div>
                                  <div className="flex-1">
                                      <div className="text-sm font-bold text-slate-200 group-hover/list:text-blue-400 transition-colors">{champ.name}</div>
-                                     <div className="text-[10px] text-slate-500">{champ.games} Games</div>
+                                     <div className="text-[10px] text-slate-500">{champ.games} {t('widgets.championPerformance.games')}</div>
                                  </div>
                              </div>
                              <div className="flex items-center gap-3">
@@ -98,3 +103,4 @@ export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }
         </div>
     )
 }
+

@@ -1,8 +1,13 @@
+"use client";
+
 import { UniqueStats } from "@/app/actions/stats";
 import DashboardCard from "../components/DashboardCard";
 import InfoTooltip from "../components/InfoTooltip";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 export default function LaningPhaseWidget({ stats, matchCount }: { stats: UniqueStats | null, matchCount: number }) {
+    const { t } = useTranslation();
+    
     if (!stats) return <DashboardCard><div className="animate-pulse h-32 bg-slate-800 rounded"></div></DashboardCard>;
 
     // CS Advantage (Higher is Better)
@@ -19,19 +24,19 @@ export default function LaningPhaseWidget({ stats, matchCount }: { stats: Unique
                     </div>
                     <div>
                         <div className="flex items-center gap-2">
-                            <h3 className="text-xs font-bold text-slate-400 tracking-wider">LANING PHASE</h3>
+                            <h3 className="text-xs font-bold text-slate-400 tracking-wider">{t('widgets.laningPhase.title')}</h3>
                             <span className="text-[9px] px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 text-slate-400 font-mono">
-                                Last {matchCount}
+                                {t('widgets.laningPhase.last')} {matchCount}
                             </span>
                         </div>
-                        <p className="text-[10px] text-slate-500 font-mono">Early Game Stability</p>
+                        <p className="text-[10px] text-slate-500 font-mono">{t('widgets.laningPhase.subtitle')}</p>
                     </div>
                 </div>
                 <InfoTooltip 
                     content={{
-                        what: "序盤10分間の「CS有利（対面との差）」と「稼ぐ力」を総合評価します。",
-                        why: "対面より多くのCSを取ることは、装備差を作るための最も確実な手段です。",
-                        how: "対面より常に+10CS以上リードすることを目指しましょう。"
+                        what: t('tooltip.laningPhase.what'),
+                        why: t('tooltip.laningPhase.why'),
+                        how: t('tooltip.laningPhase.how')
                     }}
                 />
             </div>
@@ -61,9 +66,9 @@ export default function LaningPhaseWidget({ stats, matchCount }: { stats: Unique
                         </div>
                     </div>
                     <div className="text-center">
-                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">CS Advantage</div>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('widgets.laningPhase.csAdvantage')}</div>
                         <div className={`text-[10px] ${isGood ? "text-emerald-400" : isBad ? "text-rose-400" : "text-yellow-400"}`}>
-                            {isGood ? "Dominating" : isBad ? "Behind" : "Even"}
+                            {isGood ? t('widgets.laningPhase.dominating') : isBad ? t('widgets.laningPhase.behind') : t('widgets.laningPhase.even')}
                         </div>
                     </div>
                 </div>
@@ -81,8 +86,8 @@ export default function LaningPhaseWidget({ stats, matchCount }: { stats: Unique
                      
                      <div className="w-full max-w-[80px] mt-2">
                         <div className="flex justify-between text-[9px] text-slate-500 mb-0.5 font-mono">
-                            <span>Avg</span>
-                            <span>Target: 80</span>
+                            <span>{t('widgets.skillRadar.avg')}</span>
+                            <span>{t('widgets.laningPhase.target')}: 80</span>
                         </div>
                         <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
                             <div 
@@ -96,3 +101,4 @@ export default function LaningPhaseWidget({ stats, matchCount }: { stats: Unique
         </DashboardCard>
     );
 }
+
