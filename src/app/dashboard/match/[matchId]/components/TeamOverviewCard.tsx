@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 type Participant = {
     puuid: string;
@@ -41,6 +42,7 @@ const getChampionImageUrl = (championName: string, version: string) => {
 };
 
 export default function TeamOverviewCard({ teamId, teamName, participants, win, version }: TeamOverviewCardProps) {
+    const { t } = useTranslation();
 
     return (
         <div className={`rounded-xl border ${win ? 'border-blue-500/30 bg-blue-900/10' : 'border-red-500/30 bg-red-900/10'} overflow-hidden`}>
@@ -50,7 +52,7 @@ export default function TeamOverviewCard({ teamId, teamName, participants, win, 
                 <div className="flex items-center gap-2">
                     <span>{teamName}</span>
                     <span className="opacity-50">|</span>
-                    <span>{win ? "VICTORY" : "DEFEAT"}</span>
+                    <span>{win ? t('matchDetail.victory') : t('matchDetail.defeat')}</span>
                     <span className="ml-2 px-1.5 py-0.5 bg-black/20 rounded text-[10px] text-white/60">
                         {participants.reduce((acc, p) => acc + p.kills, 0)} / {participants.reduce((acc, p) => acc + p.deaths, 0)} / {participants.reduce((acc, p) => acc + p.assists, 0)}
                     </span>
@@ -113,7 +115,7 @@ export default function TeamOverviewCard({ teamId, teamName, participants, win, 
                              {p.item6 !== 0 ? (
                                 <img 
                                     src={`https://ddragon.leagueoflegends.com/cdn/${version}/img/item/${p.item6}.png`}
-                                    alt="Trinket"
+                                    alt={t('matchDetail.trinket')}
                                     className="w-7 h-7 rounded-full border border-slate-800 bg-slate-900"
                                 />
                             ) : ( <div className="w-7 h-7 rounded-full bg-slate-800/20" /> )}

@@ -1,0 +1,550 @@
+{
+  "common": {
+    "backToOverview": "← 概要に戻る",
+    "backToList": "← 一覧に戻る",
+    "readMore": "解説を読む →",
+    "goldReward": "獲得ゴールド (REWARD)",
+    "priority": "優先度 (Priority)",
+    "buffEffect": "( + バフ効果 )"
+  },
+  "footer": {
+    "terms": "利用規約",
+    "privacy": "プライバシーポリシー",
+    "contact": "お問い合わせ",
+    "riotDisclaimer": "LoL Coach AIはRiot Gamesによって承認されたものではなく、Riot Gamesまたは公式に関与する者の見解や意見を反映するものではありません。Riot Games、およびすべての関連プロパティは、Riot Games, Inc.の商標または登録商標です。",
+    "copyright": "© {year} LoL Coach AI. All rights reserved."
+  },
+  "sidebar": {
+    "nav": {
+      "dashboard": "ダッシュボード",
+      "stats": "詳細戦績",
+      "economy": "ゴールド経済学",
+      "coach": "AIコーチ",
+      "analysis": "サモナー解析",
+      "account": "アカウント"
+    },
+    "footer": {
+      "terms": "利用規約",
+      "privacy": "プライバシー",
+      "legal": "特商法"
+    },
+    "logout": "ログアウト"
+  },
+  "dashboard": {
+    "title": "ダッシュボード",
+    "subtitle": "あなたの成長センター",
+    "refresh": "データを更新",
+    "refreshing": "更新中...",
+    "noData": {
+      "title": "対戦データが見つかりませんでした",
+      "description": "連携されたアカウントの直近の対戦履歴（過去10戦）が存在しないか、キャッシュされていません。",
+      "button": "データを取得 (API)"
+    },
+    "noAccount": {
+      "title": "サモナーアカウントが連携されていません",
+      "button": "アカウント連携へ"
+    },
+    "errors": {
+      "puuidMissing": "アカウント情報が不完全です（PUUID欠落）。アカウントを再連携してください。",
+      "loadFailed": "データの読み込みに失敗しました."
+    }
+  },
+  "championsPage": {
+    "backToDashboard": "ダッシュボードに戻る",
+    "title": "全チャンピオン",
+    "subtitle": "プレイした全チャンピオンのパフォーマンス統計",
+    "searchPlaceholder": "チャンピオンを検索...",
+    "sortOptions": {
+      "games": "試合数",
+      "winRate": "勝率",
+      "kda": "KDA",
+      "name": "名前"
+    },
+    "games": "試合",
+    "noSummoner": "サモナーが選択されていません",
+    "noChampions": "チャンピオンが見つかりません"
+  },
+  "statsPage": {
+    "title": "詳細戦績 & 履歴",
+    "noAccountTitle": "アカウント未連携",
+    "noAccountDesc": "設定でRiotアカウントを連携して戦績を確認しましょう",
+    "goToSettings": "設定へ移動",
+    "errorTitle": "戦績の読み込みエラー",
+    "tryRefreshing": "再読み込みを試す",
+    "unlockTitle": "高度な統計をアンロック",
+    "unlockDesc": "勝率、KDAトレンド、パフォーマンス指標の詳細分析を取得",
+    "stats": {
+      "winRate": "勝率",
+      "kdaRatio": "KDA比率",
+      "avgPerformance": "平均パフォーマンス",
+      "csPerMin": "CS / 分",
+      "visionScore": "視界スコア",
+      "top15": "上位15%",
+      "excellent": "優秀"
+    },
+    "matchGallery": "マッチギャラリー",
+    "filters": {
+      "all": "全て",
+      "solo": "ソロ",
+      "flex": "フレックス",
+      "normal": "ノーマル",
+      "aram": "ARAM"
+    },
+    "victory": "勝利",
+    "defeat": "敗北",
+    "analyze": "分析 →",
+    "noMatches": "このフィルターに該当する試合がありません"
+  },
+  "championDetail": {
+    "backToDashboard": "ダッシュボードに戻る",
+    "noData": "このチャンピオンの最近のデータが見つかりません",
+    "games": "試合",
+    "ready": "✓ 準備完了",
+    "loading": "読込中",
+    "stats": {
+      "csPerMin": "CS / 分",
+      "goldDiff": "ゴールド差"
+    },
+    "sections": {
+      "laningPhase": "レーニングフェーズ",
+      "combatIdentity": "戦闘スタイル",
+      "powerSpikes": "パワースパイク",
+      "matchupAnalysis": "マッチアップ分析"
+    },
+    "laning": {
+      "csDiff10": "CS差 @ 10分",
+      "goldDiff": "ゴールド差",
+      "xpDiff": "経験値差"
+    },
+    "combat": {
+      "damageShare": "ダメージ割合",
+      "killParticipation": "キル関与率"
+    },
+    "matchup": {
+      "opponent": "対戦相手",
+      "games": "試合数",
+      "winRate": "勝率",
+      "keyItems": "主要アイテム",
+      "goldDiff": "ゴールド差",
+      "csDiff": "CS差",
+      "killDiff": "キル差"
+    },
+    "tooltips": {
+      "csDiff10": "10分時点での対面とのCS(ミニオン)差",
+      "goldDiff": "1試合あたりの平均ゴールド差",
+      "xpDiff": "対面との経験値差。高いほどレベル有利",
+      "damageShare": "チーム全体のチャンピオンダメージに対するあなたの割合",
+      "killParticipation": "チームのキルに関与した割合(キル+アシスト)",
+      "powerSpikes": "試合時間別の勝率。序盤・中盤・終盤のどこが強いかを示します",
+      "matchupNote": "直近の対戦履歴から、対戦数の多い上位10体を表示しています"
+    },
+    "premium": {
+      "unlockSpikes": "パワースパイクをアンロック",
+      "spikesDesc": "ゲーム中いつ最も強いかを確認できます",
+      "unlockMatchup": "マッチアップ分析をアンロック",
+      "matchupDesc": "特定のチャンピオンに対するパフォーマンスを詳細分析"
+    }
+  },
+  "matchDetail": {
+    "errorTitle": "試合の読み込みに失敗しました",
+    "returnToDashboard": "ダッシュボードに戻る",
+    "backToStats": "← 戦績に戻る",
+    "matchReport": "マッチレポート",
+    "aiBeta": "AI BETA",
+    "victory": "勝利",
+    "defeat": "敗北",
+    "patch": "パッチ",
+    "teamsOverview": "チーム概要",
+    "blueTeam": "ブルーチーム",
+    "redTeam": "レッドチーム",
+    "trinket": "トリンケット",
+    "aiCoaching": {
+      "title": "AIコーチング",
+      "interactive": "対話型",
+      "matchAnalysisTitle": "AIによるマッチ分析",
+      "description": "この試合（{championName}）について具体的に相談します。ビルドや立ち回り、敗因についてRionコーチに詳しく聞くことができます。",
+      "preparing": "準備中...",
+      "analyzeButton": "マッチ情報分析"
+    }
+  },
+  "accountPage": {
+    "title": "アカウント設定",
+    "notice": "通知",
+    "success": "成功",
+    "newSummonerLink": "新しいサモナーを連携",
+    "inputDescription": "Riot IDを入力して、アカウントの所有権を確認します。",
+    "inputPlaceholder": "Riot IDを入力 (例: Hide on bush#KR1)",
+    "search": "検索",
+    "verification": {
+      "title": "本人確認 (アイコン認証)",
+      "instruction": "LoLクライアントで、プロフィールアイコンを右側の指定アイコンに変更してください。",
+      "current": "現在",
+      "target": "変更先",
+      "changeToThis": "これに変更！",
+      "timeLimit": "制限時間",
+      "verifyWithin": "10分以内に認証してください",
+      "failedAttempts": "失敗回数"
+    },
+    "buttons": {
+      "cancel": "キャンセル",
+      "checking": "確認中...",
+      "iChangedIt": "変更しました！",
+      "switch": "切替",
+      "remove": "削除",
+      "goToDashboard": "ダッシュボードへ"
+    },
+    "linkedAccounts": "連携済みアカウント",
+    "noAccountsLinked": "まだアカウントが連携されていません",
+    "active": "使用中",
+    "messages": {
+      "formatError": "Riot IDは 'Name#Tag' の形式で入力してください (例: Hide on bush#KR1)",
+      "error": "エラー: ",
+      "verificationSuccess": "認証成功！アカウントを追加しました。",
+      "unexpectedError": "予期せぬエラーが発生しました",
+      "switchFailed": "切り替え失敗: ",
+      "deleteFailed": "削除失敗: ",
+      "deleteConfirm": "{name} を削除しますか？"
+    }
+  },
+  "chatPage": {
+    "premiumTitle": "AIコーチングチャット",
+    "premiumDesc": "高度なAIコーチとチャットして、パーソナライズされたアドバイス、ビルド相談、ゲーム知識の向上を得ましょう。",
+    "history": "履歴",
+    "clearAll": "全削除",
+    "newChat": "新規チャット",
+    "newChatTitle": "新しいチャット",
+    "noHistory": "履歴がありません",
+    "historyLoadFailed": "履歴の読み込みに失敗しました。",
+    "deleteConfirm": "本当に削除しますか？",
+    "deleteSessionConfirm": "「{title}」を削除しますか？",
+    "you": "あなた",
+    "aiCoach": "AIコーチ",
+    "aiThinking": "AI 思考中...",
+    "coachTitle": "LOLE COACH AI",
+    "selectOrStart": "チャット履歴を選択するか、新しい会話を始めてください",
+    "inputPlaceholder": "AIコーチに何でも質問してください...",
+    "send": "送信",
+    "consulting": {
+      "on": "相談中: {championName}",
+      "win": "勝利",
+      "loss": "敗北",
+      "stopContext": "コンテキスト解除"
+    },
+    "matchConsultPrompt": "この試合({championName} {kda})の改善点を教えてください。",
+    "messages": {
+      "aiError": "AIエラー: ",
+      "noResponse": "AIからの返答がありません。",
+      "connectionFailed": "AIとの通信に失敗しました。"
+    }
+  },
+  "premium": {
+    "featureGate": {
+      "title": "プレミアム機能",
+      "defaultDesc": "この機能を利用するにはプレミアムプランへのアップグレードが必要です。",
+      "unlockNow": "今すぐアンロック",
+      "checkoutFailed": "決済の開始に失敗しました。",
+      "error": "エラーが発生しました。"
+    },
+    "promoCard": {
+      "title": "プレミアムをアンロック",
+      "description": "AIコーチの無制限分析、詳細データのアンロック、優先処理など、上達のための全機能を開放しましょう。",
+      "upgradeNow": "今すぐアップグレード",
+      "processing": "処理中...",
+      "activeMember": "アクティブメンバー 💎",
+      "activeUntil": "有効期限: {date}",
+      "manageSubscription": "サブスクリプション管理",
+      "restoreBilling": "復元 / 請求",
+      "autoRenewOff": "自動更新 OFF",
+      "confirmPortal": "契約管理（解約・プラン変更）画面へ移動しますか？",
+      "error": "エラーが発生しました"
+    },
+    "statusBadge": {
+      "plan": "プラン",
+      "premium": "💎 プレミアム",
+      "freeAgent": "無料プラン",
+      "credits": "クレジット",
+      "remaining": "残り",
+      "upgrading": "アップグレード中...",
+      "upgradeToPremium": "プレミアムにアップグレード"
+    }
+  },
+  "coachPage": {
+    "header": {
+      "subtitle": "TIMELINE SYNC & VIDEO",
+      "description": "Riotの試合データとリプレイ動画を同期し、AIが徹底コーチング。"
+    },
+    "tabs": {
+      "macro": "マクロ (Timeline)",
+      "micro": "ミクロ (Vision)"
+    },
+    "list": {
+      "restoring": "セッションを復元中...",
+      "selectMatch": "分析する試合を選択",
+      "loadingHistory": "試合履歴を読み込み中 ({name})...",
+      "win": "勝利 (WIN)",
+      "lose": "敗北 (LOSE)",
+      "macroDone": "MACRO済み",
+      "noMatches": "試合履歴が見つかりません"
+    },
+    "controls": {
+      "back": "戻る",
+      "youtubePlaceholder": "YouTube URL...",
+      "load": "読込",
+      "fileSelected": "動画選択済み",
+      "selectFile": "動画ファイルを選択",
+      "invalidYoutube": "無効なYouTube URLです",
+      "selectVideo": "解析する動画を選択してください"
+    },
+    "micro": {
+      "title": "ミクロ解析 (Vision Analysis)",
+      "description": "動画の指定位置から30秒間を解析し、キル/デスや集団戦の評価を行います。",
+      "fileInfo": "ファイル: {name}",
+      "rangeInfo": "解析開始位置: {start}秒 〜 {end}秒",
+      "analyzeRange": "この位置から30秒を解析",
+      "noVideo": "解析する動画を選択してください（Local File推奨）",
+      "processing": "処理中...",
+      "reportTitle": "解析結果レポート",
+      "summary": "サマリー",
+      "mistakes": "検出された課題",
+      "finalAdvice": "総評",
+      "analyzeAnother": "別の場面を解析する",
+      "visionError": "Vision解析エラー",
+      "youtubeNotSupported": "YouTube動画のVision解析は現在準備中です。ローカルファイルを使用してください。"
+    },
+    "macro": {
+      "modeLabel": "分析モード (Analysis Mode)",
+      "timeLabel": "時間 (任意)",
+      "timePlaceholder": "例: 12:30",
+      "questionLabel": "具体的な悩み・質問 (任意)",
+      "questionPlaceholder": "例: この場面の立ち位置はどうだった？"
+    },
+    "analysis": {
+      "analyzing": "分析中... {progress}%",
+      "analyzeButton": "試合を分析する (Analyze)",
+      "creditsRemaining": "🎫 分析 (残: {credits}/3)",
+      "watchAd": "📺 動画を見る (報酬ゲット)",
+      "waitReward": "🕒 次の報酬まで待機",
+      "noCredits": "クレジット不足",
+      "premiumUnlimited": "💎 PREMIUM UNLIMITED",
+      "verificationFailed": "動画の照合に失敗しました。\n選択した試合と動画の内容が一致しません。",
+      "launchFailed": "解析を開始できませんでした。"
+    },
+    "results": {
+      "matchVerificationError": "動画の照合に失敗しました",
+      "matchVerificationErrorDetail": "選択された試合データと動画の内容が一致しません。",
+      "selectedMatch": "選択した試合: {name} (KDA: {kda})",
+      "closeError": "エラーを閉じる",
+      "placeholder": "動画ファイルを選択するか、YouTube URLを入力してください",
+      "buildTitle": "💡 AI ビルド診断",
+      "yourBuild": "あなたのビルド",
+      "opponentBuild": "対面のビルド (VS)",
+      "recommendedBuild": "AI推奨ビルド (Recommended)",
+      "unknown": "Unknown",
+      "noItems": "アイテムなし",
+      "analysisCompleted": "分析完了 (Analysis Completed)",
+      "showingPastResults": "※過去の分析結果を表示中",
+      "sponsored": "SPONSORED",
+      "insightReport": "🔍 分析レポート (クリックでジャンプ)",
+      "summaryAnalysis": {
+        "title": "📋 総括分析",
+        "rootCause": "根本原因",
+        "priorityFocus": "優先改善ポイント",
+        "actionPlan": "アクションプラン",
+        "priorities": {
+          "REDUCE_DEATHS": "デス削減",
+          "OBJECTIVE_CONTROL": "オブジェクト管理",
+          "WAVE_MANAGEMENT": "ウェーブ管理",
+          "VISION_CONTROL": "視界管理",
+          "TRADING": "トレード判断",
+          "POSITIONING": "ポジショニング"
+        }
+      }
+    },
+    "modeSelector": {
+      "LANING": {
+        "label": "レーン戦",
+        "desc": "CS、ハラス、ガンク回避など序盤の動き"
+      },
+      "MACRO": {
+        "label": "マクロ",
+        "desc": "マップ移動、オブジェクト管理、視界管理"
+      },
+      "TEAMFIGHT": {
+        "label": "集団戦",
+        "desc": "立ち位置、スキル使用、ターゲット選定"
+      }
+    }
+  },
+  "widgets": {
+    "lpWidget": {
+      "title": "ランク推移",
+      "unranked": "アンランク",
+      "unrankedDesc": "ランク戦をプレイしてLP推移を確認しましょう",
+      "currentLp": "現在のLP",
+      "nextRank": "次のランク (100 LP)",
+      "promotionZone": "🔥 昇格圏内！",
+      "recentForm": "直近フォーム (純勝)",
+      "notEnoughMatches": "トレンド表示に十分な試合数がありません"
+    },
+    "championPerformance": {
+      "title": "トップチャンピオン",
+      "noData": "チャンピオンデータなし",
+      "noDataDesc": "試合をプレイしてトップパフォーマーを確認",
+      "viewAll": "すべて表示",
+      "games": "試合"
+    },
+    "skillRadar": {
+      "title": "スキルレーダー",
+      "noData": "プレイスタイル分析中...",
+      "noDataDesc": "バトルデータを収集中",
+      "you": "あなた",
+      "avg": "平均",
+      "outstanding": "あなたの{stat}は圧倒的です！",
+      "axes": {
+        "combat": "戦闘力",
+        "objective": "オブジェクト",
+        "farming": "ファーム",
+        "vision": "視界",
+        "survival": "生存力"
+      },
+      "descriptions": {
+        "combat": "KDA（キル/デス/アシスト）のバランス",
+        "objective": "タワーやドラゴンへのダメージ関与量",
+        "farming": "1分間あたりのCS（ミニオン討伐数）",
+        "vision": "1分間あたりの視界スコア（ワード設置/破壊）",
+        "survival": "デスの少なさ（生存リスク管理）"
+      }
+    },
+    "winCondition": {
+      "title": "勝利条件",
+      "subtitle": "勝利ファクター",
+      "noData": "試合データを収集中...",
+      "firstBlood": "ファーストブラッド",
+      "firstTower": "ファーストタワー",
+      "soloKills": "ソロキル",
+      "games": "試合"
+    },
+    "laningPhase": {
+      "title": "レーニングフェーズ",
+      "subtitle": "序盤の安定性",
+      "last": "直近",
+      "csAdvantage": "CS有利",
+      "dominating": "圧倒",
+      "behind": "劣勢",
+      "even": "互角",
+      "target": "目標"
+    },
+    "nemesis": {
+      "title": "天敵 & 得意",
+      "subtitle": "マッチアップ分析",
+      "noData": "試合データを収集中...",
+      "nemesisLabel": "☠️ 天敵 (低勝率)",
+      "preyLabel": "🍔 カモ (高勝率)",
+      "noNemesis": "明確な天敵がいません",
+      "noPrey": "カモが見つかりません",
+      "games": "試合"
+    },
+    "clutch": {
+      "title": "クラッチ力",
+      "subtitle": "ゲームへの影響",
+      "noData": "試合データを収集中...",
+      "closeGames": "🤝 接戦 (<5kゴールド)",
+      "stompGames": "💥 圧勝 (>10kゴールド)",
+      "icyUnderPressure": "❄️ プレッシャーに強い",
+      "relyOnSnowball": "🔥 スノーボール依存型"
+    }
+  },
+  "tooltip": {
+    "labels": {
+      "what": "What (定義)",
+      "why": "Why (重要性)",
+      "how": "How (目安)"
+    },
+    "winCondition": {
+      "what": "勝利に直結する3大アクション（First Blood, First Tower, Solo Kill）の達成率。",
+      "why": "これらを取得した試合の勝率が高い＝あなたの「勝ちパターン」です。",
+      "how": "勝率60%以上の項目を意識して狙うことで、勝率を安定させられます。"
+    },
+    "laningPhase": {
+      "what": "序盤10分間の「CS有利（対面との差）」と「稼ぐ力」を総合評価します。",
+      "why": "対面より多くのCSを取ることは、装備差を作るための最も確実な手段です。",
+      "how": "対面より常に+10CS以上リードすることを目指しましょう。"
+    },
+    "nemesis": {
+      "what": "対面に来た時の勝率が最も低い「苦手（Nemesis）」と、高い「お得意様（Prey）」",
+      "why": "BAN枠の検討や、後出し（カウンターピック）の参考に使えます。",
+      "how": "ここに出ているNemesisチャンピオンは、無理に戦わずBANするのも賢い選択です。"
+    },
+    "clutch": {
+      "what": "接戦（5kゴールド差以内）および圧勝（10k差以上）時の勝率",
+      "why": "接戦での勝率は、プレッシャーのかかる場面での判断力を示します。",
+      "how": "接戦勝率50%以上を目指し、勝てる試合を確実に拾う力をつけましょう。"
+    }
+  },
+  "economy": {
+    "title": "ゴールド経済学入門",
+    "subtitle": "Gold = Power の基本原則",
+    "principle1": {
+      "title": "ゴールド = パワー",
+      "description": "LoLはゴールドを稼いでアイテムを買い、強くなるゲームです。同じチャンピオンでも、ゴールド差があれば圧倒的な力の差が生まれます。"
+    },
+    "principle2": {
+      "title": "すべての行動に価値がある",
+      "description": "キル、CS、オブジェクト…すべてがゴールドに換算できます。「今、何をすべきか」を判断する基準がゴールド効率です。"
+    },
+    "comparison": {
+      "title": "価値の物差し",
+      "killEqualsCs": "1キル ≒ 15CS",
+      "killEqualsCsDesc": "キル1つは約300g。ミニオン15体分の価値があります。",
+      "plateEqualsWaves": "1プレート ≒ 3ウェーブ",
+      "plateEqualsWavesDesc": "タワープレート1枚は175g。ミニオン3ウェーブ分に相当します。",
+      "dragonEqualsKill": "ドラゴン ≒ 変動",
+      "dragonEqualsKillDesc": "ドラゴンの価値は%バフ。装備が揃うほど効果が増大します。"
+    },
+    "cta": "ゴールド単価表を見る (Check Prices)"
+  },
+  "market": {
+    "title": "ゴールド獲得表 (Gold Reference)",
+    "description": "サモナーズリフトの全ユニット・オブジェクトの「基本価格」一覧。何を倒せばいくら手に入るのか、基本知識として確認しましょう。",
+    "dragonIndex": "DRAGON INDEX (Major Assets)",
+    "scaling": "変動 (Scaling)",
+    "multiplier": "Multiplier",
+    "growthTooltip": "時間経過でゴールドが増加します（90秒ごとに+{growth}g）。後半ほど価値が高くなります。",
+    "categories": {
+      "minions": "MINIONS (ミニオン・基礎)",
+      "jungle": "JUNGLE (ジャングル・中立)",
+      "objectives": "OBJECTIVES (オブジェクト・戦略)",
+      "structures": "STRUCTURES (タワー・建造物)"
+    }
+  },
+  "detail": {
+    "category": {
+      "dragon": "DRAGON GUIDE",
+      "objective": "OBJECTIVE GUIDE"
+    },
+    "sections": {
+      "whatWhy": "概要と重要性 (What & Why)",
+      "basicEffect": "基本効果:",
+      "whyImportant": "なぜ重要なのか:",
+      "concreteValue": "具体的な価値イメージ (Concrete Value)",
+      "csItemExample": "CS・アイテム換算例:",
+      "howToSecure": "獲得のコツ (How to Secure)",
+      "scaling": "価値の変動（スケーリング）"
+    },
+    "scalingDragon": {
+      "title": "「掛け算」の強さ",
+      "description": "ドラゴンのバフはステータスを「%（パーセント）」で強化します。つまり、装備が揃っていない序盤は効果が薄く、装備が揃った後半ほど価値が跳ね上がります。",
+      "note": "目先のゴールド（足し算）ではなく、チーム全体の最終的な強さを底上げする「掛け算（Multiplier）」として評価しましょう。"
+    },
+    "scalingFixed": {
+      "title": "固定価値（変動なし）",
+      "description": "このオブジェクトの価値は試合時間に関わらず一定です。獲得できるゴールドやバフ効果は固定されており、取得タイミングによる変動はありません。早い段階で確保するほど、その優位を長く活かせます。"
+    },
+    "defaultHow": "視界を確保（ワード）し、味方のレーナーが主導権（プッシュ）を握っているタイミングで狩り始めましょう。スマイトのダメージ量を常に確認しておくことが重要です。",
+    "defaultWhy": "このオブジェクトを獲得することで、ゴールド差以上のステータス有利をチーム全員が得られます。特に試合が長引くほどその効果は大きくなります。"
+  },
+  "settings": {
+    "language": "言語",
+    "selectLanguage": "言語を選択"
+  }
+}

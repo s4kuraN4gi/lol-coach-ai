@@ -1,4 +1,7 @@
+"use client";
+
 import { useState } from "react";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 type InfoTooltipProps = {
     content: {
@@ -10,6 +13,7 @@ type InfoTooltipProps = {
 
 export default function InfoTooltip({ content }: InfoTooltipProps) {
     const [isVisible, setIsVisible] = useState(false);
+    const { t } = useTranslation();
 
     return (
         <div className="relative inline-block ml-2 group">
@@ -28,15 +32,15 @@ export default function InfoTooltip({ content }: InfoTooltipProps) {
                 <div className="absolute z-[100] w-64 p-3 bg-slate-800 border border-slate-700 rounded-lg shadow-xl text-left bottom-full mb-2 left-1/2 -translate-x-1/2">
                     <div className="space-y-3">
                         <div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">What (定義)</p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">{t('tooltip.labels.what')}</p>
                             <p className="text-xs text-slate-200 leading-tight">{content.what}</p>
                         </div>
                         <div>
-                            <p className="text-[10px] font-bold text-blue-400 uppercase mb-0.5">Why (重要性)</p>
+                            <p className="text-[10px] font-bold text-blue-400 uppercase mb-0.5">{t('tooltip.labels.why')}</p>
                             <p className="text-xs text-slate-200 leading-tight">{content.why}</p>
                         </div>
                         <div>
-                            <p className="text-[10px] font-bold text-green-400 uppercase mb-0.5">How (目安)</p>
+                            <p className="text-[10px] font-bold text-green-400 uppercase mb-0.5">{t('tooltip.labels.how')}</p>
                             <p className="text-xs text-slate-200 leading-tight">{content.how}</p>
                         </div>
                     </div>
@@ -45,3 +49,4 @@ export default function InfoTooltip({ content }: InfoTooltipProps) {
         </div>
     );
 }
+

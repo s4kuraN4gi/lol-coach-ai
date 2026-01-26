@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { upgradeToPremium } from "@/app/actions/analysis";
+import { useTranslation } from "@/contexts/LanguageContext";
+
 
 type Props = {
     isPremium: boolean;
@@ -22,9 +23,10 @@ export default function PremiumFeatureGate({
     blurAmount = "md",
     onUpgrade
 }: Props) {
+    const { t } = useTranslation();
     
     // Use description if provided, otherwise fallback, otherwise default
-    const descText = description || fallbackDescription || "この機能を利用するにはプレミアムプランへのアップグレードが必要です。";
+    const descText = description || fallbackDescription || t('premium.featureGate.defaultDesc');
 
     const handleUpgrade = async () => {
         if (onUpgrade) {
@@ -32,11 +34,32 @@ export default function PremiumFeatureGate({
             return;
         }
 
-        if (!confirm("【モック】プレミアムプラン(月額980円)に登録しますか？")) return;
-        const res = await upgradeToPremium();
-        if (res.success) {
-            alert("プレミアムプランに登録しました！ページを更新してください。");
-            window.location.reload();
+        try {
+            const response = await fetch('/api/checkout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID,
+                }),
+            });
+
+            if (!response.ok) {
+                console.error('Checkout error:', response.statusText);
+                alert(t('premium.featureGate.checkoutFailed'));
+                return;
+            }
+
+            const { url } = await response.json();
+            if (url) {
+                window.location.href = url;
+            } else {
+                 console.error('No checkout URL returned');
+            }
+        } catch (error) {
+            console.error('Checkout error:', error);
+            alert(t('premium.featureGate.error'));
         }
     };
 
@@ -66,7 +89,7 @@ export default function PremiumFeatureGate({
                         onClick={handleUpgrade}
                         className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-3 px-8 rounded-full shadow-[0_0_20px_rgba(99,102,241,0.5)] transition-all hover:shadow-[0_0_30px_rgba(168,85,247,0.6)]"
                     >
-                        UNLOCK NOW
+                        {t('premium.featureGate.unlockNow')}
                     </button>
                 </div>
             </div>

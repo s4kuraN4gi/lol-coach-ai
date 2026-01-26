@@ -1,0 +1,550 @@
+{
+  "common": {
+    "backToOverview": "← Back to Overview",
+    "backToList": "← Back to List",
+    "readMore": "Read Guide →",
+    "goldReward": "Gold Reward",
+    "priority": "Priority",
+    "buffEffect": "( + Buff Effect )"
+  },
+  "footer": {
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy",
+    "contact": "Contact",
+    "riotDisclaimer": "LoL Coach AI isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties are trademarks or registered trademarks of Riot Games, Inc.",
+    "copyright": "© {year} LoL Coach AI. All rights reserved."
+  },
+  "sidebar": {
+    "nav": {
+      "dashboard": "Dashboard",
+      "stats": "Match History",
+      "economy": "Gold Economy",
+      "coach": "AI Coach",
+      "analysis": "Summoner Analysis",
+      "account": "Account"
+    },
+    "footer": {
+      "terms": "Terms of Service",
+      "privacy": "Privacy Policy",
+      "legal": "Legal Notice"
+    },
+    "logout": "Logout"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Your Growth Center",
+    "refresh": "Refresh Data",
+    "refreshing": "Refreshing...",
+    "noData": {
+      "title": "No Match Data Found",
+      "description": "No recent match history (last 10 games) exists for the linked account, or it hasn't been cached yet.",
+      "button": "Fetch Data (API)"
+    },
+    "noAccount": {
+      "title": "Summoner Account Not Linked",
+      "button": "Link Account"
+    },
+    "errors": {
+      "puuidMissing": "Account information incomplete (PUUID missing). Please re-link your account.",
+      "loadFailed": "Failed to load data."
+    }
+  },
+  "championsPage": {
+    "backToDashboard": "Back to Dashboard",
+    "title": "All Champions",
+    "subtitle": "Performance statistics across all played champions",
+    "searchPlaceholder": "Search Champion...",
+    "sortOptions": {
+      "games": "Games Played",
+      "winRate": "Win Rate",
+      "kda": "KDA",
+      "name": "Name"
+    },
+    "games": "Games",
+    "noSummoner": "Summoner not selected.",
+    "noChampions": "No champions found."
+  },
+  "statsPage": {
+    "title": "DETAILED STATS & HISTORY",
+    "noAccountTitle": "No Account Linked",
+    "noAccountDesc": "Link your Riot Account in settings to view stats.",
+    "goToSettings": "Go to Settings",
+    "errorTitle": "Error Loading Stats",
+    "tryRefreshing": "Try Refreshing",
+    "unlockTitle": "Unlock Advanced Statistics",
+    "unlockDesc": "Get deep insights into your win rates, KDA trends, and performance metrics.",
+    "stats": {
+      "winRate": "WIN RATE",
+      "kdaRatio": "KDA RATIO",
+      "avgPerformance": "Avg. Performance",
+      "csPerMin": "CS / MIN",
+      "visionScore": "VISION SCORE",
+      "top15": "Top 15%",
+      "excellent": "Excellent"
+    },
+    "matchGallery": "MATCH GALLERY",
+    "filters": {
+      "all": "ALL",
+      "solo": "SOLO",
+      "flex": "FLEX",
+      "normal": "NORMAL",
+      "aram": "ARAM"
+    },
+    "victory": "VICTORY",
+    "defeat": "DEFEAT",
+    "analyze": "ANALYZE →",
+    "noMatches": "No matches found for this filter."
+  },
+  "championDetail": {
+    "backToDashboard": "Back to Dashboard",
+    "noData": "No recent data found for this champion.",
+    "games": "Games",
+    "ready": "✓ Ready",
+    "loading": "Loading",
+    "stats": {
+      "csPerMin": "CS / Min",
+      "goldDiff": "Gold Diff"
+    },
+    "sections": {
+      "laningPhase": "Laning Phase",
+      "combatIdentity": "Combat Identity",
+      "powerSpikes": "Power Spikes",
+      "matchupAnalysis": "Matchup Analysis"
+    },
+    "laning": {
+      "csDiff10": "CS Diff @ 10",
+      "goldDiff": "Gold Diff",
+      "xpDiff": "XP Diff"
+    },
+    "combat": {
+      "damageShare": "Damage Share",
+      "killParticipation": "Kill Participation"
+    },
+    "matchup": {
+      "opponent": "Opponent",
+      "games": "Games",
+      "winRate": "Win Rate",
+      "keyItems": "Key Items",
+      "goldDiff": "Gold Diff",
+      "csDiff": "CS Diff",
+      "killDiff": "Kill Diff"
+    },
+    "tooltips": {
+      "csDiff10": "Difference in Creep Score (minions) at 10 minutes vs your lane opponent.",
+      "goldDiff": "Average Gold difference vs opponent per game.",
+      "xpDiff": "Experience difference vs opponent. Higher means you are out-leveling them.",
+      "damageShare": "Percentage of your team's total damage to champions that you dealt.",
+      "killParticipation": "Percentage of team kills you were involved in (Kills + Assists).",
+      "powerSpikes": "Win Rate based on game duration. Shows if you are better in Early, Mid, or Late game.",
+      "matchupNote": "Showing top 10 opponents by game count from recent match history."
+    },
+    "premium": {
+      "unlockSpikes": "Unlock Power Spikes",
+      "spikesDesc": "See when you are strongest in the game.",
+      "unlockMatchup": "Unlock Matchup Analysis",
+      "matchupDesc": "Deep dive into your performance against specific champions."
+    }
+  },
+  "matchDetail": {
+    "errorTitle": "Failed to Load Match",
+    "returnToDashboard": "Return to Dashboard",
+    "backToStats": "← Back to Stats",
+    "matchReport": "MATCH REPORT",
+    "aiBeta": "AI BETA",
+    "victory": "VICTORY",
+    "defeat": "DEFEAT",
+    "patch": "PATCH",
+    "teamsOverview": "Teams Overview",
+    "blueTeam": "BLUE TEAM",
+    "redTeam": "RED TEAM",
+    "trinket": "Trinket",
+    "aiCoaching": {
+      "title": "AI COACHING",
+      "interactive": "INTERACTIVE",
+      "matchAnalysisTitle": "AI Match Analysis",
+      "description": "Get specific coaching on this match ({championName}). Ask Rion Coach about builds, positioning, and how to improve.",
+      "preparing": "Preparing...",
+      "analyzeButton": "Analyze Match"
+    }
+  },
+  "accountPage": {
+    "title": "ACCOUNT SETTINGS",
+    "notice": "Notice",
+    "success": "Success",
+    "newSummonerLink": "NEW SUMMONER LINK",
+    "inputDescription": "Enter your Riot ID to verify account ownership.",
+    "inputPlaceholder": "Enter Riot ID (e.g. Hide on bush#KR1)",
+    "search": "SEARCH",
+    "verification": {
+      "title": "Identity Verification (Icon Auth)",
+      "instruction": "In the LoL client, change your profile icon to the specified icon on the right.",
+      "current": "Current",
+      "target": "TARGET",
+      "changeToThis": "Change to this!",
+      "timeLimit": "TIME LIMIT",
+      "verifyWithin": "Please verify within 10 mins.",
+      "failedAttempts": "Failed Attempts"
+    },
+    "buttons": {
+      "cancel": "CANCEL",
+      "checking": "CHECKING...",
+      "iChangedIt": "I CHANGED IT!",
+      "switch": "SWITCH",
+      "remove": "REMOVE",
+      "goToDashboard": "GO TO DASHBOARD"
+    },
+    "linkedAccounts": "LINKED ACCOUNTS",
+    "noAccountsLinked": "No accounts linked yet.",
+    "active": "ACTIVE",
+    "messages": {
+      "formatError": "Please enter Riot ID in 'Name#Tag' format (e.g. Hide on bush#KR1)",
+      "error": "Error: ",
+      "verificationSuccess": "Verification successful! Account added.",
+      "unexpectedError": "An unexpected error occurred",
+      "switchFailed": "Switch failed: ",
+      "deleteFailed": "Delete failed: ",
+      "deleteConfirm": "Delete {name}?"
+    }
+  },
+  "chatPage": {
+    "premiumTitle": "AI Coaching Chat",
+    "premiumDesc": "Chat with our advanced AI Coach to get personalized advice, build discussions, and improve your game knowledge.",
+    "history": "HISTORY",
+    "clearAll": "CLEAR ALL",
+    "newChat": "NEW CHAT",
+    "newChatTitle": "New Chat",
+    "noHistory": "No history yet.",
+    "historyLoadFailed": "Failed to load chat history.",
+    "deleteConfirm": "Are you sure you want to delete?",
+    "deleteSessionConfirm": "Delete \"{title}\"?",
+    "you": "YOU",
+    "aiCoach": "AI COACH",
+    "aiThinking": "AI IS THINKING...",
+    "coachTitle": "LOLE COACH AI",
+    "selectOrStart": "Select a chat history or start a new conversation.",
+    "inputPlaceholder": "Ask your AI Coach anything...",
+    "send": "SEND",
+    "consulting": {
+      "on": "Consulting on: {championName}",
+      "win": "WIN",
+      "loss": "LOSS",
+      "stopContext": "Stop Context"
+    },
+    "matchConsultPrompt": "Please tell me how to improve from this match ({championName} {kda}).",
+    "messages": {
+      "aiError": "AI Error: ",
+      "noResponse": "No response from AI.",
+      "connectionFailed": "Failed to communicate with AI."
+    }
+  },
+  "premium": {
+    "featureGate": {
+      "title": "PREMIUM FEATURE",
+      "defaultDesc": "Upgrade to Premium to unlock this feature.",
+      "unlockNow": "UNLOCK NOW",
+      "checkoutFailed": "Failed to start checkout.",
+      "error": "An error occurred."
+    },
+    "promoCard": {
+      "title": "UNLOCK PREMIUM",
+      "description": "Unlock unlimited AI coach analysis, detailed data, priority processing, and all features to help you improve.",
+      "upgradeNow": "UPGRADE NOW",
+      "processing": "PROCESSING...",
+      "activeMember": "ACTIVE MEMBER 💎",
+      "activeUntil": "Active until: {date}",
+      "manageSubscription": "Manage Subscription",
+      "restoreBilling": "Restore / Billing",
+      "autoRenewOff": "Auto-Renew OFF",
+      "confirmPortal": "Go to subscription management (cancel/change plan)?",
+      "error": "An error occurred"
+    },
+    "statusBadge": {
+      "plan": "PLAN",
+      "premium": "💎 PREMIUM",
+      "freeAgent": "FREE AGENT",
+      "credits": "CREDITS",
+      "remaining": "REMAINING",
+      "upgrading": "UPGRADING...",
+      "upgradeToPremium": "UPGRADE TO PREMIUM"
+    }
+  },
+  "coachPage": {
+    "header": {
+      "subtitle": "TIMELINE SYNC & VIDEO",
+      "description": "Sync Riot match data with replay video for thorough AI coaching."
+    },
+    "tabs": {
+      "macro": "Macro (Timeline)",
+      "micro": "Micro (Vision)"
+    },
+    "list": {
+      "restoring": "Restoring Session...",
+      "selectMatch": "Select Match to Analyze",
+      "loadingHistory": "Loading Match History ({name})...",
+      "win": "VICTORY",
+      "lose": "DEFEAT",
+      "macroDone": "MACRO DONE",
+      "noMatches": "No match history found"
+    },
+    "controls": {
+      "back": "Back",
+      "youtubePlaceholder": "YouTube URL...",
+      "load": "Load",
+      "fileSelected": "Video Selected",
+      "selectFile": "Select Video File",
+      "invalidYoutube": "Invalid YouTube URL",
+      "selectVideo": "Please select a video to analyze"
+    },
+    "micro": {
+      "title": "Micro Analysis (Vision)",
+      "description": "Analyzes 30 seconds from the specified point to evaluate kills/deaths and teamfights.",
+      "fileInfo": "File: {name}",
+      "rangeInfo": "Range: {start}s - {end}s",
+      "analyzeRange": "Analyze 30s from here",
+      "noVideo": "Please select a video to analyze (Local File recommended)",
+      "processing": "Processing...",
+      "reportTitle": "Analysis Report",
+      "summary": "Summary",
+      "mistakes": "Detected Issues",
+      "finalAdvice": "Final Verdict",
+      "analyzeAnother": "Analyze Another Scene",
+      "visionError": "Vision Analysis Error",
+      "youtubeNotSupported": "YouTube Vision Analysis is coming soon. Please use a local file."
+    },
+    "macro": {
+      "modeLabel": "Analysis Mode",
+      "timeLabel": "Time (Optional)",
+      "timePlaceholder": "Ex: 12:30",
+      "questionLabel": "Specific Question (Optional)",
+      "questionPlaceholder": "Ex: How was my positioning here?"
+    },
+    "analysis": {
+      "analyzing": "Analyzing... {progress}%",
+      "analyzeButton": "Analyze Match",
+      "creditsRemaining": "🎫 Analyze ({credits}/3 Left)",
+      "watchAd": "📺 Watch Ad (Get Reward)",
+      "waitReward": "🕒 Wait for Next Reward",
+      "noCredits": "Insufficient Credits",
+      "premiumUnlimited": "💎 PREMIUM UNLIMITED",
+      "verificationFailed": "Video verification failed.\nThe selected match does not match the video content.",
+      "launchFailed": "Failed to launch analysis."
+    },
+    "results": {
+      "matchVerificationError": "Video Verification Failed",
+      "matchVerificationErrorDetail": "The selected match does not match the video content.",
+      "selectedMatch": "Selected Match: {name} (KDA: {kda})",
+      "closeError": "Close Error",
+      "placeholder": "Select a video file or enter a YouTube URL",
+      "buildTitle": "💡 AI Build Analysis",
+      "yourBuild": "Your Build",
+      "opponentBuild": "Opponent Build (VS)",
+      "recommendedBuild": "AI Recommended Build",
+      "unknown": "Unknown",
+      "noItems": "No items found",
+      "analysisCompleted": "Analysis Completed",
+      "showingPastResults": "*Showing past analysis results",
+      "sponsored": "SPONSORED",
+      "insightReport": "🔍 Analysis Report (Click to Jump)",
+      "summaryAnalysis": {
+        "title": "📋 Summary Analysis",
+        "rootCause": "Root Cause",
+        "priorityFocus": "Priority Focus",
+        "actionPlan": "Action Plan",
+        "priorities": {
+          "REDUCE_DEATHS": "Reduce Deaths",
+          "OBJECTIVE_CONTROL": "Objective Control",
+          "WAVE_MANAGEMENT": "Wave Management",
+          "VISION_CONTROL": "Vision Control",
+          "TRADING": "Trading",
+          "POSITIONING": "Positioning"
+        }
+      }
+    },
+    "modeSelector": {
+      "LANING": {
+        "label": "Laning",
+        "desc": "Early game CS, harass, gank avoidance"
+      },
+      "MACRO": {
+        "label": "Macro",
+        "desc": "Map movement, objective control, vision"
+      },
+      "TEAMFIGHT": {
+        "label": "Teamfight",
+        "desc": "Positioning, ability usage, target selection"
+      }
+    }
+  },
+  "widgets": {
+    "lpWidget": {
+      "title": "RANK PROGRESSION",
+      "unranked": "Unranked",
+      "unrankedDesc": "Play ranked games to see LP progression",
+      "currentLp": "Current LP",
+      "nextRank": "Next Rank (100 LP)",
+      "promotionZone": "🔥 PROMOTION ZONE!",
+      "recentForm": "RECENT FORM (NET WINS)",
+      "notEnoughMatches": "Not enough matches for trend"
+    },
+    "championPerformance": {
+      "title": "TOP CHAMPIONS",
+      "noData": "No Champion Data",
+      "noDataDesc": "Play matches to see your top performers",
+      "viewAll": "VIEW ALL",
+      "games": "Games"
+    },
+    "skillRadar": {
+      "title": "SKILL RADAR",
+      "noData": "Analyzing Playstyle...",
+      "noDataDesc": "Gathering battle data",
+      "you": "You",
+      "avg": "Avg",
+      "outstanding": "Your {stat} is outstanding!",
+      "axes": {
+        "combat": "COMBAT",
+        "objective": "OBJECTIVE",
+        "farming": "FARMING",
+        "vision": "VISION",
+        "survival": "SURVIVAL"
+      },
+      "descriptions": {
+        "combat": "KDA (Kill/Death/Assist) balance",
+        "objective": "Tower and dragon damage contribution",
+        "farming": "CS per minute (Creep Score)",
+        "vision": "Vision score per minute (Ward placement/destruction)",
+        "survival": "Low death rate (Risk management)"
+      }
+    },
+    "winCondition": {
+      "title": "Win Conditions",
+      "subtitle": "Victory Factors",
+      "noData": "Collecting match data...",
+      "firstBlood": "First Blood",
+      "firstTower": "First Tower",
+      "soloKills": "Solo Kills",
+      "games": "Games"
+    },
+    "laningPhase": {
+      "title": "LANING PHASE",
+      "subtitle": "Early Game Stability",
+      "last": "Last",
+      "csAdvantage": "CS Advantage",
+      "dominating": "Dominating",
+      "behind": "Behind",
+      "even": "Even",
+      "target": "Target"
+    },
+    "nemesis": {
+      "title": "Nemesis & Prey",
+      "subtitle": "Matchup Analysis",
+      "noData": "Collecting match data...",
+      "nemesisLabel": "☠️ NEMESIS (Low WR)",
+      "preyLabel": "🍔 PREY (High WR)",
+      "noNemesis": "No clear nemesis found.",
+      "noPrey": "No prey found.",
+      "games": "games"
+    },
+    "clutch": {
+      "title": "Clutch Factor",
+      "subtitle": "Game Impact",
+      "noData": "Collecting match data...",
+      "closeGames": "🤝 Close Games (<5k Gold)",
+      "stompGames": "💥 Stomp Games (>10k Gold)",
+      "icyUnderPressure": "❄️ You are icy under pressure.",
+      "relyOnSnowball": "🔥 You rely on snowballing."
+    }
+  },
+  "tooltip": {
+    "labels": {
+      "what": "What (Definition)",
+      "why": "Why (Importance)",
+      "how": "How (Target)"
+    },
+    "winCondition": {
+      "what": "Win rate for 3 key actions: First Blood, First Tower, Solo Kill.",
+      "why": "High win rate on these = your 'win pattern'. Focus on what you're good at.",
+      "how": "Target 60%+ win rate on these conditions to stabilize your overall win rate."
+    },
+    "laningPhase": {
+      "what": "Evaluates your early game CS advantage and farming power in the first 10 minutes.",
+      "why": "Out-farming your opponent is the most reliable way to build an item lead.",
+      "how": "Aim for +10 CS lead over your lane opponent consistently."
+    },
+    "nemesis": {
+      "what": "Champions you struggle against (Nemesis) vs champions you dominate (Prey).",
+      "why": "Useful for ban decisions and counter-pick strategies.",
+      "how": "Consider banning Nemesis champions instead of fighting them head-on."
+    },
+    "clutch": {
+      "what": "Win rate in close games (<5k gold diff) and stomp games (>10k gold diff).",
+      "why": "Close game win rate shows decision-making under pressure.",
+      "how": "Aim for 50%+ close game win rate to consistently secure winnable games."
+    }
+  },
+  "economy": {
+    "title": "Gold Economy 101",
+    "subtitle": "The Fundamentals of Gold = Power",
+    "principle1": {
+      "title": "Gold = Power",
+      "description": "LoL is a game where you earn gold, buy items, and become stronger. Even with the same champion, a gold difference creates an overwhelming power gap."
+    },
+    "principle2": {
+      "title": "Every Action Has Value",
+      "description": "Kills, CS, objectives... everything can be converted to gold. Gold efficiency is the criteria for deciding 'What should I do now?'"
+    },
+    "comparison": {
+      "title": "Value Benchmarks",
+      "killEqualsCs": "1 Kill ≒ 15 CS",
+      "killEqualsCsDesc": "One kill is worth about 300g. That's equivalent to 15 minions.",
+      "plateEqualsWaves": "1 Plate ≒ 3 Waves",
+      "plateEqualsWavesDesc": "One tower plate is 175g. That's equivalent to 3 minion waves.",
+      "dragonEqualsKill": "Dragon ≒ Scaling",
+      "dragonEqualsKillDesc": "Dragon value is a % buff. The effect increases as you get more items."
+    },
+    "cta": "View Gold Reference"
+  },
+  "market": {
+    "title": "Gold Reference",
+    "description": "A complete list of base gold values for all units and objectives on Summoner's Rift. Learn what you earn from each target.",
+    "dragonIndex": "DRAGON INDEX (Major Assets)",
+    "scaling": "Scaling",
+    "multiplier": "Multiplier",
+    "growthTooltip": "Gold value increases over time (+{growth}g every 90 seconds). Worth more in late game.",
+    "categories": {
+      "minions": "MINIONS (Basic Income)",
+      "jungle": "JUNGLE (Neutral Camps)",
+      "objectives": "OBJECTIVES (Strategic Assets)",
+      "structures": "STRUCTURES (Buildings)"
+    }
+  },
+  "detail": {
+    "category": {
+      "dragon": "DRAGON GUIDE",
+      "objective": "OBJECTIVE GUIDE"
+    },
+    "sections": {
+      "whatWhy": "Overview & Importance (What & Why)",
+      "basicEffect": "Basic Effect:",
+      "whyImportant": "Why is it important:",
+      "concreteValue": "Concrete Value Example",
+      "csItemExample": "CS & Item Equivalent:",
+      "howToSecure": "How to Secure",
+      "scaling": "Value Scaling"
+    },
+    "scalingDragon": {
+      "title": "The Power of Multiplication",
+      "description": "Dragon buffs enhance stats by percentage (%). This means they're weak early when you have few items, but their value skyrockets as you build more items.",
+      "note": "Think of it as a 'multiplier' that amplifies your team's final power, not just flat gold."
+    },
+    "scalingFixed": {
+      "title": "Fixed Value (No Scaling)",
+      "description": "This objective's value is constant regardless of game time. The gold and buff effects are fixed, with no variation based on timing. The earlier you secure it, the longer you can leverage the advantage."
+    },
+    "defaultHow": "Establish vision (wards) and start the objective when your laners have priority (pushed lanes). Always keep track of your Smite damage.",
+    "defaultWhy": "Securing this objective gives your entire team a stat advantage beyond the gold difference. The effect becomes more significant as the game progresses."
+  },
+  "settings": {
+    "language": "Language",
+    "selectLanguage": "Select Language"
+  }
+}

@@ -132,7 +132,7 @@ export default function OnboardingPage() {
             <div className="w-full max-w-lg z-10">
                 {/* Header */}
                 <div className="text-center mb-8">
-                    <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-amber-200 mb-2">
+                    <h1 className="text-3xl font-black text-foreground mb-2">
                         WELCOME, SUMMONER
                     </h1>
                     <p className="text-slate-400">

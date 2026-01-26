@@ -1,0 +1,398 @@
+{
+    "Ahri": {
+        "lanes": [
+            "MID"
+        ],
+        "damageType": "AP",
+        "class": "Mage/Assassin",
+        "rangeType": "RANGED",
+        "identity": "ROAM_ASSASSIN",
+        "powerSpike": "MID",
+        "waveClear": "EXCELLENT",
+        "mobility": "HIGH",
+        "notes": "Push and Roam. Look for picks with Charm."
+    },
+    "Garen": {
+        "lanes": [
+            "TOP"
+        ],
+        "damageType": "AD",
+        "class": "Fighter/Tank",
+        "rangeType": "MELEE",
+        "identity": "SPLIT_PUSHER",
+        "powerSpike": "MID",
+        "waveClear": "EXCELLENT",
+        "mobility": "MEDIUM",
+        "notes": "Spin to win. Split push and flank if needed."
+    },
+    "Ashe": {
+        "lanes": [
+            "BOTTOM",
+            "SUPPORT"
+        ],
+        "damageType": "AD",
+        "class": "Marksman",
+        "rangeType": "RANGED",
+        "identity": "TEAMFIGHT",
+        "powerSpike": "LATE",
+        "waveClear": "AVERAGE",
+        "mobility": "LOW",
+        "notes": "Global arrow for engage. Stay safe in backline."
+    },
+    "Lee Sin": {
+        "lanes": [
+            "JUNGLE"
+        ],
+        "damageType": "AD",
+        "class": "Fighter/Assassin",
+        "rangeType": "MELEE",
+        "identity": "EARLY_GANKER",
+        "powerSpike": "EARLY",
+        "waveClear": "AVERAGE",
+        "mobility": "HIGH",
+        "notes": "Dominate early game. Fall off late."
+    },
+    "Thresh": {
+        "lanes": [
+            "UTILITY"
+        ],
+        "damageType": "AP",
+        "class": "Support/Tank",
+        "rangeType": "RANGED",
+        "identity": "SUPPORT",
+        "powerSpike": "MID",
+        "waveClear": "POOR",
+        "mobility": "LOW",
+        "notes": "Lantern saves. Hook for picks."
+    },
+    "Fiora": {
+        "lanes": [
+            "TOP"
+        ],
+        "damageType": "AD",
+        "class": "Skirmisher",
+        "rangeType": "MELEE",
+        "identity": "SPLIT_PUSHER",
+        "powerSpike": "LATE",
+        "waveClear": "EXCELLENT",
+        "mobility": "HIGH",
+        "notes": "Must split push. Do not group for 5v5."
+    },
+    "Malphite": {
+        "lanes": [
+            "TOP",
+            "MID"
+        ],
+        "damageType": "AP/TANK",
+        "class": "Tank",
+        "rangeType": "MELEE",
+        "identity": "TEAMFIGHT",
+        "powerSpike": "LEVEL_6",
+        "waveClear": "POOR",
+        "mobility": "LOW",
+        "notes": "R needed for teamfights. Useless without R."
+    },
+    "Shen": {
+        "lanes": [
+            "TOP"
+        ],
+        "damageType": "TANK",
+        "class": "Tank",
+        "rangeType": "MELEE",
+        "identity": "GLOBAL_PRESSURE",
+        "powerSpike": "LEVEL_6",
+        "waveClear": "POOR",
+        "mobility": "GLOBAL",
+        "notes": "Split push with R threat. Join fights instantly."
+    },
+    "Vladimir": {
+        "lanes": [
+            "TOP"
+        ],
+        "damageType": "AD",
+        "class": "Fighter",
+        "rangeType": "MELEE",
+        "identity": "FIGHTER",
+        "powerSpike": "EARLY",
+        "waveClear": "AVERAGE",
+        "mobility": "MEDIUM"
+    },
+    "Alistar": {
+        "lanes": [
+            "UTILITY"
+        ],
+        "damageType": "AD",
+        "class": "Fighter",
+        "rangeType": "MELEE",
+        "identity": "SUPPORT",
+        "powerSpike": "MID",
+        "waveClear": "AVERAGE",
+        "mobility": "MEDIUM"
+    },
+    "Ryze": {
+        "lanes": [
+            "TOP",
+            "MIDDLE"
+        ],
+        "damageType": "AD",
+        "class": "Fighter",
+        "rangeType": "MELEE",
+        "identity": "FIGHTER",
+        "powerSpike": "MID",
+        "waveClear": "AVERAGE",
+        "mobility": "MEDIUM"
+    },
+    "Teemo": {
+        "lanes": [
+            "TOP"
+        ],
+        "damageType": "AD",
+        "class": "Fighter",
+        "rangeType": "MELEE",
+        "identity": "FIGHTER",
+        "powerSpike": "EARLY",
+        "waveClear": "AVERAGE",
+        "mobility": "MEDIUM"
+    },
+    "Tristana": {
+        "lanes": [
+            "BOTTOM"
+        ],
+        "damageType": "AD",
+        "class": "Fighter",
+        "rangeType": "MELEE",
+        "identity": "FIGHTER",
+        "powerSpike": "MID",
+        "waveClear": "AVERAGE",
+        "mobility": "MEDIUM"
+    },
+    "JarvanIV": {
+        "lanes": [
+            "JUNGLE"
+        ],
+        "damageType": "AD",
+        "class": "Fighter",
+        "rangeType": "MELEE",
+        "identity": "FIGHTER",
+        "powerSpike": "EARLY",
+        "waveClear": "AVERAGE",
+        "mobility": "MEDIUM"
+    },
+    "LeeSin": {
+        "lanes": [
+            "JUNGLE"
+        ],
+        "damageType": "AD",
+        "class": "Fighter",
+        "rangeType": "MELEE",
+        "identity": "FIGHTER",
+        "powerSpike": "MID",
+        "waveClear": "AVERAGE",
+        "mobility": "MEDIUM"
+    },
+    "Mordekaiser": {
+        "lanes": [
+            "JUNGLE"
+        ],
+        "damageType": "AD",
+        "class": "Fighter",
+        "rangeType": "MELEE",
+        "identity": "FIGHTER",
+        "powerSpike": "MID",
+        "waveClear": "AVERAGE",
+        "mobility": "MEDIUM"
+    },
+    "Kayn": {
+        "lanes": [
+            "JUNGLE"
+        ],
+        "damageType": "AD",
+        "class": "Fighter",
+        "rangeType": "MELEE",
+        "identity": "FIGHTER",
+        "powerSpike": "EARLY",
+        "waveClear": "AVERAGE",
+        "mobility": "MEDIUM"
+    },
+    "Kaisa": {
+        "lanes": [
+            "BOTTOM"
+        ],
+        "damageType": "AD",
+        "class": "Fighter",
+        "rangeType": "MELEE",
+        "identity": "FIGHTER",
+        "powerSpike": "EARLY",
+        "waveClear": "AVERAGE",
+        "mobility": "MEDIUM"
+    },
+    "Braum": {
+        "lanes": [
+            "UTILITY"
+        ],
+        "damageType": "AD",
+        "class": "Fighter",
+        "rangeType": "MELEE",
+        "identity": "SUPPORT",
+        "powerSpike": "EARLY",
+        "waveClear": "AVERAGE",
+        "mobility": "MEDIUM"
+    },
+    "Lucian": {
+        "lanes": [
+            "BOTTOM"
+        ],
+        "damageType": "AD",
+        "class": "Fighter",
+        "rangeType": "MELEE",
+        "identity": "FIGHTER",
+        "powerSpike": "MID",
+        "waveClear": "AVERAGE",
+        "mobility": "MEDIUM"
+    },
+    "Zed": {
+        "lanes": [
+            "MIDDLE"
+        ],
+        "damageType": "AD",
+        "class": "Fighter",
+        "rangeType": "MELEE",
+        "identity": "FIGHTER",
+        "powerSpike": "MID",
+        "waveClear": "AVERAGE",
+        "mobility": "MEDIUM"
+    },
+    "Xayah": {
+        "lanes": [
+            "BOTTOM"
+        ],
+        "damageType": "AD",
+        "class": "Fighter",
+        "rangeType": "MELEE",
+        "identity": "FIGHTER",
+        "powerSpike": "MID",
+        "waveClear": "AVERAGE",
+        "mobility": "MEDIUM"
+    },
+    "Rell": {
+        "lanes": [
+            "UTILITY"
+        ],
+        "damageType": "AD",
+        "class": "Fighter",
+        "rangeType": "MELEE",
+        "identity": "SUPPORT",
+        "powerSpike": "EARLY",
+        "waveClear": "AVERAGE",
+        "mobility": "MEDIUM"
+    },
+    "Yone": {
+        "lanes": [
+            "MIDDLE"
+        ],
+        "damageType": "AD",
+        "class": "Fighter",
+        "rangeType": "MELEE",
+        "identity": "FIGHTER",
+        "powerSpike": "EARLY",
+        "waveClear": "AVERAGE",
+        "mobility": "MEDIUM"
+    },
+    "Aurora": {
+        "lanes": [
+            "MIDDLE"
+        ],
+        "damageType": "AD",
+        "class": "Fighter",
+        "rangeType": "MELEE",
+        "identity": "FIGHTER",
+        "powerSpike": "EARLY",
+        "waveClear": "AVERAGE",
+        "mobility": "MEDIUM"
+    },
+    "Samira": {
+        "lanes": [
+            "BOTTOM"
+        ],
+        "damageType": "AD",
+        "class": "Fighter",
+        "rangeType": "MELEE",
+        "identity": "FIGHTER",
+        "powerSpike": "MID",
+        "waveClear": "AVERAGE",
+        "mobility": "MEDIUM"
+    },
+    "Vex": {
+        "lanes": [
+            "MIDDLE"
+        ],
+        "damageType": "AD",
+        "class": "Fighter",
+        "rangeType": "MELEE",
+        "identity": "FIGHTER",
+        "powerSpike": "MID",
+        "waveClear": "AVERAGE",
+        "mobility": "MEDIUM"
+    },
+    "Naafiri": {
+        "lanes": [
+            "JUNGLE",
+            "MIDDLE"
+        ],
+        "damageType": "AD",
+        "class": "Fighter",
+        "rangeType": "MELEE",
+        "identity": "FIGHTER",
+        "powerSpike": "MID",
+        "waveClear": "AVERAGE",
+        "mobility": "MEDIUM"
+    },
+    "Jax": {
+        "lanes": [
+            "TOP"
+        ],
+        "damageType": "AD",
+        "class": "Fighter",
+        "rangeType": "MELEE",
+        "identity": "FIGHTER",
+        "powerSpike": "MID",
+        "waveClear": "AVERAGE",
+        "mobility": "MEDIUM"
+    },
+    "Swain": {
+        "lanes": [
+            "UTILITY"
+        ],
+        "damageType": "AD",
+        "class": "Fighter",
+        "rangeType": "MELEE",
+        "identity": "SUPPORT",
+        "powerSpike": "MID",
+        "waveClear": "AVERAGE",
+        "mobility": "MEDIUM"
+    },
+    "Elise": {
+        "lanes": [
+            "JUNGLE"
+        ],
+        "damageType": "AD",
+        "class": "Fighter",
+        "rangeType": "MELEE",
+        "identity": "FIGHTER",
+        "powerSpike": "MID",
+        "waveClear": "AVERAGE",
+        "mobility": "MEDIUM"
+    },
+    "Leona": {
+        "lanes": [
+            "UTILITY"
+        ],
+        "damageType": "AD",
+        "class": "Fighter",
+        "rangeType": "MELEE",
+        "identity": "SUPPORT",
+        "powerSpike": "MID",
+        "waveClear": "AVERAGE",
+        "mobility": "MEDIUM"
+    }
+}

@@ -1,9 +1,14 @@
+"use client";
+
 import { UniqueStats } from "@/app/actions/stats";
 import DashboardCard from "../components/DashboardCard";
 import InfoTooltip from "../components/InfoTooltip";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 export default function NemesisWidget({ stats }: { stats: UniqueStats | null }) {
-    if (!stats) return <DashboardCard>Collecting match data...</DashboardCard>;
+    const { t } = useTranslation();
+    
+    if (!stats) return <DashboardCard>{t('widgets.nemesis.noData')}</DashboardCard>;
 
     return (
         <DashboardCard className="relative  group hover:border-red-500/30 transition-all duration-500">
@@ -13,14 +18,14 @@ export default function NemesisWidget({ stats }: { stats: UniqueStats | null }) 
                 </div>
                 <div>
                      <h3 className="text-sm font-bold text-slate-200 flex items-center gap-1">
-                        Nemesis & Prey
+                        {t('widgets.nemesis.title')}
                         <InfoTooltip content={{
-                            what: "対面に来た時の勝率が最も低い「苦手（Nemesis）」と、高い「お得意様（Prey）」",
-                            why: "BAN枠の検討や、後出し（カウンターピック）の参考に使えます。",
-                            how: "ここに出ているNemesisチャンピオンは、無理に戦わずBANするのも賢い選択です。"
+                            what: t('tooltip.nemesis.what'),
+                            why: t('tooltip.nemesis.why'),
+                            how: t('tooltip.nemesis.how')
                         }} />
                      </h3>
-                     <p className="text-xs text-slate-500">Matchup Analysis</p>
+                     <p className="text-xs text-slate-500">{t('widgets.nemesis.subtitle')}</p>
                 </div>
              </div>
 
@@ -28,7 +33,7 @@ export default function NemesisWidget({ stats }: { stats: UniqueStats | null }) 
                 {/* Nemesis (Worst WR) */}
                 <div>
                     <div className="text-[10px] items-center gap-1 text-red-400 font-bold mb-2 flex tracking-wider">
-                        <span>☠️ NEMESIS (Low WR)</span>
+                        <span>{t('widgets.nemesis.nemesisLabel')}</span>
                     </div>
                     <div className="space-y-2">
                         {stats.nemesis.map(c => (
@@ -38,18 +43,18 @@ export default function NemesisWidget({ stats }: { stats: UniqueStats | null }) 
                                 </div>
                                 <div className="min-w-0">
                                     <div className="text-[10px] font-bold text-slate-300 leading-none truncate">{c.name}</div>
-                                    <div className="text-[9px] text-red-400 font-mono mt-0.5">{c.winRate}% ({c.games} games)</div>
+                                    <div className="text-[9px] text-red-400 font-mono mt-0.5">{c.winRate}% ({c.games} {t('widgets.nemesis.games')})</div>
                                 </div>
                             </div>
                         ))}
-                        {stats.nemesis.length === 0 && <div className="text-[10px] text-slate-600 italic">No clear nemesis found.</div>}
+                        {stats.nemesis.length === 0 && <div className="text-[10px] text-slate-600 italic">{t('widgets.nemesis.noNemesis')}</div>}
                     </div>
                 </div>
 
                 {/* Prey (Best WR) */}
                 <div>
                      <div className="text-[10px] items-center gap-1 text-emerald-400 font-bold mb-2 flex tracking-wider">
-                        <span>🍔 PREY (High WR)</span>
+                        <span>{t('widgets.nemesis.preyLabel')}</span>
                      </div>
                      <div className="space-y-2">
                         {stats.prey.map(c => (
@@ -59,14 +64,15 @@ export default function NemesisWidget({ stats }: { stats: UniqueStats | null }) 
                                 </div>
                                 <div className="min-w-0">
                                     <div className="text-[10px] font-bold text-slate-300 leading-none truncate">{c.name}</div>
-                                    <div className="text-[9px] text-emerald-400 font-mono mt-0.5">{c.winRate}% ({c.games} games)</div>
+                                    <div className="text-[9px] text-emerald-400 font-mono mt-0.5">{c.winRate}% ({c.games} {t('widgets.nemesis.games')})</div>
                                 </div>
                             </div>
                         ))}
-                         {stats.prey.length === 0 && <div className="text-[10px] text-slate-600 italic">No prey found.</div>}
+                         {stats.prey.length === 0 && <div className="text-[10px] text-slate-600 italic">{t('widgets.nemesis.noPrey')}</div>}
                     </div>
                 </div>
             </div>
         </DashboardCard>
     );
 }
+

@@ -1,6 +1,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { fetchLatestVersion } from "@/app/actions/riot";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY!;
 
@@ -63,9 +64,19 @@ export async function POST(req: Request) {
         let advice = "";
         let usedModel = "";
 
+    // 2.5 Fetch Latest Version
+        const version = await fetchLatestVersion();
+        const todayStr = new Date().toLocaleDateString("ja-JP");
+
+        console.log(`[Chat Debug] Fetched Version: ${version}`);
+        console.log(`[Chat Debug] Today: ${todayStr}`);
+
         const systemPrompt = `
 あなたはLeague of LegendsをSeason 1からプレイしている古参プレイヤーであり、全ロールでチャレンジャーランクを経験した元プロチームコーチ「Rion」です。
 マクロ・ミクロの両面を極めており、その豊富な経験と知識に基づいて指導を行います。
+
+**重要: 現在の日付は ${todayStr} です。League of Legendsのバージョンは ${version} です。**
+**あなたの内部知識（学習データ）が古い場合でも、必ずこのバージョン ${version} が最新であるという前提で回答してください。「知識が古い」といった言い訳は不要です。**
 
 【ペルソナ・行動指針】
 1. **対話スタイル**:

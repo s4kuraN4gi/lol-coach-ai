@@ -14,6 +14,7 @@ import {
     type SummonerAccount 
 } from "../actions/profile";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 export default function AccountPage() {
   console.log("Account Page Mounting");
@@ -22,6 +23,7 @@ export default function AccountPage() {
   const [myAccounts, setMyAccounts] = useState<SummonerAccount[]>([]);
   const [isPending, startTransition] = useTransition();
   const [loading, setLoading] = useState(true);
+  const { t } = useTranslation();
   
   // Verification States
   const [step, setStep] = useState<1 | 2>(1);
@@ -52,7 +54,7 @@ export default function AccountPage() {
     setNotification(null);
     if (!inputName.trim()) return;
     if (!inputName.includes('#')) {
-        alert("Riot IDは 'Name#Tag' の形式で入力してください (例: Hide on bush#KR1)");
+        alert(t('accountPage.messages.formatError'));
         return;
     }
 
@@ -62,7 +64,7 @@ export default function AccountPage() {
         
         const res = await lookupSummoner(inputName.trim());
         if(res.error) {
-            alert("エラー: " + res.error);
+            alert(t('accountPage.messages.error') + res.error);
             return;
         }
         // Success
@@ -88,7 +90,7 @@ export default function AccountPage() {
               }
               return;
           }
-          alert("認証成功！アカウントを追加しました。");
+          alert(t('accountPage.messages.verificationSuccess'));
           // Reset
           setInputName("");
           setCandidate(null);
@@ -106,7 +108,7 @@ export default function AccountPage() {
             else if(res.error) setNotification({ type: 'error', message: "エラー: " + res.error });
           } catch(e) {
             console.error(e);
-            setNotification({ type: 'error', message: "予期せぬエラーが発生しました" });
+            setNotification({ type: 'error', message: t('accountPage.messages.unexpectedError') });
           } finally {
             handleCancel();
           }
@@ -123,7 +125,7 @@ export default function AccountPage() {
       startTransition(async () => {
           const res = await switchSummoner(id);
           if(res.error) {
-              alert("切り替え失敗: " + res.error);
+              alert(t('accountPage.messages.switchFailed') + res.error);
               return;
           }
           await refreshSummoner();
@@ -134,12 +136,12 @@ export default function AccountPage() {
 
   // 削除
   const handleDelete = (id: string, name: string) => {
-      if(!confirm(`${name} を削除しますか？`)) return;
+      if(!confirm(t('accountPage.messages.deleteConfirm').replace('{name}', name))) return;
       
       startTransition(async () => {
           const res = await removeSummoner(id);
           if(res.error) {
-              alert("削除失敗: " + res.error);
+              alert(t('accountPage.messages.deleteFailed') + res.error);
               return;
           }
           await Promise.all([refreshSummoner(), fetchAccounts()]);
@@ -159,15 +161,15 @@ export default function AccountPage() {
   return (
     <DashboardLayout>
       <div className="max-w-2xl mx-auto mt-8 animate-fadeIn">
-        <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-white mb-8 italic tracking-tighter">
-            ACCOUNT SETTINGS
+        <h1 className="text-3xl font-black text-foreground mb-8 italic tracking-tighter">
+            {t('accountPage.title')}
         </h1>
 
         {notification && (
             <div className={`mb-8 p-4 rounded-xl border flex items-start gap-4 shadow-lg animate-fadeIn ${notification.type === 'error' ? 'bg-red-900/40 border-red-500/50 text-red-100' : 'bg-green-900/40 border-green-500/50 text-green-100'}`}>
                 <span className="text-2xl mt-0.5">{notification.type === 'error' ? '⚠️' : '✅'}</span>
                 <div className="flex-1">
-                    <p className="font-bold mb-1">{notification.type === 'error' ? 'Notice' : 'Success'}</p>
+                    <p className="font-bold mb-1">{notification.type === 'error' ? t('accountPage.notice') : t('accountPage.success')}</p>
                     <p className="whitespace-pre-wrap text-sm opacity-90">{notification.message}</p>
                 </div>
                 <button onClick={() => setNotification(null)} className="text-white/50 hover:text-white transition">✕</button>
@@ -178,18 +180,18 @@ export default function AccountPage() {
         <div className="glass-panel p-8 rounded-xl mb-8 transition-all duration-500">
           <h2 className="text-lg font-bold text-slate-200 mb-6 flex items-center gap-2">
               <span className="w-1.5 h-6 bg-blue-500 rounded-full"></span>
-              NEW SUMMONER LINK
+              {t('accountPage.newSummonerLink')}
           </h2>
           
           {step === 1 ? (
               <div className="space-y-4 animate-fadeIn">
                   <p className="text-sm text-slate-400">
-                      Riot IDを入力して、アカウントの所有権を確認します。
+                      {t('accountPage.inputDescription')}
                   </p>
                   <div className="flex gap-3">
                     <input
                       type="text"
-                      placeholder="Enter Riot ID (e.g. Hide on bush#KR1)"
+                      placeholder={t('accountPage.inputPlaceholder')}
                       value={inputName}
                       onChange={(e) => setInputName(e.target.value)}
                       className="flex-1 bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3 text-slate-100 placeholder-slate-500 focus:ring-2 focus:ring-blue-500 outline-none transition"
@@ -201,7 +203,7 @@ export default function AccountPage() {
                       onClick={handleSearch}
                       disabled={isPending || !inputName.trim()}
                     >
-                      {isPending ? <div className="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full mx-auto" /> : "SEARCH"}
+                      {isPending ? <div className="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full mx-auto" /> : t('accountPage.search')}
                     </button>
                   </div>
               </div>
@@ -209,9 +211,9 @@ export default function AccountPage() {
               <div className="space-y-6 animate-fade-in-up">
                   {/* Instructions */}
                   <div className="bg-blue-900/20 border border-blue-500/30 p-5 rounded-lg text-center space-y-4">
-                      <h3 className="text-slate-200 font-bold mb-2">本人確認 (アイコン認証)</h3>
+                      <h3 className="text-slate-200 font-bold mb-2">{t('accountPage.verification.title')}</h3>
                       <p className="text-sm text-slate-400">
-                          LoLクライアントで、プロフィールアイコンを<strong className="text-white">右側の指定アイコン</strong>に変更してください。
+                          {t('accountPage.verification.instruction')}
                       </p>
                       
                       <div className="flex items-center justify-center gap-8 py-4">
@@ -222,7 +224,7 @@ export default function AccountPage() {
                                   alt="current"
                                   className="w-20 h-20 rounded-full border-2 border-slate-600"
                               />
-                              <p className="text-xs text-slate-500 mt-2 font-mono">Current</p>
+                              <p className="text-xs text-slate-500 mt-2 font-mono">{t('accountPage.verification.current')}</p>
                           </div>
 
                           <div className="text-2xl text-blue-500 animate-pulse">➡️</div>
@@ -235,9 +237,9 @@ export default function AccountPage() {
                                   className="w-24 h-24 rounded-full border-4 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.5)]"
                               />
                               <div className="absolute -top-2 -right-2 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow border border-blue-400">
-                                  TARGET
+                                  {t('accountPage.verification.target')}
                               </div>
-                              <p className="text-xs text-blue-400 mt-2 font-mono font-bold">Change to this!</p>
+                              <p className="text-xs text-blue-400 mt-2 font-mono font-bold">{t('accountPage.verification.changeToThis')}</p>
                               <p className="text-[10px] text-slate-600 font-mono">ID: {candidate?.targetIconId ?? 'NULL'}</p>
                           </div>
                       </div>
@@ -259,7 +261,7 @@ export default function AccountPage() {
                           onClick={handleCancel}
                           disabled={isPending}
                         >
-                          CANCEL
+                          {t('accountPage.buttons.cancel')}
                         </button>
                         <button
                           className="flex-[2] bg-green-600 text-white font-bold px-4 py-3 rounded-lg hover:bg-green-500 shadow-lg shadow-green-900/20 disabled:opacity-50 transition transform active:scale-95 flex items-center justify-center gap-2"
@@ -269,11 +271,11 @@ export default function AccountPage() {
                           {isPending ? (
                               <>
                                   <div className="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full" />
-                                  CHECKING...
+                                  {t('accountPage.buttons.checking')}
                               </>
                           ) : (
                               <>
-                                  <span>✅</span> I CHANGED IT!
+                                  <span>✅</span> {t('accountPage.buttons.iChangedIt')}
                               </>
                           )}
                         </button>
@@ -287,12 +289,12 @@ export default function AccountPage() {
         {/* 一覧 */}
         <div className="glass-panel rounded-xl overflow-hidden">
             <h2 className="text-lg font-bold p-6 border-b border-slate-700 text-slate-200 flex items-center justify-between">
-                <span>LINKED ACCOUNTS</span>
+                <span>{t('accountPage.linkedAccounts')}</span>
                 <span className="text-sm font-normal text-slate-400 bg-slate-800 px-2 py-1 rounded">{myAccounts.length}</span>
             </h2>
             <ul>
                 {myAccounts.length === 0 && (
-                    <li className="p-8 text-center text-slate-500 italic">No accounts linked yet.</li>
+                    <li className="p-8 text-center text-slate-500 italic">{t('accountPage.noAccountsLinked')}</li>
                 )}
                 {myAccounts.map(acc => {
                     const isActive = activeSummoner?.id === acc.id;
@@ -304,7 +306,7 @@ export default function AccountPage() {
                                     <p className={`font-bold text-lg ${isActive ? 'text-white' : 'text-slate-400'}`}>{acc.summoner_name}</p>
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs text-slate-500 font-mono bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">{acc.region}</span>
-                                        {isActive && <span className="text-xs text-blue-300 font-bold border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 rounded-full">ACTIVE</span>}
+                                        {isActive && <span className="text-xs text-blue-300 font-bold border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 rounded-full">{t('accountPage.active')}</span>}
                                     </div>
                                 </div>
                             </div>
@@ -316,7 +318,7 @@ export default function AccountPage() {
                                         className="text-sm border border-slate-600 text-slate-400 font-bold px-4 py-2 rounded-lg hover:bg-slate-800 hover:text-white hover:border-slate-500 transition"
                                         disabled={isPending}
                                     >
-                                        SWITCH
+                                        {t('accountPage.buttons.switch')}
                                     </button>
                                 )}
                                 <button 
@@ -324,7 +326,7 @@ export default function AccountPage() {
                                     className="text-sm text-red-400/70 hover:text-red-400 hover:bg-red-900/20 px-3 py-2 rounded-lg transition"
                                     disabled={isPending}
                                 >
-                                    REMOVE
+                                    {t('accountPage.buttons.remove')}
                                 </button>
                             </div>
                         </li>
@@ -339,7 +341,7 @@ export default function AccountPage() {
                     onClick={() => router.push('/dashboard')}
                     className="text-blue-400 hover:text-blue-300 font-bold flex items-center justify-end gap-2 ml-auto hover:gap-3 transition-all"
                  >
-                     GO TO DASHBOARD <span>→</span>
+                     {t('accountPage.buttons.goToDashboard')} <span>→</span>
                  </button>
              </div>
         )}
@@ -352,6 +354,7 @@ export default function AccountPage() {
 function Timer({ expiresAt, onExpire }: { expiresAt: number, onExpire?: () => void }) {
     const [timeLeft, setTimeLeft] = useState(0);
     const hasExpiredRef = React.useRef(false);
+    const { t } = useTranslation();
 
     useEffect(() => {
         if(!expiresAt) return;
@@ -379,11 +382,11 @@ function Timer({ expiresAt, onExpire }: { expiresAt: number, onExpire?: () => vo
 
     return (
         <div className="bg-slate-900/50 rounded p-3 inline-block">
-            <p className="text-xs text-slate-500 mb-1">TIME LIMIT</p>
+            <p className="text-xs text-slate-500 mb-1">{t('accountPage.verification.timeLimit')}</p>
             <p className={`text-xl font-mono font-bold tracking-widest ${timeLeft < 60000 ? 'text-red-500 animate-pulse' : 'text-slate-200'}`}>
                 {format(timeLeft)}
             </p>
-            <p className="text-[10px] text-slate-600">Please verify within 10 mins.</p>
+            <p className="text-[10px] text-slate-600">{t('accountPage.verification.verifyWithin')}</p>
         </div>
     );
 }

@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState, useTransition, useEffect } from "react";
-import { upgradeToPremium, downgradeToFree, type AnalysisStatus, getAnalysisStatus } from "@/app/actions/analysis";
+import { downgradeToFree, type AnalysisStatus, getAnalysisStatus, syncSubscriptionStatus } from "@/app/actions/analysis";
+import { triggerStripeCheckout, triggerStripePortal } from "@/lib/checkout";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 type Props = {
     initialStatus: AnalysisStatus | null;
@@ -11,10 +13,29 @@ type Props = {
 export default function PremiumPromoCard({ initialStatus, onStatusUpdate }: Props) {
     const [status, setStatus] = useState<AnalysisStatus | null>(initialStatus);
     const [isPending, startTransition] = useTransition();
+    const [isLoading, setIsLoading] = useState(false); // Local loading state for checkout redirect
+    const { t } = useTranslation();
+
 
     // Sync state with prop updates (e.g. initial fetch from parent)
     useEffect(() => {
         setStatus(initialStatus);
+        
+        // Auto-fix out of sync data (Frontend-initiated consistency check)
+        if (initialStatus?.is_premium) {
+            syncSubscriptionStatus().then((res: any) => {
+                 if(res?.success) {
+                     console.log("Subscription Synced: AutoRenew =", res.AutoRenew);
+                     setStatus((prev: AnalysisStatus | null) => {
+                         if (!prev) return null;
+                         console.log("Setting Status AutoRenew to:", res.AutoRenew);
+                         return { ...prev, auto_renew: res.AutoRenew };
+                     });
+                 } else {
+                     console.error("Sync Failed:", res?.error);
+                 }
+            });
+        }
     }, [initialStatus]);
 
     const isPremium = status?.is_premium;
@@ -31,37 +52,25 @@ export default function PremiumPromoCard({ initialStatus, onStatusUpdate }: Prop
         )
     }
 
-    const handleUpgrade = () => {
-        if (!confirm("【モック】プレミアムプラン(月額980円)に登録しますか？")) return;
-    
-        startTransition(async () => {
-          const res = await upgradeToPremium();
-          if (res.success) {
-            alert("プレミアムプランに登録しました！");
-            const newStatus = await getAnalysisStatus();
-            if (newStatus) {
-                setStatus(newStatus);
-                onStatusUpdate?.(newStatus);
-            }
-          }
-        });
+    const handleUpgrade = async () => {
+        setIsLoading(true);
+        try {
+          await triggerStripeCheckout();
+        } catch (e) {
+            console.error(e);
+            alert(t('premium.promoCard.error'));
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    const handleDowngrade = () => {
-        if (!confirm("自動更新を停止（解約予約）しますか？\n契約期間終了までプレミアム機能は利用可能です。")) return;
+    const handleDowngrade = async () => {
+        // Confirmation is good, but Portal handles it too. Let's redirect directly or confirm before redirect.
+        // Confirming before redirecting is safer UX.
+        if (!confirm(t('premium.promoCard.confirmPortal'))) return;
     
         startTransition(async () => {
-          const res = await downgradeToFree();
-          if (res.success) {
-            alert("自動更新を停止しました。");
-            const newStatus = await getAnalysisStatus();
-            if (newStatus) {
-                setStatus(newStatus);
-                onStatusUpdate?.(newStatus);
-            }
-          } else {
-            alert("エラー: " + res.error);
-          }
+           await triggerStripePortal();
         });
     };
 
@@ -70,41 +79,40 @@ export default function PremiumPromoCard({ initialStatus, onStatusUpdate }: Prop
             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition transform group-hover:scale-110 duration-500">
                 <span className="text-6xl">💎</span>
             </div>
-          <h3 className="font-black text-xl mb-2 italic">UNLOCK PREMIUM</h3>
+          <h3 className="font-black text-xl mb-2 italic">{t('premium.promoCard.title')}</h3>
           <p className="text-indigo-200 text-sm mb-6 leading-relaxed">
-            AIコーチの無制限分析、詳細データのアンロック、優先処理など、上達のための全機能を開放しましょう。
+            {t('premium.promoCard.description')}
           </p>
           {!isPremium ? (
             <button
               onClick={handleUpgrade}
-              disabled={isPending}
+              disabled={isPending || isLoading}
               className="w-full bg-white text-indigo-900 font-black py-3 rounded-lg hover:bg-indigo-50 transition shadow-lg disabled:opacity-50"
             >
-              {isPending ? "PROCESSING..." : "UPGRADE NOW"}
+              {isPending || isLoading ? t('premium.promoCard.processing') : t('premium.promoCard.upgradeNow')}
             </button>
           ) : (
             <div className="text-center">
               <div className="font-bold bg-white/20 py-2 rounded border border-white/30 backdrop-blur mb-2">
-                ACTIVE MEMBER 💎
+                {t('premium.promoCard.activeMember')}
               </div>
               {status?.subscription_end_date && (
                   <p className="text-xs text-indigo-200 mb-2">
-                      Active until: {new Date(status.subscription_end_date).toLocaleDateString()}
+                      {t('premium.promoCard.activeUntil').replace('{date}', new Date(status.subscription_end_date).toLocaleDateString())}
                   </p>
               )}
-              {status?.auto_renew !== false ? (
-                <button
-                    onClick={handleDowngrade}
-                    disabled={isPending}
-                    className="w-full mt-2 bg-red-500/10 text-red-400 border border-red-500/30 text-xs font-bold py-2 rounded hover:bg-red-500/20 transition flex justify-center items-center gap-2"
-                >
-                    <span>✖</span> Cancel Auto-Renew
-                </button>
-              ) : (
-                  <p className="text-xs text-amber-300 font-bold">
-                      Auto-Renew OFF
-                  </p>
-              )}
+              <button
+                   onClick={handleDowngrade}
+                   disabled={isPending}
+                   className="w-full mt-2 bg-white/5 text-indigo-200 border border-white/10 text-xs font-bold py-2 rounded hover:bg-white/10 transition flex justify-center items-center gap-2"
+               >
+                   <span>⚙️</span> {status?.auto_renew === false ? t('premium.promoCard.restoreBilling') : t('premium.promoCard.manageSubscription')}
+               </button>
+               {status?.auto_renew === false && (
+                   <p className="text-xs text-amber-300 font-bold mt-2">
+                       {t('premium.promoCard.autoRenewOff')}
+                   </p>
+               )}
             </div>
           )}
         </div>

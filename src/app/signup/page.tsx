@@ -63,7 +63,7 @@ export default function SignupPage() {
 
         <div className="flex-1 flex items-center justify-center p-4">
             <div className="glass-panel p-8 rounded-2xl shadow-2xl w-full max-w-md border border-slate-800 backdrop-blur-xl relative z-10 transition-all hover:shadow-[0_0_30px_rgba(59,130,246,0.1)]">
-                <h1 className="text-3xl font-black text-center mb-6 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300 tracking-tighter">
+                <h1 className="text-3xl font-black text-center mb-6 text-foreground tracking-tighter">
                     JOIN THE RIFT
                 </h1>
 

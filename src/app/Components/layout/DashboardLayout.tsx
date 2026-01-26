@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import SidebarNav from "./SidebarNav";
 import Footer from "./Footer";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useSummoner } from "../../Providers/SummonerProvider";
 import { useAuth } from "@/app/Providers/AuthProvider";
 
@@ -42,11 +43,19 @@ export default function DashboardLayout({children}: DashboardLayoutProps) {
     <div className="min-h-screen flex bg-slate-950 text-slate-200 selection:bg-blue-500/30 selection:text-blue-200">
       {/* 左ナビゲーション */}
       <SidebarNav />
-        <main className="flex-1 p-8 overflow-y-auto custom-scrollbar relative">
+        <main className="flex-1 flex flex-col overflow-y-auto custom-scrollbar relative">
              {/* Global Background Glow */}
              <div className="fixed top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/10 via-slate-950 to-slate-950 pointer-events-none -z-10"></div>
-             {children}
-             <div className="mt-12">
+             
+             {/* Top Header with Language Switcher */}
+             <header className="flex justify-end items-center px-8 py-4 border-b border-slate-800/50">
+                 <LanguageSwitcher />
+             </header>
+             
+             <div className="flex-1 p-8">
+                 {children}
+             </div>
+             <div className="mt-12 px-8">
                 <Footer />
              </div>
         </main>

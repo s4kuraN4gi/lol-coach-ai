@@ -11,6 +11,7 @@ import PlanStatusBadge from "@/app/Components/subscription/PlanStatusBadge";
 import PremiumFeatureGate from "@/app/Components/subscription/PremiumFeatureGate";
 import { getAnalysisStatus, type AnalysisStatus } from "@/app/actions/analysis";
 import AdSenseBanner from "@/app/Components/ads/AdSenseBanner";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 type HistoryItem = {
     matchId: string;
@@ -28,6 +29,7 @@ type HistoryItem = {
 
 export default function StatsPage() {
     const { activeSummoner, loading: summonerLoading } = useSummoner();
+    const { t } = useTranslation();
     
     // Premium Status State
     const [analysisStatus, setAnalysisStatus] = useState<AnalysisStatus | null>(null);
@@ -160,6 +162,15 @@ export default function StatsPage() {
         ? ((stats.kills + stats.assists) / Math.max(1, stats.deaths)).toFixed(2)
         : "0.00";
 
+    // Filter labels mapping
+    const filterLabels: Record<string, string> = {
+        "ALL": t('statsPage.filters.all'),
+        "SOLO": t('statsPage.filters.solo'),
+        "FLEX": t('statsPage.filters.flex'),
+        "NORMAL": t('statsPage.filters.normal'),
+        "ARAM": t('statsPage.filters.aram')
+    };
+
     // 1. Initial ID Loading (Show Full Page Skeleton)
     if (summonerLoading || loadingIds) {
          return (
@@ -174,9 +185,9 @@ export default function StatsPage() {
         return (
             <DashboardLayout>
                 <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-                    <h2 className="text-xl font-bold text-white mb-4">No Account Linked</h2>
-                    <p className="text-slate-400 mb-6">Link your Riot Account in settings to view stats.</p>
-                    <Link href="/account" className="bg-blue-600 text-white px-6 py-2 rounded-lg">Go to Settings</Link>
+                    <h2 className="text-xl font-bold text-white mb-4">{t('statsPage.noAccountTitle')}</h2>
+                    <p className="text-slate-400 mb-6">{t('statsPage.noAccountDesc')}</p>
+                    <Link href="/account" className="bg-blue-600 text-white px-6 py-2 rounded-lg">{t('statsPage.goToSettings')}</Link>
                 </div>
             </DashboardLayout>
         );
@@ -187,7 +198,7 @@ export default function StatsPage() {
         return (
             <DashboardLayout>
                  <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
-                    <h2 className="text-xl font-bold text-red-400 mb-2">Error Loading Stats</h2>
+                    <h2 className="text-xl font-bold text-red-400 mb-2">{t('statsPage.errorTitle')}</h2>
                     <p className="bg-slate-900 border border-slate-800 p-4 rounded text-sm text-slate-300 mb-4 whitespace-pre-wrap max-w-lg">
                         {error}
                     </p>
@@ -195,7 +206,7 @@ export default function StatsPage() {
                         onClick={() => window.location.reload()}
                         className="text-blue-400 underline"
                     >
-                        Try Refreshing
+                        {t('statsPage.tryRefreshing')}
                     </button>
                 </div>
             </DashboardLayout>
@@ -211,7 +222,7 @@ export default function StatsPage() {
                  {/* Header with Premium Badge */}
                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                      <h1 className="text-3xl font-black italic tracking-tighter text-white">
-                        DETAILED STATS & HISTORY
+                        {t('statsPage.title')}
                      </h1>
                      <PlanStatusBadge 
                         initialStatus={analysisStatus} 
@@ -227,8 +238,8 @@ export default function StatsPage() {
                 {/* Premium Gated Stats */}
                 <PremiumFeatureGate
                     isPremium={isPremium}
-                    title="Unlock Advanced Statistics"
-                    description="Get deep insights into your win rates, KDA trends, and performance metrics."
+                    title={t('statsPage.unlockTitle')}
+                    description={t('statsPage.unlockDesc')}
                     onUpgrade={() => {
                         // Optimistic update handled by component or page reload if needed
                         getAnalysisStatus().then(setAnalysisStatus);
@@ -236,27 +247,27 @@ export default function StatsPage() {
                 >
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                          <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
-                            <div className="text-slate-400 text-xs font-bold tracking-wider mb-1">WIN RATE</div>
+                            <div className="text-slate-400 text-xs font-bold tracking-wider mb-1">{t('statsPage.stats.winRate')}</div>
                             <div className={`text-3xl font-black ${winRate >= 50 ? 'text-blue-400' : 'text-slate-200'}`}>
                                 {winRate}%
                             </div>
                             <div className="text-xs text-slate-500 mt-1">{stats.wins}W - {stats.losses}L</div>
                          </div>
                          <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
-                            <div className="text-slate-400 text-xs font-bold tracking-wider mb-1">KDA RATIO</div>
+                            <div className="text-slate-400 text-xs font-bold tracking-wider mb-1">{t('statsPage.stats.kdaRatio')}</div>
                             <div className="text-3xl font-black text-yellow-500">{avgKda}</div>
-                            <div className="text-xs text-slate-500 mt-1">Avg. Performance</div>
+                            <div className="text-xs text-slate-500 mt-1">{t('statsPage.stats.avgPerformance')}</div>
                          </div>
                          {/* Adding Placeholder Cards for 'PREMIUM' Look */}
                          <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl opacity-75">
-                            <div className="text-slate-400 text-xs font-bold tracking-wider mb-1">CS / MIN</div>
+                            <div className="text-slate-400 text-xs font-bold tracking-wider mb-1">{t('statsPage.stats.csPerMin')}</div>
                             <div className="text-3xl font-black text-purple-400">7.2</div>
-                            <div className="text-xs text-slate-500 mt-1">Top 15%</div>
+                            <div className="text-xs text-slate-500 mt-1">{t('statsPage.stats.top15')}</div>
                          </div>
                          <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl opacity-75">
-                            <div className="text-slate-400 text-xs font-bold tracking-wider mb-1">VISION SCORE</div>
+                            <div className="text-slate-400 text-xs font-bold tracking-wider mb-1">{t('statsPage.stats.visionScore')}</div>
                             <div className="text-3xl font-black text-green-400">24.5</div>
-                            <div className="text-xs text-slate-500 mt-1">Excellent</div>
+                            <div className="text-xs text-slate-500 mt-1">{t('statsPage.stats.excellent')}</div>
                          </div>
                     </div>
                 </PremiumFeatureGate>
@@ -264,7 +275,7 @@ export default function StatsPage() {
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
                         <span className="w-1.5 h-6 bg-blue-500 rounded-full"></span>
-                        MATCH GALLERY
+                        {t('statsPage.matchGallery')}
                     </h2>
                     
                     <div className="flex bg-slate-900/80 rounded-lg p-1 border border-slate-700 overflow-x-auto max-w-full">
@@ -278,7 +289,7 @@ export default function StatsPage() {
                                     : "text-slate-400 hover:text-slate-200"
                                 }`}
                             >
-                                {mode}
+                                {filterLabels[mode]}
                             </button>
                         ))}
                     </div>
@@ -312,7 +323,7 @@ export default function StatsPage() {
                                         <div className="text-xs text-slate-400 font-mono">{match.mode} • {match.date}</div>
                                      </div>
                                      <div className={`px-2 py-1 rounded text-xs font-bold ${match.win ? 'bg-blue-500/20 text-blue-300' : 'bg-red-500/20 text-red-300'}`}>
-                                         {match.win ? "VICTORY" : "DEFEAT"}
+                                         {match.win ? t('statsPage.victory') : t('statsPage.defeat')}
                                      </div>
                                  </div>
                                  
@@ -321,7 +332,7 @@ export default function StatsPage() {
                                          KDA <span className="text-white font-bold text-lg">{match.kda}</span>
                                      </div>
                                       <div className="text-xs text-blue-400 font-bold opacity-0 group-hover:opacity-100 transform translate-x-4 group-hover:translate-x-0 transition-all">
-                                          ANALYZE →
+                                          {t('statsPage.analyze')}
                                       </div>
                                  </div>
                              </div>
@@ -344,7 +355,7 @@ export default function StatsPage() {
                 </div>
                 {history.length === 0 && !loadingIds && (
                     <div className="text-center py-10 text-slate-500 border border-slate-800 border-dashed rounded-xl">
-                        No matches found for this filter.
+                        {t('statsPage.noMatches')}
                     </div>
                 )}
                 
@@ -356,3 +367,4 @@ export default function StatsPage() {
         </DashboardLayout>
     )
 }
+

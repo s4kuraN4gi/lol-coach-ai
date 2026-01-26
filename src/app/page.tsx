@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import Footer from "./Components/layout/Footer";
+import { LuChartBar, LuMessageCircle, LuSwords } from "react-icons/lu";
 
 export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
@@ -25,7 +26,7 @@ export default function LandingPage() {
       >
         <div className="container mx-auto px-6 flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <span className="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-amber-300">
+            <span className="text-2xl font-extrabold text-foreground">
               LoL Coach AI
             </span>
           </div>
@@ -57,7 +58,7 @@ export default function LandingPage() {
         <div className="container mx-auto px-6 text-center">
           <h1 className="text-5xl lg:text-7xl font-bold tracking-tight mb-6 leading-tight">
             AIで<br className="md:hidden" />
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-indigo-300 to-amber-200">
+            <span className="text-primary italic">
               レートをぶち上げろ
             </span>
           </h1>
@@ -141,8 +142,8 @@ export default function LandingPage() {
             <div className="grid md:grid-cols-3 gap-8">
                 {/* Feature 1 */}
                 <div className="bg-slate-800/50 p-8 rounded-2xl border border-white/5 hover:border-blue-500/30 transition hover:-translate-y-1">
-                    <div className="w-12 h-12 bg-blue-600/20 rounded-lg flex items-center justify-center text-2xl mb-6">
-                        📊
+                    <div className="w-12 h-12 bg-blue-600/20 rounded-lg flex items-center justify-center text-2xl mb-6 text-blue-400">
+                        <LuChartBar />
                     </div>
                     <h3 className="text-xl font-bold mb-3">戦績＆スキル分析</h3>
                     <p className="text-gray-400 leading-relaxed">
@@ -152,8 +153,8 @@ export default function LandingPage() {
 
                 {/* Feature 2 */}
                 <div className="bg-slate-800/50 p-8 rounded-2xl border border-white/5 hover:border-amber-500/30 transition hover:-translate-y-1">
-                    <div className="w-12 h-12 bg-amber-600/20 rounded-lg flex items-center justify-center text-2xl mb-6">
-                        🤖
+                    <div className="w-12 h-12 bg-amber-600/20 rounded-lg flex items-center justify-center text-2xl mb-6 text-amber-400">
+                        <LuMessageCircle />
                     </div>
                     <h3 className="text-xl font-bold mb-3">AIコーチングチャット</h3>
                     <p className="text-gray-400 leading-relaxed">
@@ -163,8 +164,8 @@ export default function LandingPage() {
 
                 {/* Feature 3 */}
                 <div className="bg-slate-800/50 p-8 rounded-2xl border border-white/5 hover:border-purple-500/30 transition hover:-translate-y-1">
-                    <div className="w-12 h-12 bg-purple-600/20 rounded-lg flex items-center justify-center text-2xl mb-6">
-                        ⚔️
+                    <div className="w-12 h-12 bg-purple-600/20 rounded-lg flex items-center justify-center text-2xl mb-6 text-purple-400">
+                        <LuSwords />
                     </div>
                     <h3 className="text-xl font-bold mb-3">マッチアップ攻略</h3>
                     <p className="text-gray-400 leading-relaxed">

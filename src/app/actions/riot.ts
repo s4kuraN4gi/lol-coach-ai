@@ -266,13 +266,44 @@ export async function fetchThirdPartyCode(summonerId: string): Promise<string | 
 // 8. Get Latest Version
 export async function fetchLatestVersion(): Promise<string> {
     try {
-        const res = await fetch("https://ddragon.leagueoflegends.com/api/versions.json", { next: { revalidate: 3600 } });
+        const res = await fetch("https://ddragon.leagueoflegends.com/api/versions.json", { cache: 'no-store' });
         if (!res.ok) return "14.24.1"; // Fallback
         const versions = await res.json();
         return versions[0] || "14.24.1";
     } catch (e) {
         console.error("fetchLatestVersion error:", e);
         return "14.24.1";
+    }
+}
+
+// NEW: Champion Characteristics Loader
+export type ChampionAttributes = {
+    identity: string;
+    powerSpike: string;
+    waveClear: string;
+    mobility: string;
+    class: string;
+    lanes: string[];
+    damageType: string;
+    notes?: string;
+};
+
+import fs from 'fs/promises';
+import path from 'path';
+
+export async function getChampionAttributes(championName: string): Promise<ChampionAttributes | null> {
+    try {
+        const filePath = path.join(process.cwd(), 'src/data/champion_attributes.json');
+        
+        // Cache or Read file
+        // For simplicity in Server Action, we read each time (it's fast enough or Vercel cached)
+        const fileContent = await fs.readFile(filePath, 'utf-8');
+        const data = JSON.parse(fileContent);
+        
+        return data[championName] || null;
+    } catch (e) {
+        console.warn(`Failed to load champion attributes for ${championName}:`, e);
+        return null;
     }
 }
 
@@ -306,4 +337,101 @@ export async function fetchDDItemData(): Promise<{ idMap: Record<string, any>, n
         console.error("fetchDDItemData error:", e);
         return null;
     }
+}
+
+// 10. Extract Truth Events from Timeline (Fact Injection)
+export type TruthEvent = {
+    timestamp: number;
+    timestampStr: string;
+    type: 'KILL' | 'OBJECTIVE' | 'TURRET' | 'OTHER';
+    detail: string;
+    position: { x: number, y: number };
+    participants: number[]; // IDs of involved players
+};
+
+export async function extractMatchEvents(
+    timeline: any, 
+    puuid: string, 
+    range?: { startMs: number, endMs: number }
+): Promise<TruthEvent[]> {
+    if (!timeline || !timeline.info || !timeline.info.frames) return [];
+
+    const frames = timeline.info.frames;
+    const extracted: TruthEvent[] = [];
+
+    // Find Participant ID for PUUID
+    let myPid = 0;
+    if (timeline.info.participants) {
+        const p = timeline.info.participants.find((p: any) => p.puuid === puuid);
+        if (p) myPid = p.participantId;
+    }
+
+    frames.forEach((frame: any) => {
+        // Time Filter
+        if (range) {
+            if (frame.timestamp < range.startMs - 60000) return; // Buffer
+            if (frame.timestamp > range.endMs + 60000) return;
+        }
+
+        frame.events.forEach((e: any) => {
+            // Strict Time Check
+            if (range) {
+                if (e.timestamp < range.startMs || e.timestamp > range.endMs) return;
+            }
+
+            const formatTime = (ms: number) => {
+                const totalSec = Math.floor(ms / 1000);
+                const m = Math.floor(totalSec / 60);
+                const s = totalSec % 60;
+                return `${m}:${s.toString().padStart(2, '0')}`;
+            };
+
+            let eventObj: TruthEvent | null = null;
+
+            if (e.type === 'CHAMPION_KILL') {
+                const killer = e.killerId;
+                const victim = e.victimId;
+                const assisters = e.assistingParticipantIds || [];
+                
+                // Context String
+                let ctx = `Player ${victim} Killed by ${killer}`;
+                if (myPid) {
+                    if (victim === myPid) ctx = `YOU (Player ${myPid}) died to Player ${killer}`;
+                    else if (killer === myPid) ctx = `YOU killed Player ${victim}`;
+                    else `Player ${victim} died`;
+                }
+                
+                eventObj = {
+                    timestamp: e.timestamp,
+                    timestampStr: formatTime(e.timestamp),
+                    type: 'KILL',
+                    detail: ctx,
+                    position: e.position || { x: 0, y: 0 },
+                    participants: [killer, victim, ...assisters]
+                };
+            } else if (e.type === 'ELITE_MONSTER_KILL') {
+                eventObj = {
+                    timestamp: e.timestamp,
+                    timestampStr: formatTime(e.timestamp),
+                    type: 'OBJECTIVE',
+                    detail: `${e.monsterType} taken by Player ${e.killerId}`,
+                    position: e.position || { x: 0, y: 0 },
+                    participants: [e.killerId] // Only killer recorded usually
+                };
+            } else if (e.type === 'BUILDING_KILL') {
+                 eventObj = {
+                    timestamp: e.timestamp,
+                    timestampStr: formatTime(e.timestamp),
+                    type: 'TURRET',
+                    detail: `Turret destroyed by Player ${e.killerId}`,
+                    position: e.position || { x: 0, y: 0 },
+                    participants: [e.killerId]
+                };
+            }
+
+            if (eventObj) extracted.push(eventObj);
+        });
+    });
+
+    return extracted;
 }

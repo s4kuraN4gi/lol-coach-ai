@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSummoner } from "../../Providers/SummonerProvider";
 import { getStatsFromCache, type MatchStatsDTO, type BasicStatsDTO } from "@/app/actions/stats";
 import LoadingAnimation from "../../Components/LoadingAnimation";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 type ChampionStat = {
     name: string;
@@ -25,6 +26,7 @@ export default function AllChampionsPage() {
     const [search, setSearch] = useState("");
     const [sortKey, setSortKey] = useState<"games" | "winRate" | "avgKda" | "name">("games");
     const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+    const { t } = useTranslation();
 
     useEffect(() => {
         if (summonerLoading) return;
@@ -76,7 +78,7 @@ export default function AllChampionsPage() {
     if (summonerLoading || loading) return <LoadingAnimation />;
 
     if (!activeSummoner) {
-        return <div className="p-8 text-center text-slate-400">Summoner not selected.</div>;
+        return <div className="p-8 text-center text-slate-400">{t('championsPage.noSummoner')}</div>;
     }
 
     return (
@@ -86,13 +88,13 @@ export default function AllChampionsPage() {
                 <div>
                     <Link href="/dashboard" className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-2 text-sm group">
                         <svg className="w-4 h-4 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                        Back to Dashboard
+                        {t('championsPage.backToDashboard')}
                     </Link>
                     <h1 className="text-3xl font-black text-slate-100 uppercase tracking-tighter">
-                        All Champions
+                        {t('championsPage.title')}
                     </h1>
                     <p className="text-slate-500 text-sm">
-                        Performance statistics across all played champions
+                        {t('championsPage.subtitle')}
                     </p>
                 </div>
 
@@ -101,7 +103,7 @@ export default function AllChampionsPage() {
                     <div className="relative flex-1 md:w-64">
                         <input 
                             type="text" 
-                            placeholder="Search Champion..." 
+                            placeholder={t('championsPage.searchPlaceholder')} 
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 pl-10 text-sm focus:outline-none focus:border-blue-500 text-slate-200"
@@ -114,10 +116,10 @@ export default function AllChampionsPage() {
                         onChange={(e) => setSortKey(e.target.value as any)}
                         className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-blue-500"
                     >
-                        <option value="games">Games Played</option>
-                        <option value="winRate">Win Rate</option>
-                        <option value="avgKda">KDA</option>
-                        <option value="name">Name</option>
+                        <option value="games">{t('championsPage.sortOptions.games')}</option>
+                        <option value="winRate">{t('championsPage.sortOptions.winRate')}</option>
+                        <option value="avgKda">{t('championsPage.sortOptions.kda')}</option>
+                        <option value="name">{t('championsPage.sortOptions.name')}</option>
                     </select>
 
                     <button 
@@ -156,7 +158,7 @@ export default function AllChampionsPage() {
                                     {champ.name}
                                 </h3>
                                 <div className="text-xs text-slate-500 font-medium">
-                                    {champ.games} Games
+                                    {champ.games} {t('championsPage.games')}
                                 </div>
                             </div>
 
@@ -185,10 +187,11 @@ export default function AllChampionsPage() {
 
                 {filteredChampions.length === 0 && (
                     <div className="col-span-full py-12 text-center text-slate-500">
-                        No champions found.
+                        {t('championsPage.noChampions')}
                     </div>
                 )}
             </div>
         </div>
     );
 }
+
