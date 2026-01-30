@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { getAnalysisStatus, type AnalysisStatus } from "@/app/actions/analysis";
+import { getAnalysisStatus } from "@/app/actions/analysis";
+import { type AnalysisStatus } from "@/app/actions/constants";
 import DashboardLayout from "../Components/layout/DashboardLayout";
 import LoadingAnimation from "../Components/LoadingAnimation";
 import PremiumFeatureGate from "../Components/subscription/PremiumFeatureGate";

@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useTransition, useEffect } from "react";
-import { type AnalysisStatus, getAnalysisStatus } from "@/app/actions/analysis";
+import { getAnalysisStatus } from "@/app/actions/analysis";
+import { type AnalysisStatus } from "@/app/actions/constants";
 import { triggerStripeCheckout } from "@/lib/checkout";
 import { useTranslation } from "@/contexts/LanguageContext";
 

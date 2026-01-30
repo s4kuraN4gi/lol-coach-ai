@@ -5,6 +5,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import fs from 'fs/promises';
 import path from 'path';
 import { getAnalysisStatus } from "./analysis";
+import { WEEKLY_ANALYSIS_LIMIT } from "./constants";
 import { fetchMatchDetail, fetchLatestVersion, fetchMatchTimeline, extractMatchEvents, getChampionAttributes } from "./riot";
 
 const GEMINI_API_KEY_ENV = process.env.GEMINI_API_KEY;
@@ -45,7 +46,8 @@ export async function startVisionAnalysis(
 
     // Check availability only (Consumption happens later or we assume success)
     if (status.is_premium) {
-        if (status.daily_analysis_count >= 50) return { success: false, error: "Daily limit reached (50/50)." };
+        const weeklyCount = status.weekly_analysis_count || 0;
+        if (weeklyCount >= WEEKLY_ANALYSIS_LIMIT) return { success: false, error: `週間制限に達しました (${weeklyCount}/${WEEKLY_ANALYSIS_LIMIT})。月曜日にリセットされます。` };
     } else {
         if (!userApiKey && status.analysis_credits <= 0) return { success: false, error: "Credits exhausted." };
     }
@@ -108,12 +110,11 @@ async function performVisionAnalysis(
         if (status.is_premium) {
             useEnvKey = true;
             shouldIncrementCount = true;
-            // Limit check
-             const today = new Date().toISOString().split('T')[0];
-             const lastDate = status.last_analysis_date ? status.last_analysis_date.split('T')[0] : null;
-             let currentCount = status.daily_analysis_count;
-             if (lastDate !== today) currentCount = 0;
-             if (currentCount >= 50) throw new Error("Daily limit reached during processing.");
+            // Weekly limit check
+            const weeklyCount = status.weekly_analysis_count || 0;
+            if (weeklyCount >= WEEKLY_ANALYSIS_LIMIT) {
+                throw new Error(`週間制限に達しました (${weeklyCount}/${WEEKLY_ANALYSIS_LIMIT})。月曜日にリセットされます。`);
+            }
         } else {
              if (userApiKey) { useEnvKey = false; }
              else {
@@ -127,12 +128,9 @@ async function performVisionAnalysis(
 
         // [DEBIT FIRST]
         if (shouldIncrementCount) {
-             const today = new Date().toISOString();
-             const todayDateStr = today.split('T')[0];
-             const lastDateStr = status.last_analysis_date ? status.last_analysis_date.split('T')[0] : null;
-             let newCount = status.daily_analysis_count + 1;
-             if (lastDateStr !== todayDateStr) newCount = 1;
-             await supabase.from("profiles").update({ daily_analysis_count: newCount, last_analysis_date: today }).eq("id", userId);
+             // Increment weekly count (reset is handled by getAnalysisStatus)
+             const newWeeklyCount = (status.weekly_analysis_count || 0) + 1;
+             await supabase.from("profiles").update({ weekly_analysis_count: newWeeklyCount }).eq("id", userId);
              debited = true;
         } else if (!userApiKey && useEnvKey && !status.is_premium) {
              await supabase.from("profiles").update({ analysis_credits: status.analysis_credits - 1 }).eq("id", userId);

@@ -9,7 +9,8 @@ import { useTranslation } from "@/contexts/LanguageContext";
 // Premium Imports
 import PlanStatusBadge from "@/app/Components/subscription/PlanStatusBadge";
 import PremiumFeatureGate from "@/app/Components/subscription/PremiumFeatureGate";
-import { getAnalysisStatus, type AnalysisStatus } from "@/app/actions/analysis";
+import { getAnalysisStatus } from "@/app/actions/analysis";
+import { type AnalysisStatus } from "@/app/actions/constants";
 
 type Match = any; // We can use strict type if available
 

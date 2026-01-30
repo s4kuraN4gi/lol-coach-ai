@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useTransition, useEffect } from "react";
-import { downgradeToFree, type AnalysisStatus, getAnalysisStatus, syncSubscriptionStatus } from "@/app/actions/analysis";
+import { downgradeToFree, getAnalysisStatus, syncSubscriptionStatus } from "@/app/actions/analysis";
+import { type AnalysisStatus } from "@/app/actions/constants";
 import { triggerStripeCheckout, triggerStripePortal } from "@/lib/checkout";
 import { useTranslation } from "@/contexts/LanguageContext";
 

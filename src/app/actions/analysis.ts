@@ -2,18 +2,10 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import { stripe } from "@/lib/stripe";
+import { WEEKLY_ANALYSIS_LIMIT, type AnalysisStatus } from "./constants";
 
-export type AnalysisStatus = {
-  is_premium: boolean;
-  analysis_credits: number;
-  subscription_tier: string;
-  daily_analysis_count: number;
-  last_analysis_date: string;
-  subscription_end_date?: string | null;
-  auto_renew?: boolean;
-  last_credit_update?: string;
-  last_reward_ad_date?: string; // Added this field
-};
+// Weekly limit constant is imported from ./constants
 
 // ユーザーのクレジット情報などを取得
 export async function getAnalysisStatus(): Promise<AnalysisStatus | null> {
@@ -27,7 +19,7 @@ export async function getAnalysisStatus(): Promise<AnalysisStatus | null> {
   // The migration SQL provided should be run by the user to add this column.
   const { data } = await supabase
     .from("profiles")
-    .select("is_premium, analysis_credits, subscription_tier, daily_analysis_count, last_analysis_date, subscription_end_date, auto_renew, last_credit_update, last_reward_ad_date")
+    .select("is_premium, analysis_credits, subscription_tier, daily_analysis_count, last_analysis_date, subscription_end_date, auto_renew, last_credit_update, last_reward_ad_date, weekly_analysis_count, weekly_reset_date")
     .eq("id", user.id)
     .single();
 
@@ -94,6 +86,31 @@ export async function getAnalysisStatus(): Promise<AnalysisStatus | null> {
              }).eq("id", user.id);
              data.last_credit_update = now.toISOString();
           }
+      }
+  }
+
+  // --- WEEKLY ANALYSIS LIMIT RESET LOGIC (for Premium users) ---
+  {
+      const now = new Date();
+      const resetDate = data.weekly_reset_date ? new Date(data.weekly_reset_date) : null;
+
+      // If no reset date set, or if we've passed the reset date, reset the counter
+      if (!resetDate || now >= resetDate) {
+          // Calculate next Monday 00:00 JST
+          const nextMonday = getNextMonday(now);
+
+          await supabase.from("profiles").update({
+              weekly_analysis_count: 0,
+              weekly_reset_date: nextMonday.toISOString()
+          }).eq("id", user.id);
+
+          data.weekly_analysis_count = 0;
+          data.weekly_reset_date = nextMonday.toISOString();
+      }
+
+      // Ensure defaults if null
+      if (data.weekly_analysis_count === null || data.weekly_analysis_count === undefined) {
+          data.weekly_analysis_count = 0;
       }
   }
 
@@ -846,8 +863,6 @@ export async function claimDailyReward() {
   return { success: true, newCredits };
 }
 
-import { stripe } from "@/lib/stripe";
-
 // 強制的にStripeの最新ステータスと同期する
 export async function syncSubscriptionStatus() {
   const supabase = await createClient();
@@ -884,10 +899,122 @@ export async function syncSubscriptionStatus() {
 
       await supabase.from("profiles").update(updateData).eq("id", user.id);
       revalidatePath("/dashboard", "layout");
-      
+
       return { success: true, AutoRenew: updateData.auto_renew };
   } catch (e: any) {
       console.error("Sync Error:", e);
       return { error: e.message };
   }
+}
+
+// ============================================================
+// WEEKLY ANALYSIS LIMIT HELPERS
+// ============================================================
+
+/**
+ * Get next Monday 00:00 JST from a given date
+ */
+function getNextMonday(from: Date): Date {
+    const result = new Date(from);
+    // Get current day (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+    const currentDay = result.getDay();
+    // Calculate days until next Monday
+    const daysUntilMonday = currentDay === 0 ? 1 : (8 - currentDay);
+    result.setDate(result.getDate() + daysUntilMonday);
+    result.setHours(0, 0, 0, 0);
+    return result;
+}
+
+/**
+ * Check if user can perform analysis (within weekly limit)
+ * Returns: { canAnalyze: boolean, remaining: number, resetDate: string }
+ */
+export async function checkWeeklyLimit(): Promise<{
+    canAnalyze: boolean;
+    remaining: number;
+    used: number;
+    limit: number;
+    resetDate: string;
+    isPremium: boolean;
+}> {
+    const status = await getAnalysisStatus();
+
+    if (!status) {
+        return {
+            canAnalyze: false,
+            remaining: 0,
+            used: 0,
+            limit: 0,
+            resetDate: '',
+            isPremium: false
+        };
+    }
+
+    if (status.is_premium) {
+        const remaining = WEEKLY_ANALYSIS_LIMIT - (status.weekly_analysis_count || 0);
+        return {
+            canAnalyze: remaining > 0,
+            remaining: Math.max(0, remaining),
+            used: status.weekly_analysis_count || 0,
+            limit: WEEKLY_ANALYSIS_LIMIT,
+            resetDate: status.weekly_reset_date || '',
+            isPremium: true
+        };
+    } else {
+        // Free user - use credits
+        return {
+            canAnalyze: status.analysis_credits > 0,
+            remaining: status.analysis_credits,
+            used: 0,
+            limit: 3, // Max credits for free users
+            resetDate: status.last_credit_update || '',
+            isPremium: false
+        };
+    }
+}
+
+/**
+ * Increment weekly analysis count for premium users
+ * Or decrement credits for free users
+ */
+export async function incrementAnalysisCount(userId: string, isPremium: boolean): Promise<boolean> {
+    const supabase = await createClient();
+
+    if (isPremium) {
+        // Premium user: increment weekly count
+        const { error } = await supabase.rpc('increment_weekly_analysis', { user_id: userId });
+
+        if (error) {
+            // Fallback: direct update
+            const { data: profile } = await supabase
+                .from("profiles")
+                .select("weekly_analysis_count")
+                .eq("id", userId)
+                .single();
+
+            if (profile) {
+                await supabase
+                    .from("profiles")
+                    .update({ weekly_analysis_count: (profile.weekly_analysis_count || 0) + 1 })
+                    .eq("id", userId);
+            }
+        }
+        return true;
+    } else {
+        // Free user: decrement credits
+        const { data: profile } = await supabase
+            .from("profiles")
+            .select("analysis_credits")
+            .eq("id", userId)
+            .single();
+
+        if (profile && profile.analysis_credits > 0) {
+            await supabase
+                .from("profiles")
+                .update({ analysis_credits: profile.analysis_credits - 1 })
+                .eq("id", userId);
+            return true;
+        }
+        return false;
+    }
 }

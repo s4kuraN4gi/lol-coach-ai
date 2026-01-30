@@ -294,12 +294,12 @@ import path from 'path';
 export async function getChampionAttributes(championName: string): Promise<ChampionAttributes | null> {
     try {
         const filePath = path.join(process.cwd(), 'src/data/champion_attributes.json');
-        
+
         // Cache or Read file
         // For simplicity in Server Action, we read each time (it's fast enough or Vercel cached)
         const fileContent = await fs.readFile(filePath, 'utf-8');
         const data = JSON.parse(fileContent);
-        
+
         return data[championName] || null;
     } catch (e) {
         console.warn(`Failed to load champion attributes for ${championName}:`, e);
@@ -307,7 +307,374 @@ export async function getChampionAttributes(championName: string): Promise<Champ
     }
 }
 
-// 9. Get DDragon Item Data (Cached)
+// 9. Macro Knowledge Types and Loader
+export type MacroKnowledge = {
+    meta?: Record<string, any>;
+    fundamental_concepts?: Record<string, any>;
+    season_16_changes?: Record<string, any>;
+    objective_response: Record<string, any>;
+    game_state_strategy: Record<string, any>;
+    time_phase_priorities: Record<string, any>;
+    common_macro_mistakes: Record<string, any>;
+};
+
+let _macroKnowledgeCache: MacroKnowledge | null = null;
+
+export async function getMacroKnowledge(): Promise<MacroKnowledge | null> {
+    if (_macroKnowledgeCache) return _macroKnowledgeCache;
+
+    try {
+        const filePath = path.join(process.cwd(), 'src/data/macro_knowledge.json');
+        const fileContent = await fs.readFile(filePath, 'utf-8');
+        _macroKnowledgeCache = JSON.parse(fileContent);
+        return _macroKnowledgeCache;
+    } catch (e) {
+        console.warn('Failed to load macro knowledge:', e);
+        return null;
+    }
+}
+
+/**
+ * Get relevant macro advice based on game state
+ */
+// Enhanced context for macro advice generation
+export type MacroAdviceContext = {
+    goldDiff: number;
+    gameTimeMs: number;
+    userRole?: string;
+    events?: TruthEvent[];
+    focusMode?: 'LANING' | 'MACRO' | 'TEAMFIGHT';
+    deathCount?: number;
+    csDiff?: number;
+    enemyObjectivesTaken?: string[];
+};
+
+export async function getRelevantMacroAdvice(
+    goldDiff: number,
+    gameTimeMs: number,
+    objectiveType?: string,
+    isAllyObjective?: boolean,
+    userRole?: string
+): Promise<string> {
+    // Legacy function - only returns objective-specific advice (not full enhanced advice)
+    // This is used when we need ONLY objective advice without duplicating the enhanced advice
+    const knowledge = await getMacroKnowledge();
+    if (!knowledge) return "";
+
+    const adviceParts: string[] = [];
+
+    // Only objective-specific advice
+    if (objectiveType && isAllyObjective === false) {
+        let objKey = objectiveType.toUpperCase();
+        if (objKey.includes('DRAGON')) objKey = 'DRAGON';
+        if (objKey.includes('BARON')) objKey = 'BARON_NASHOR';
+        if (objKey.includes('HERALD') || objKey.includes('RIFT')) objKey = 'RIFT_HERALD';
+        if (objKey.includes('HORDE') || objKey.includes('GRUB')) objKey = 'HORDE';
+
+        const objInfo = knowledge.objective_response[objKey];
+        if (objInfo?.when_enemy_starts) {
+            let goldSituation = "";
+            if (goldDiff <= -5000) goldSituation = "gold_behind_large";
+            else if (goldDiff <= -2000) goldSituation = "gold_behind_small";
+            else goldSituation = "gold_even";
+
+            const situationAdvice = objInfo.when_enemy_starts[goldSituation];
+            if (situationAdvice) {
+                const roleKey = userRole?.toUpperCase() || "";
+                const roleSpecific = situationAdvice.role_specific?.[roleKey] || "";
+
+                adviceParts.push(`
+**[Enemy ${objKey} - Macro Response Guide]**
+Situation: ${situationAdvice.situation}
+Recommended Action: ${situationAdvice.recommended_action}
+Reasoning: ${situationAdvice.reasoning}
+${roleSpecific ? `Your Role (${roleKey}): ${roleSpecific}` : ''}
+${situationAdvice.common_mistakes ? `Common Mistakes to Avoid: ${situationAdvice.common_mistakes.join('; ')}` : ''}
+                `.trim());
+            }
+        }
+    }
+
+    return adviceParts.join('\n\n');
+}
+
+export async function getEnhancedMacroAdvice(
+    context: MacroAdviceContext,
+    objectiveType?: string,
+    isAllyObjective?: boolean
+): Promise<string> {
+    try {
+        const knowledge = await getMacroKnowledge();
+        if (!knowledge) {
+            console.warn("[getEnhancedMacroAdvice] Failed to load macro knowledge");
+            return "";
+        }
+
+        const { goldDiff, gameTimeMs, userRole, events, focusMode, deathCount, csDiff, enemyObjectivesTaken } = context;
+        const adviceParts: string[] = [];
+        const detectedMistakes: string[] = [];
+
+    // ============================================================
+    // 1. Game State Strategy based on gold difference
+    // ============================================================
+    let gameState = "";
+    if (goldDiff <= -7000) gameState = "losing_hard";
+    else if (goldDiff <= -3000) gameState = "losing_slightly";
+    else if (goldDiff >= 7000) gameState = "winning_hard";
+    else if (goldDiff >= 3000) gameState = "winning_slightly";
+    else gameState = "even";
+
+    const stateStrategy = knowledge.game_state_strategy[gameState];
+    if (stateStrategy) {
+        const roleKey = userRole?.toUpperCase() || "";
+        const roleAdvice = stateStrategy.role_specific?.[roleKey] || "";
+        adviceParts.push(`
+**[Current Game State: ${stateStrategy.description}]**
+Strategy: ${stateStrategy.general_strategy}
+Priorities: ${stateStrategy.priorities?.join(', ') || 'N/A'}
+${stateStrategy.avoid ? `Avoid: ${stateStrategy.avoid.join(', ')}` : ''}
+${roleAdvice ? `${roleKey} Role Advice: ${roleAdvice}` : ''}
+        `.trim());
+    }
+
+    // Add playing_from_behind strategy if behind
+    if (goldDiff <= -3000 && knowledge.game_state_strategy.playing_from_behind) {
+        const behindStrategy = knowledge.game_state_strategy.playing_from_behind;
+        const roleKey = userRole?.toUpperCase() || "";
+        const roleAdvice = behindStrategy.role_specific?.[roleKey] || "";
+        adviceParts.push(`
+**[Playing From Behind - Key Concepts]**
+Cross-Mapping: ${behindStrategy.key_concepts?.cross_mapping || '敵がいる場所の反対側を押す'}
+Compressed Map Advantage: ${behindStrategy.key_concepts?.compressed_map_advantage || '押し込まれている時は移動距離が短い'}
+${roleAdvice ? `${roleKey} Role: ${roleAdvice}` : ''}
+        `.trim());
+        detectedMistakes.push('not_cross_mapping_when_behind');
+    }
+
+    // ============================================================
+    // 2. Time Phase Priorities
+    // ============================================================
+    const gameTimeMin = Math.floor(gameTimeMs / 60000);
+    let timePhase = "";
+    if (gameTimeMin < 14) timePhase = "early_game";
+    else if (gameTimeMin < 25) timePhase = "mid_game";
+    else timePhase = "late_game";
+
+    const phaseInfo = knowledge.time_phase_priorities[timePhase];
+    if (phaseInfo && userRole) {
+        const roleKey = userRole.toUpperCase();
+        const roleFocus = phaseInfo.role_focus?.[roleKey];
+        if (roleFocus) {
+            adviceParts.push(`
+**[Time Phase: ${phaseInfo.description} (${phaseInfo.time_range})]**
+Role Focus for ${roleKey}: ${roleFocus}
+${phaseInfo.key_concept ? `Key Concept: ${phaseInfo.key_concept}` : ''}
+            `.trim());
+        }
+    }
+
+    // ============================================================
+    // 3. Objective-specific advice (when enemy takes objective)
+    // ============================================================
+    if (objectiveType && isAllyObjective === false) {
+        let objKey = objectiveType.toUpperCase();
+        if (objKey.includes('DRAGON')) objKey = 'DRAGON';
+        if (objKey.includes('BARON')) objKey = 'BARON_NASHOR';
+        if (objKey.includes('HERALD') || objKey.includes('RIFT')) objKey = 'RIFT_HERALD';
+        if (objKey.includes('HORDE') || objKey.includes('GRUB')) objKey = 'HORDE';
+
+        const objInfo = knowledge.objective_response[objKey];
+        if (objInfo?.when_enemy_starts) {
+            let goldSituation = "";
+            if (goldDiff <= -5000) goldSituation = "gold_behind_large";
+            else if (goldDiff <= -2000) goldSituation = "gold_behind_small";
+            else goldSituation = "gold_even";
+
+            const situationAdvice = objInfo.when_enemy_starts[goldSituation];
+            if (situationAdvice) {
+                const roleKey = userRole?.toUpperCase() || "";
+                const roleSpecific = situationAdvice.role_specific?.[roleKey] || "";
+
+                adviceParts.push(`
+**[Enemy ${objKey} - Macro Response Guide]**
+Situation: ${situationAdvice.situation}
+Recommended Action: ${situationAdvice.recommended_action}
+Reasoning: ${situationAdvice.reasoning}
+${roleSpecific ? `Your Role (${roleKey}): ${roleSpecific}` : ''}
+${situationAdvice.common_mistakes ? `Common Mistakes to Avoid: ${situationAdvice.common_mistakes.join('; ')}` : ''}
+                `.trim());
+            }
+        }
+    }
+
+    // ============================================================
+    // 4. Analyze Events to Detect Common Macro Mistakes
+    // ============================================================
+    if (events && events.length > 0) {
+        // Define objective spawn times for "death before objective" detection
+        const objectiveSpawns = [
+            { type: 'DRAGON', firstSpawn: 5 * 60 * 1000, respawn: 5 * 60 * 1000 },
+            { type: 'RIFT_HERALD', firstSpawn: 8 * 60 * 1000, respawn: 0 }, // Only spawns once
+            { type: 'BARON', firstSpawn: 20 * 60 * 1000, respawn: 6 * 60 * 1000 },
+            { type: 'HORDE', firstSpawn: 5 * 60 * 1000, respawn: 2 * 60 * 1000 }
+        ];
+
+        // Check for deaths before objectives
+        const deaths = events.filter(e => e.type === 'DEATH');
+        const objectives = events.filter(e => e.type === 'OBJECTIVE');
+
+        for (const death of deaths) {
+            // Check if there's an enemy objective within 90 seconds after death
+            const nearbyEnemyObj = objectives.find(obj =>
+                obj.context?.isAllyObjective === false &&
+                obj.timestamp > death.timestamp &&
+                obj.timestamp - death.timestamp < 90000 // 90 seconds
+            );
+            if (nearbyEnemyObj) {
+                detectedMistakes.push('dying_before_objective');
+                break;
+            }
+        }
+
+        // Check for vision control issues
+        const wardEvents = events.filter(e => e.type === 'WARD');
+        const enemyObjectives = objectives.filter(e => e.context?.isAllyObjective === false);
+        if (enemyObjectives.length > 0 && wardEvents.length < 5) {
+            detectedMistakes.push('no_vision_control');
+        }
+
+        // Check for grouping without purpose (multiple deaths in mid/late game without objective context)
+        const midLateDeath = deaths.filter(d => d.timestamp > 14 * 60 * 1000);
+        if (midLateDeath.length >= 3) {
+            detectedMistakes.push('grouping_without_purpose');
+        }
+    }
+
+    // Add detected mistakes if high death count
+    if (deathCount !== undefined && deathCount >= 5) {
+        detectedMistakes.push('dying_before_objective');
+    }
+
+    // ============================================================
+    // 5. Fundamental Concepts (for laning phase or low ELO)
+    // ============================================================
+    if (focusMode === 'LANING' || timePhase === 'early_game') {
+        const fundamentals = knowledge.fundamental_concepts;
+
+        if (fundamentals?.wave_based_macro) {
+            adviceParts.push(`
+**[Fundamental: Wave-Based Macro]**
+Core Principle: ${fundamentals.wave_based_macro.core_principle}
+Key Insight: ${fundamentals.wave_based_macro.key_insight}
+            `.trim());
+        }
+
+        if (fundamentals?.wave_management) {
+            const wm = fundamentals.wave_management;
+            adviceParts.push(`
+**[Wave Management Basics]**
+Two Forces: Size (${wm.two_main_forces?.size?.principle || 'ミニオン数'}) and Location (${wm.two_main_forces?.location?.principle || 'ウェーブ位置'})
+Best Wave States:
+- Slow Push: ${wm.wave_states?.slow_push?.advantages?.slice(0, 2).join(', ') || 'トレード優位'}
+- Held Wave: ${wm.wave_states?.held_wave?.key_insight || '最強のウェーブ状態'}
+            `.trim());
+        }
+
+        if (fundamentals?.push_and_rotate) {
+            adviceParts.push(`
+**[Push and Rotate Cycle]**
+Process: ${fundamentals.push_and_rotate.process?.slice(0, 2).join(' → ') || 'ウェーブをプッシュ → チームに合流'}
+Timer Tip: ${fundamentals.push_and_rotate.timer_awareness?.tip || 'ウェーブがタワーに届く時間を意識'}
+            `.trim());
+        }
+    }
+
+    // ============================================================
+    // 6. Season 16 Changes (Always relevant)
+    // ============================================================
+    if (knowledge.season_16_changes) {
+        const s16 = knowledge.season_16_changes;
+        adviceParts.push(`
+**[Season 16 Key Changes]**
+Playstyle: ${s16.playstyle_shift?.key_concept || 'Hit-and-Run戦術が最適'}
+Tower Plates: ${s16.tower_plates?.impact || 'スプリットプッシュの価値上昇'}
+Crystalline Overgrowth: ${s16.crystalline_overgrowth?.optimal_usage || 'タワーを叩いてバースト→離脱→戻る'}
+        `.trim());
+
+        // Role quests if applicable
+        if (userRole && s16.role_quests?.[userRole.toUpperCase()]) {
+            const roleQuest = s16.role_quests[userRole.toUpperCase()];
+            if (roleQuest.completion_rewards) {
+                adviceParts.push(`
+**[Your Role Quest (${userRole.toUpperCase()})]**
+Rewards: ${Array.isArray(roleQuest.completion_rewards) ? roleQuest.completion_rewards.slice(0, 2).join(', ') : 'N/A'}
+                `.trim());
+            }
+        }
+    }
+
+    // ============================================================
+    // 7. Lane Assignment (for mid/late game)
+    // ============================================================
+    if ((focusMode === 'MACRO' || timePhase !== 'early_game') && knowledge.fundamental_concepts?.lane_assignment) {
+        const la = knowledge.fundamental_concepts.lane_assignment;
+        const roleKey = userRole?.toUpperCase() || "";
+        const roleAssignment = la.roles?.[roleKey] || "";
+        adviceParts.push(`
+**[Lane Assignment Basics]**
+Core Principle: ${la.core_principle}
+Your Role (${roleKey}): ${roleAssignment}
+Common Mistake: ${la.common_mistake}
+        `.trim());
+    }
+
+    // ============================================================
+    // 8. Include Detected Common Macro Mistakes
+    // ============================================================
+    const uniqueMistakes = [...new Set(detectedMistakes)];
+    if (uniqueMistakes.length > 0 && knowledge.common_macro_mistakes) {
+        const mistakeAdvices: string[] = [];
+        for (const mistakeId of uniqueMistakes.slice(0, 3)) { // Limit to 3 mistakes
+            const mistake = knowledge.common_macro_mistakes[mistakeId];
+            if (mistake) {
+                const roleKey = userRole?.toUpperCase() || "";
+                const isRelevantRole = !mistake.related_roles || mistake.related_roles.includes(roleKey);
+                if (isRelevantRole) {
+                    mistakeAdvices.push(`
+- **${mistake.description}**: ${mistake.advice}
+  Example: ${mistake.examples?.[0] || 'N/A'}
+                    `.trim());
+                }
+            }
+        }
+        if (mistakeAdvices.length > 0) {
+            adviceParts.push(`
+**[Detected Macro Mistakes - Fix These]**
+${mistakeAdvices.join('\n')}
+            `.trim());
+        }
+    }
+
+    // ============================================================
+    // 9. Wave Cycling (for laning dominance)
+    // ============================================================
+    if (focusMode === 'LANING' && knowledge.fundamental_concepts?.wave_cycling) {
+        const wc = knowledge.fundamental_concepts.wave_cycling;
+        adviceParts.push(`
+**[Wave Cycling for Lane Dominance]**
+Concept: ${wc.concept}
+Key Points: ${wc.key_points?.slice(0, 2).join('; ') || 'N/A'}
+        `.trim());
+    }
+
+        return adviceParts.join('\n\n');
+    } catch (error) {
+        console.error("[getEnhancedMacroAdvice] Error:", error);
+        return "";
+    }
+}
+
+// 10. Get DDragon Item Data (Cached)
 let _itemCache: Record<string, any> | null = null;
 let _itemNameCache: Record<string, string> | null = null; // Name -> ID
 
@@ -343,16 +710,192 @@ export async function fetchDDItemData(): Promise<{ idMap: Record<string, any>, n
 export type TruthEvent = {
     timestamp: number;
     timestampStr: string;
-    type: 'KILL' | 'OBJECTIVE' | 'TURRET' | 'OTHER';
+    type: 'KILL' | 'DEATH' | 'OBJECTIVE' | 'TURRET' | 'WARD' | 'ITEM' | 'LEVEL' | 'SPELL' | 'OTHER';
     detail: string;
     position: { x: number, y: number };
     participants: number[]; // IDs of involved players
+    // Enhanced context for richer analysis
+    context?: {
+        goldDiff?: number;       // Gold difference at this moment (user vs opponent)
+        levelDiff?: number;      // Level difference
+        csDiff?: number;         // CS difference
+        assistCount?: number;    // Number of assists (for kills)
+        isFirstBlood?: boolean;
+        killType?: 'SOLO' | 'LANE_2V2' | 'GANK' | 'ROAM' | 'TEAMFIGHT' | 'UNKNOWN';  // Role-aware classification
+        involvedRoles?: string[];  // Roles of participants (e.g., ["BOTTOM", "UTILITY", "JUNGLE"])
+        isAllyObjective?: boolean;  // true = YOUR team got it, false = ENEMY team got it
+        objectiveType?: string;     // DRAGON, BARON, RIFT_HERALD, HORDE, etc.
+        wardType?: string;       // YELLOW_TRINKET, CONTROL_WARD, etc.
+        itemId?: number;
+        itemName?: string;
+        spellSlot?: number;      // 1=D, 2=F (summoner spells)
+    };
 };
 
+// 11. Frame Statistics (Gold/CS/Level over time)
+export type FrameStats = {
+    timestamp: number;
+    timestampStr: string;
+    user: {
+        currentGold: number;
+        totalGold: number;
+        level: number;
+        cs: number;
+        jungleCs: number;
+        position: { x: number, y: number };
+    };
+    opponent?: {
+        totalGold: number;
+        level: number;
+        cs: number;
+        jungleCs: number;
+        position: { x: number, y: number };
+    };
+    goldDiff: number;    // user - opponent
+    csDiff: number;      // user - opponent
+    levelDiff: number;   // user - opponent
+};
+
+// 12. Participant Role Mapping
+export type ParticipantRole = 'TOP' | 'JUNGLE' | 'MIDDLE' | 'BOTTOM' | 'UTILITY' | 'UNKNOWN';
+
+export type ParticipantRoleMap = {
+    [participantId: number]: {
+        role: ParticipantRole;
+        championName: string;
+        teamId: number;  // 100 = Blue, 200 = Red
+    };
+};
+
+/**
+ * Build a mapping of participantId -> role/champion/team
+ * This allows us to determine WHO participated in each event
+ */
+export async function buildParticipantRoleMap(matchData: any): Promise<ParticipantRoleMap> {
+    const roleMap: ParticipantRoleMap = {};
+
+    if (!matchData?.info?.participants) return roleMap;
+
+    matchData.info.participants.forEach((p: any, index: number) => {
+        const participantId = index + 1; // 1-10
+
+        // teamPosition: "TOP", "JUNGLE", "MIDDLE", "BOTTOM", "UTILITY", or ""
+        let role: ParticipantRole = 'UNKNOWN';
+        const pos = p.teamPosition?.toUpperCase() || '';
+
+        if (pos === 'TOP') role = 'TOP';
+        else if (pos === 'JUNGLE') role = 'JUNGLE';
+        else if (pos === 'MIDDLE' || pos === 'MID') role = 'MIDDLE';
+        else if (pos === 'BOTTOM' || pos === 'ADC' || pos === 'CARRY') role = 'BOTTOM';
+        else if (pos === 'UTILITY' || pos === 'SUPPORT' || pos === 'SUP') role = 'UTILITY';
+
+        roleMap[participantId] = {
+            role,
+            championName: p.championName || 'Unknown',
+            teamId: p.teamId || (participantId <= 5 ? 100 : 200)
+        };
+    });
+
+    return roleMap;
+}
+
+/**
+ * Determine the type of kill based on participants and their roles
+ * (Internal helper - not exported as Server Action)
+ */
+function determineKillType(
+    killerPid: number,
+    victimPid: number,
+    assisterPids: number[],
+    roleMap: ParticipantRoleMap,
+    userPid: number
+): 'SOLO' | 'LANE_2V2' | 'GANK' | 'ROAM' | 'TEAMFIGHT' | 'UNKNOWN' {
+    const allParticipants = [killerPid, victimPid, ...assisterPids];
+    const uniqueParticipants = [...new Set(allParticipants.filter(p => p > 0))];
+    const totalCount = uniqueParticipants.length;
+
+    // Get user's role and team
+    const userInfo = roleMap[userPid];
+    if (!userInfo) return 'UNKNOWN';
+
+    const userRole = userInfo.role;
+    const userTeam = userInfo.teamId;
+
+    // Collect roles of all participants
+    const participantRoles = uniqueParticipants.map(pid => ({
+        pid,
+        ...roleMap[pid]
+    }));
+
+    // Separate by team
+    const allies = participantRoles.filter(p => p.teamId === userTeam);
+    const enemies = participantRoles.filter(p => p.teamId !== userTeam);
+
+    // 1. Solo Kill: 1v1, no assists
+    if (totalCount === 2 && assisterPids.length === 0) {
+        return 'SOLO';
+    }
+
+    // 2. Teamfight: 5+ participants
+    if (totalCount >= 5) {
+        return 'TEAMFIGHT';
+    }
+
+    // 3. Check if JUNGLE is involved (from either team, not being the user)
+    const junglerInvolved = participantRoles.some(p =>
+        p.role === 'JUNGLE' && p.pid !== userPid
+    );
+
+    if (junglerInvolved) {
+        return 'GANK';
+    }
+
+    // 4. Check for roam (MID or TOP from enemy team joining a non-mid/top fight)
+    const isUserBotLane = userRole === 'BOTTOM' || userRole === 'UTILITY';
+    const roamerInvolved = enemies.some(p =>
+        (p.role === 'MIDDLE' || p.role === 'TOP') &&
+        isUserBotLane
+    );
+
+    if (roamerInvolved) {
+        return 'ROAM';
+    }
+
+    // 5. Lane 2v2 (BOT + SUP vs BOT + SUP)
+    if (isUserBotLane) {
+        const allyRoles = allies.map(a => a.role);
+        const enemyRoles = enemies.map(e => e.role);
+
+        const isAllyBotLane = allyRoles.every(r => r === 'BOTTOM' || r === 'UTILITY');
+        const isEnemyBotLane = enemyRoles.every(r => r === 'BOTTOM' || r === 'UTILITY');
+
+        if (isAllyBotLane && isEnemyBotLane && totalCount <= 4) {
+            return 'LANE_2V2';
+        }
+    }
+
+    // 6. For other lanes, check if only lane opponents are involved
+    const userLaneOpponentRole = userRole; // Same role = lane opponent
+    const onlyLaneOpponents = enemies.every(e => e.role === userLaneOpponentRole);
+
+    if (onlyLaneOpponents && totalCount <= 3) {
+        return 'SOLO'; // Could be a 1v1 with assist from minions counted oddly, or just lane fight
+    }
+
+    // Default: If we can't determine, check participant count
+    if (totalCount === 3) {
+        return 'GANK'; // 3 people, likely a gank if we couldn't determine otherwise
+    }
+
+    return 'UNKNOWN';
+}
+
 export async function extractMatchEvents(
-    timeline: any, 
-    puuid: string, 
-    range?: { startMs: number, endMs: number }
+    timeline: any,
+    puuid: string,
+    range?: { startMs: number, endMs: number },
+    opponentPid?: number,  // Optional: opponent's participant ID for context
+    roleMap?: ParticipantRoleMap  // NEW: Role mapping for accurate kill type detection
 ): Promise<TruthEvent[]> {
     if (!timeline || !timeline.info || !timeline.info.frames) return [];
 
@@ -366,10 +909,60 @@ export async function extractMatchEvents(
         if (p) myPid = p.participantId;
     }
 
+    const formatTime = (ms: number) => {
+        const totalSec = Math.floor(ms / 1000);
+        const m = Math.floor(totalSec / 60);
+        const s = totalSec % 60;
+        return `${m}:${s.toString().padStart(2, '0')}`;
+    };
+
+    // Helper: Get frame stats at a given timestamp
+    const getFrameStatsAt = (timestamp: number) => {
+        let closestFrame = frames[0];
+        for (const frame of frames) {
+            if (frame.timestamp <= timestamp) {
+                closestFrame = frame;
+            } else {
+                break;
+            }
+        }
+
+        if (!closestFrame?.participantFrames) return null;
+
+        const myFrame = closestFrame.participantFrames[myPid.toString()];
+        const oppFrame = opponentPid ? closestFrame.participantFrames[opponentPid.toString()] : null;
+
+        if (!myFrame) return null;
+
+        return {
+            myGold: myFrame.totalGold || 0,
+            myLevel: myFrame.level || 1,
+            myCs: (myFrame.minionsKilled || 0) + (myFrame.jungleMinionsKilled || 0),
+            oppGold: oppFrame?.totalGold || 0,
+            oppLevel: oppFrame?.level || 1,
+            oppCs: (oppFrame?.minionsKilled || 0) + (oppFrame?.jungleMinionsKilled || 0),
+            goldDiff: (myFrame.totalGold || 0) - (oppFrame?.totalGold || 0),
+            levelDiff: (myFrame.level || 1) - (oppFrame?.level || 1),
+            csDiff: ((myFrame.minionsKilled || 0) + (myFrame.jungleMinionsKilled || 0)) -
+                    ((oppFrame?.minionsKilled || 0) + (oppFrame?.jungleMinionsKilled || 0))
+        };
+    };
+
+    // Helper: Get involved roles for an event
+    const getInvolvedRoles = (participantIds: number[]): string[] => {
+        if (!roleMap) return [];
+        return participantIds
+            .filter(pid => pid > 0 && roleMap[pid])
+            .map(pid => `${roleMap[pid].role}(${roleMap[pid].championName})`);
+    };
+
+    // Track first blood
+    let firstBloodOccurred = false;
+
     frames.forEach((frame: any) => {
         // Time Filter
         if (range) {
-            if (frame.timestamp < range.startMs - 60000) return; // Buffer
+            if (frame.timestamp < range.startMs - 60000) return;
             if (frame.timestamp > range.endMs + 60000) return;
         }
 
@@ -379,53 +972,227 @@ export async function extractMatchEvents(
                 if (e.timestamp < range.startMs || e.timestamp > range.endMs) return;
             }
 
-            const formatTime = (ms: number) => {
-                const totalSec = Math.floor(ms / 1000);
-                const m = Math.floor(totalSec / 60);
-                const s = totalSec % 60;
-                return `${m}:${s.toString().padStart(2, '0')}`;
-            };
-
             let eventObj: TruthEvent | null = null;
+            const frameStats = getFrameStatsAt(e.timestamp);
 
+            // === CHAMPION_KILL ===
             if (e.type === 'CHAMPION_KILL') {
                 const killer = e.killerId;
                 const victim = e.victimId;
                 const assisters = e.assistingParticipantIds || [];
-                
-                // Context String
-                let ctx = `Player ${victim} Killed by ${killer}`;
-                if (myPid) {
-                    if (victim === myPid) ctx = `YOU (Player ${myPid}) died to Player ${killer}`;
-                    else if (killer === myPid) ctx = `YOU killed Player ${victim}`;
-                    else `Player ${victim} died`;
+                const isFirstBlood = !firstBloodOccurred;
+                if (isFirstBlood) firstBloodOccurred = true;
+
+                // Determine kill type using role-aware logic
+                const killType = roleMap
+                    ? determineKillType(killer, victim, assisters, roleMap, myPid)
+                    : (assisters.length === 0 ? 'SOLO' : assisters.length + 2 >= 5 ? 'TEAMFIGHT' : 'UNKNOWN');
+
+                // Get involved roles for detailed context
+                const allParticipants = [killer, victim, ...assisters];
+                const involvedRoles = getInvolvedRoles(allParticipants);
+
+                // Determine if this is USER's kill or death
+                const isUserDeath = victim === myPid;
+                const isUserKill = killer === myPid;
+
+                // Build detailed context string with role information
+                let ctx = "";
+                const killerInfo = roleMap?.[killer];
+                const victimInfo = roleMap?.[victim];
+
+                if (isUserDeath) {
+                    const killerDesc = killerInfo
+                        ? `${killerInfo.championName}(${killerInfo.role})`
+                        : `Player ${killer}`;
+                    ctx = `YOU died to ${killerDesc}`;
+                    if (assisters.length > 0) {
+                        const assisterRoles = assisters
+                            .map((aid: number) => roleMap?.[aid]?.role || 'UNKNOWN')
+                            .join(', ');
+                        ctx += ` (+${assisters.length} assists: ${assisterRoles})`;
+                    }
+                    // Add kill type explanation
+                    const killTypeExplanation: Record<string, string> = {
+                        'SOLO': '1v1',
+                        'LANE_2V2': 'Lane Fight (2v2)',
+                        'GANK': 'Jungle Gank',
+                        'ROAM': 'Roam',
+                        'TEAMFIGHT': 'Teamfight',
+                        'UNKNOWN': ''
+                    };
+                    if (killTypeExplanation[killType]) {
+                        ctx += ` [${killTypeExplanation[killType]}]`;
+                    }
+                } else if (isUserKill) {
+                    const victimDesc = victimInfo
+                        ? `${victimInfo.championName}(${victimInfo.role})`
+                        : `Player ${victim}`;
+                    ctx = `YOU killed ${victimDesc}`;
+                    if (assisters.length > 0) ctx += ` (+${assisters.length} assists)`;
+                    ctx += ` [${killType}]`;
+                } else {
+                    ctx = `Player ${victim} killed by Player ${killer}`;
                 }
-                
+
                 eventObj = {
                     timestamp: e.timestamp,
                     timestampStr: formatTime(e.timestamp),
-                    type: 'KILL',
+                    type: isUserDeath ? 'DEATH' : 'KILL',
                     detail: ctx,
                     position: e.position || { x: 0, y: 0 },
-                    participants: [killer, victim, ...assisters]
+                    participants: allParticipants,
+                    context: {
+                        goldDiff: frameStats?.goldDiff,
+                        levelDiff: frameStats?.levelDiff,
+                        csDiff: frameStats?.csDiff,
+                        assistCount: assisters.length,
+                        isFirstBlood,
+                        killType,
+                        involvedRoles
+                    }
                 };
-            } else if (e.type === 'ELITE_MONSTER_KILL') {
+            }
+            // === ELITE_MONSTER_KILL (Dragon, Baron, Herald, Grubs) ===
+            else if (e.type === 'ELITE_MONSTER_KILL') {
+                const monsterType = e.monsterType || 'UNKNOWN';
+                const monsterSubType = e.monsterSubType || '';
+                const killerTeam = e.killerTeamId;
+                const myTeam = myPid <= 5 ? 100 : 200;
+                const isAllyObjective = killerTeam === myTeam;
+
+                // Create clear, unambiguous detail
+                let detail = "";
+                if (isAllyObjective) {
+                    detail = `[ALLY SECURED] ${monsterType}`;
+                    if (monsterSubType) detail += ` (${monsterSubType})`;
+                } else {
+                    detail = `[ENEMY TOOK] ${monsterType}`;
+                    if (monsterSubType) detail += ` (${monsterSubType})`;
+                    detail += ` - Analyze: Why did YOUR team lose this objective?`;
+                }
+
                 eventObj = {
                     timestamp: e.timestamp,
                     timestampStr: formatTime(e.timestamp),
                     type: 'OBJECTIVE',
-                    detail: `${e.monsterType} taken by Player ${e.killerId}`,
+                    detail,
                     position: e.position || { x: 0, y: 0 },
-                    participants: [e.killerId] // Only killer recorded usually
+                    participants: [e.killerId],
+                    context: {
+                        goldDiff: frameStats?.goldDiff,
+                        isAllyObjective,
+                        objectiveType: monsterType
+                    }
                 };
-            } else if (e.type === 'BUILDING_KILL') {
-                 eventObj = {
+            }
+            // === BUILDING_KILL (Turret, Inhibitor) ===
+            else if (e.type === 'BUILDING_KILL') {
+                const buildingType = e.buildingType || 'TOWER';
+                const laneType = e.laneType || '';
+                const towerType = e.towerType || '';
+                const killerTeam = e.teamId === 100 ? 200 : 100; // Building's team is opposite of destroyer
+                const myTeam = myPid <= 5 ? 100 : 200;
+                const isAllyObjective = killerTeam !== myTeam; // true = YOUR team destroyed enemy tower
+
+                // Create clear, unambiguous detail
+                let detail = "";
+                const structureName = `${laneType} ${towerType || buildingType}`.trim();
+                if (isAllyObjective) {
+                    detail = `[ALLY DESTROYED] ${structureName}`;
+                } else {
+                    detail = `[ENEMY DESTROYED] Your ${structureName} - Analyze: Why was this tower lost?`;
+                }
+
+                eventObj = {
                     timestamp: e.timestamp,
                     timestampStr: formatTime(e.timestamp),
                     type: 'TURRET',
-                    detail: `Turret destroyed by Player ${e.killerId}`,
+                    detail,
                     position: e.position || { x: 0, y: 0 },
-                    participants: [e.killerId]
+                    participants: e.killerId ? [e.killerId] : [],
+                    context: {
+                        goldDiff: frameStats?.goldDiff,
+                        isAllyObjective,
+                        objectiveType: buildingType
+                    }
+                };
+            }
+            // === WARD_PLACED ===
+            else if (e.type === 'WARD_PLACED' && e.creatorId === myPid) {
+                eventObj = {
+                    timestamp: e.timestamp,
+                    timestampStr: formatTime(e.timestamp),
+                    type: 'WARD',
+                    detail: `YOU placed ${e.wardType || 'WARD'}`,
+                    position: { x: 0, y: 0 }, // Ward position not in event
+                    participants: [myPid],
+                    context: {
+                        wardType: e.wardType
+                    }
+                };
+            }
+            // === WARD_KILL ===
+            else if (e.type === 'WARD_KILL' && e.killerId === myPid) {
+                eventObj = {
+                    timestamp: e.timestamp,
+                    timestampStr: formatTime(e.timestamp),
+                    type: 'WARD',
+                    detail: `YOU destroyed enemy ${e.wardType || 'WARD'}`,
+                    position: e.position || { x: 0, y: 0 },
+                    participants: [myPid],
+                    context: {
+                        wardType: e.wardType
+                    }
+                };
+            }
+            // === ITEM_PURCHASED (Important items only) ===
+            else if (e.type === 'ITEM_PURCHASED' && e.participantId === myPid) {
+                // Only track significant items (cost > 1000 gold or completed items)
+                // We'll filter by ID ranges or specific IDs if needed
+                const itemId = e.itemId;
+                // Skip consumables and small items (rough filter)
+                if (itemId > 3000 || [3340, 3363, 3364, 2055].includes(itemId)) {
+                    eventObj = {
+                        timestamp: e.timestamp,
+                        timestampStr: formatTime(e.timestamp),
+                        type: 'ITEM',
+                        detail: `YOU purchased item #${itemId}`,
+                        position: { x: 0, y: 0 },
+                        participants: [myPid],
+                        context: {
+                            itemId,
+                            goldDiff: frameStats?.goldDiff
+                        }
+                    };
+                }
+            }
+            // === LEVEL_UP ===
+            else if (e.type === 'LEVEL_UP' && e.participantId === myPid) {
+                // Only track important levels (6, 11, 16 for ult upgrades)
+                if ([6, 11, 16].includes(e.level)) {
+                    eventObj = {
+                        timestamp: e.timestamp,
+                        timestampStr: formatTime(e.timestamp),
+                        type: 'LEVEL',
+                        detail: `YOU reached level ${e.level} (ULT upgrade)`,
+                        position: { x: 0, y: 0 },
+                        participants: [myPid],
+                        context: {
+                            levelDiff: frameStats?.levelDiff
+                        }
+                    };
+                }
+            }
+            // === CHAMPION_SPECIAL_KILL (Multi-kills, etc.) ===
+            else if (e.type === 'CHAMPION_SPECIAL_KILL' && e.killerId === myPid) {
+                eventObj = {
+                    timestamp: e.timestamp,
+                    timestampStr: formatTime(e.timestamp),
+                    type: 'KILL',
+                    detail: `YOU achieved ${e.killType || 'SPECIAL_KILL'}`,
+                    position: e.position || { x: 0, y: 0 },
+                    participants: [myPid]
                 };
             }
 
@@ -434,4 +1201,67 @@ export async function extractMatchEvents(
     });
 
     return extracted;
+}
+
+// 12. Extract Frame Statistics (Gold/CS/Level over time)
+export async function extractFrameStats(
+    timeline: any,
+    puuid: string,
+    opponentPid?: number
+): Promise<FrameStats[]> {
+    if (!timeline || !timeline.info || !timeline.info.frames) return [];
+
+    const frames = timeline.info.frames;
+    const stats: FrameStats[] = [];
+
+    // Find Participant ID for PUUID
+    let myPid = 0;
+    if (timeline.info.participants) {
+        const p = timeline.info.participants.find((p: any) => p.puuid === puuid);
+        if (p) myPid = p.participantId;
+    }
+
+    const formatTime = (ms: number) => {
+        const totalSec = Math.floor(ms / 1000);
+        const m = Math.floor(totalSec / 60);
+        const s = totalSec % 60;
+        return `${m}:${s.toString().padStart(2, '0')}`;
+    };
+
+    frames.forEach((frame: any) => {
+        if (!frame.participantFrames) return;
+
+        const myFrame = frame.participantFrames[myPid.toString()];
+        if (!myFrame) return;
+
+        const oppFrame = opponentPid ? frame.participantFrames[opponentPid.toString()] : null;
+
+        const myCs = (myFrame.minionsKilled || 0) + (myFrame.jungleMinionsKilled || 0);
+        const oppCs = oppFrame ? (oppFrame.minionsKilled || 0) + (oppFrame.jungleMinionsKilled || 0) : 0;
+
+        stats.push({
+            timestamp: frame.timestamp,
+            timestampStr: formatTime(frame.timestamp),
+            user: {
+                totalGold: myFrame.totalGold || 0,
+                currentGold: myFrame.currentGold || 0,
+                level: myFrame.level || 1,
+                cs: myFrame.minionsKilled || 0,
+                jungleCs: myFrame.jungleMinionsKilled || 0,
+                position: myFrame.position || { x: 0, y: 0 }
+            },
+            opponent: oppFrame ? {
+                totalGold: oppFrame.totalGold || 0,
+                level: oppFrame.level || 1,
+                cs: oppFrame.minionsKilled || 0,
+                jungleCs: oppFrame.jungleMinionsKilled || 0,
+                position: oppFrame.position || { x: 0, y: 0 }
+            } : undefined,
+            goldDiff: (myFrame.totalGold || 0) - (oppFrame?.totalGold || 0),
+            csDiff: myCs - oppCs,
+            levelDiff: (myFrame.level || 1) - (oppFrame?.level || 1)
+        });
+    });
+
+    return stats;
 }
