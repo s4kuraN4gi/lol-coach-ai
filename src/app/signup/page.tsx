@@ -1,9 +1,12 @@
 'use client'
 
 import { createClient } from "@/utils/supabase/client";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react"
 import Footer from "../Components/layout/Footer";
+import { useTranslation } from "@/contexts/LanguageContext";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 
 export default function SignupPage() {
@@ -14,16 +17,17 @@ export default function SignupPage() {
     const [showSuccess, setShowSuccess] = useState(false);
     const router = useRouter();
     const supabase = createClient();
+    const { t } = useTranslation();
 
     const handleSignup = async () => {
         setError("");
 
         if (!LoginID.trim() || !password.trim() || !passwordConfirm.trim()){
-            setError("全ての項目を入力してください")
+            setError(t('signupPage.allFieldsRequired'))
             return;
         }
         if (password !== passwordConfirm){
-            setError("パスワードが一致しません。")
+            setError(t('signupPage.passwordMismatch'))
             return;
         }
 
@@ -38,9 +42,9 @@ export default function SignupPage() {
         if (signUpError) {
             // "User already registered" のエラーメッセージを日本語化
             if (signUpError.message.includes("User already registered")) {
-                setError("このメールアドレスは既に登録されています。ログインしてください。");
+                setError(t('signupPage.alreadyRegistered'));
             } else {
-                setError("登録失敗：" + signUpError.message);
+                setError(t('signupPage.registrationFailed') + signUpError.message);
             }
             return;
         }
@@ -56,15 +60,23 @@ export default function SignupPage() {
 
   return (
     <>
-    <main className="min-h-screen flex flex-col relative overflow-hidden">
+    <main className="min-h-screen flex flex-col relative overflow-hidden bg-[#0a0a0f]">
+        <Link href="/" className="absolute top-4 left-4 z-20 text-sm text-slate-400 hover:text-slate-200 transition">
+            {t('common.backToHome')}
+        </Link>
+        <div className="absolute top-4 right-4 z-20">
+            <LanguageSwitcher />
+        </div>
         {/* Background elements */}
-        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/20 via-slate-950 to-slate-950 -z-10"></div>
-        <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] opacity-10 pointer-events-none"></div>
+        <div className="absolute top-[10%] right-[10%] w-[400px] h-[400px] bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-[10%] left-[10%] w-[300px] h-[300px] bg-purple-500/10 rounded-full blur-[100px] pointer-events-none" />
 
         <div className="flex-1 flex items-center justify-center p-4">
             <div className="glass-panel p-8 rounded-2xl shadow-2xl w-full max-w-md border border-slate-800 backdrop-blur-xl relative z-10 transition-all hover:shadow-[0_0_30px_rgba(59,130,246,0.1)]">
                 <h1 className="text-3xl font-black text-center mb-6 text-foreground tracking-tighter">
-                    JOIN THE RIFT
+                    <Link href="/" className="hover:opacity-80 transition">
+                        {t('signupPage.title')}
+                    </Link>
                 </h1>
 
                 {/* RSO Button (Temporarily Hidden for Production Review) */}
@@ -87,7 +99,7 @@ export default function SignupPage() {
                 <div className="space-y-4">
                     <div>
                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
-                            Email
+                            {t('signupPage.emailLabel')}
                         </label>
                         <input
                         type="text"
@@ -100,7 +112,7 @@ export default function SignupPage() {
                     </div>
                     <div>
                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
-                            Password
+                            {t('signupPage.passwordLabel')}
                         </label>
                         <input
                         type="password"
@@ -112,7 +124,7 @@ export default function SignupPage() {
                     </div>
                     <div>
                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
-                            Confirm Password
+                            {t('signupPage.confirmPasswordLabel')}
                         </label>
                         <input
                         type="password"
@@ -130,14 +142,14 @@ export default function SignupPage() {
                     onClick={handleSignup}
                     className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold py-3.5 mt-6 rounded-lg hover:from-blue-500 hover:to-cyan-500 transition shadow-lg shadow-blue-900/20 active:scale-95 transform"
                 >
-                    REGISTER ACCOUNT
+                    {t('signupPage.registerButton')}
                 </button>
                 {/* アカウント誘導 */}
                 <div className="mt-8 text-center space-y-4">
                     <p className="text-sm text-slate-500">
-                    Already have an account?{" "}
+                    {t('signupPage.alreadyHaveAccount')}{" "}
                     <a href="/login" className="text-blue-400 hover:text-blue-300 font-semibold transition hover:underline">
-                        Login
+                        {t('signupPage.login')}
                     </a>
                     </p>
                 </div>
@@ -152,20 +164,18 @@ export default function SignupPage() {
             <div className="bg-slate-900 border border-slate-700 p-8 rounded-2xl max-w-sm w-full mx-4 shadow-2xl relative animate-scaleIn">
                 <div className="text-center">
                     <div className="text-5xl mb-4">📧</div>
-                    <h3 className="text-2xl font-bold text-white mb-2">Check Your Email</h3>
+                    <h3 className="text-2xl font-bold text-white mb-2">{t('signupPage.emailSent')}</h3>
                     <p className="text-slate-400 mb-6 leading-relaxed text-sm">
-                        確認メールを送信しました。<br/>
-                        メール内のリンクをクリックして登録を完了してください。<br/>
+                        {t('signupPage.checkEmail')}<br/>
                         <span className="text-slate-500 text-xs mt-2 block">
-                            ※ メールが届かない場合は、既に登録済みの可能性があります。<br/>
-                            その場合はログイン画面へお進みください。
+                            {t('signupPage.alreadyRegisteredNote')}
                         </span>
                     </p>
                     <button
                         onClick={handleCloseModal}
                         className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-500 transition"
                     >
-                        ログイン画面へ
+                        {t('signupPage.goToLogin')}
                     </button>
                 </div>
             </div>

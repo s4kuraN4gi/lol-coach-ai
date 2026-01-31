@@ -1,5 +1,6 @@
 import React from "react";
 import { VisionAnalysisProvider } from "@/app/Providers/VisionAnalysisProvider";
+import { VideoMacroAnalysisProvider } from "@/app/Providers/VideoMacroAnalysisProvider";
 import { CoachUIProvider } from "@/app/Providers/CoachUIProvider";
 
 export default function CoachLayout({
@@ -9,9 +10,11 @@ export default function CoachLayout({
 }) {
   return (
     <VisionAnalysisProvider>
-      <CoachUIProvider>
-        {children}
-      </CoachUIProvider>
+      <VideoMacroAnalysisProvider>
+        <CoachUIProvider>
+          {children}
+        </CoachUIProvider>
+      </VideoMacroAnalysisProvider>
     </VisionAnalysisProvider>
   );
 }

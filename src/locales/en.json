@@ -1,5 +1,6 @@
 {
   "common": {
+    "backToHome": "← Back to Home",
     "backToOverview": "← Back to Overview",
     "backToList": "← Back to List",
     "readMore": "Read Guide →",
@@ -143,6 +144,11 @@
       "spikesDesc": "See when you are strongest in the game.",
       "unlockMatchup": "Unlock Matchup Analysis",
       "matchupDesc": "Deep dive into your performance against specific champions."
+    },
+    "noSummoner": {
+      "title": "Summoner Not Found",
+      "desc": "Please link your summoner from account settings.",
+      "link": "Go to Account Link"
     }
   },
   "matchDetail": {
@@ -166,6 +172,84 @@
       "preparing": "Preparing...",
       "analyzeButton": "Analyze Match"
     }
+  },
+  "damageCalculator": {
+    "title": "Damage Calculator",
+    "yourChampion": "Your Champion",
+    "enemyChampion": "Enemy Champion",
+    "stats": "Stats",
+    "loading": "Loading champion data...",
+    "autoAttack": "Auto Attack",
+    "fullCombo": "Full Combo Total",
+    "physical": "Physical",
+    "magic": "Magic",
+    "true": "True",
+    "selectItem": "Select Item",
+    "selectChampion": "Select Champion",
+    "searchItems": "Search items...",
+    "searchChampions": "Search champions...",
+    "noItems": "No items found",
+    "noChampions": "No champions found",
+    "dataNa": "Data incomplete",
+    "none": "None",
+    "comboMode": "Instant Combo",
+    "comboBuilderMode": "Combo Builder",
+    "simulationMode": "Combat Simulation",
+    "comboBuilder": {
+      "addAction": "Add Action",
+      "sequence": "Combo Sequence",
+      "clearAll": "Clear",
+      "results": "Results",
+      "action": "Action",
+      "time": "Time",
+      "damage": "Dmg",
+      "procs": "Procs",
+      "cumulative": "Total",
+      "targetHP": "HP",
+      "totalDamage": "Total Dmg",
+      "comboTime": "Time",
+      "hpPercent": "HP %",
+      "emptyHint": "Click buttons above to build your combo",
+      "passive": "Passive"
+    },
+    "aiAnalysisMode": "AI Analysis",
+    "aiAnalysis": {
+      "title": "AI Damage Analysis",
+      "analyzeButton": "Analyze Combo with AI",
+      "analyzing": "AI analyzing...",
+      "error": "Analysis failed. Please try again.",
+      "extraRequired": "Upgrade to Extra to unlock AI damage analysis",
+      "upgradeToExtra": "View Extra Plan",
+      "optimalCombo": "Optimal Combo",
+      "comboReasoning": "Combo Reasoning",
+      "comboBreakdown": "Combo Breakdown",
+      "step": "Step",
+      "action": "Action",
+      "damage": "Damage",
+      "type": "Type",
+      "notes": "Notes",
+      "cumulative": "Cumulative",
+      "totalDamage": "Total Damage",
+      "killPotential": "Kill Potential",
+      "canKill": "Can Kill",
+      "cannotKill": "Cannot Kill",
+      "hpRemaining": "HP Remaining",
+      "extendedTrade": "Extended Trade DPS",
+      "dps": "DPS",
+      "strategicAdvice": "Strategic Advice"
+    }
+  },
+  "simulation": {
+    "duration": "Duration",
+    "draw": "Draw",
+    "wins": "WIN",
+    "totalDamage": "Total Damage",
+    "aaCount": "AA Count",
+    "abilityCasts": "Abilities",
+    "showTimeline": "Show Timeline",
+    "hideTimeline": "Hide Timeline",
+    "loadMore": "Load More",
+    "remaining": "more"
   },
   "accountPage": {
     "title": "ACCOUNT SETTINGS",
@@ -243,7 +327,9 @@
       "defaultDesc": "Upgrade to Premium to unlock this feature.",
       "unlockNow": "UNLOCK NOW",
       "checkoutFailed": "Failed to start checkout.",
-      "error": "An error occurred."
+      "error": "An error occurred.",
+      "extraOnly": "Extra plan exclusive",
+      "viewPlans": "View pricing plans"
     },
     "promoCard": {
       "title": "UNLOCK PREMIUM",
@@ -265,7 +351,9 @@
       "credits": "CREDITS",
       "remaining": "REMAINING",
       "upgrading": "UPGRADING...",
-      "upgradeToPremium": "UPGRADE TO PREMIUM"
+      "upgradeToPremium": "UPGRADE TO PREMIUM",
+      "viewPlans": "Pricing",
+      "extra": "EXTRA"
     }
   },
   "coachPage": {
@@ -309,7 +397,76 @@
       "finalAdvice": "Final Verdict",
       "analyzeAnother": "Analyze Another Scene",
       "visionError": "Vision Analysis Error",
-      "youtubeNotSupported": "YouTube Vision Analysis is coming soon. Please use a local file."
+      "youtubeNotSupported": "YouTube Vision Analysis is coming soon. Please use a local file.",
+      "situationSnapshot": "Situation Snapshot",
+      "myStatus": "You",
+      "enemyStatus": "Enemy",
+      "environment": "Environment",
+      "tradeAnalysis": "Trade Analysis",
+      "damageGiven": "Damage Dealt",
+      "damageTaken": "Damage Taken",
+      "reason": "Reason",
+      "cooldownContext": "Cooldown Status",
+      "optimalAction": "Optimal Action",
+      "noTrade": "No trade occurred in this clip",
+      "mechanicsEvaluation": "Mechanics Evaluation",
+      "skillsUsed": "Skills Used",
+      "skillsDodged": "Skills Dodged",
+      "improvements": "Improvements",
+      "tips": "Tips",
+      "keyCombo": "Key Combo",
+      "current": "Current",
+      "ideal": "Ideal",
+      "practice": "Practice",
+      "aaWeaving": "AA Weaving",
+      "positioning": "Positioning",
+      "combo": "Combo",
+      "enums": {
+        "timing": {
+          "perfect": "Perfect",
+          "good": "Good",
+          "early": "Early",
+          "late": "Late",
+          "missed": "Missed"
+        },
+        "difficulty": {
+          "easy": "Easy",
+          "medium": "Medium",
+          "hard": "Hard"
+        },
+        "outcome": {
+          "win": "Win",
+          "lose": "Lose",
+          "even": "Even",
+          "noTrade": "No Trade"
+        },
+        "priority": {
+          "high": "High",
+          "medium": "Medium",
+          "low": "Low"
+        },
+        "category": {
+          "trading": "Trading",
+          "dodging": "Dodging",
+          "cooldownTracking": "CD Tracking",
+          "positioning": "Positioning",
+          "combo": "Combo",
+          "resourceManagement": "Resource Management",
+          "waveControl": "Wave Control"
+        },
+        "score": {
+          "excellent": "Excellent",
+          "good": "Good",
+          "needsWork": "Needs Work",
+          "risky": "Risky",
+          "poor": "Poor"
+        },
+        "skillLevel": {
+          "beginner": "Beginner",
+          "intermediate": "Intermediate",
+          "advanced": "Advanced"
+        }
+      }
     },
     "macro": {
       "modeLabel": "Analysis Mode",
@@ -327,7 +484,9 @@
       "noCredits": "Insufficient Credits",
       "premiumUnlimited": "💎 PREMIUM UNLIMITED",
       "verificationFailed": "Video verification failed.\nThe selected match does not match the video content.",
-      "launchFailed": "Failed to launch analysis."
+      "launchFailed": "Failed to launch analysis.",
+      "weeklyLimitReached": "Weekly limit reached",
+      "weeklyRemaining": "🧠 Analyze ({remaining} left)"
     },
     "results": {
       "matchVerificationError": "Video Verification Failed",
@@ -373,6 +532,95 @@
         "label": "Teamfight",
         "desc": "Positioning, ability usage, target selection"
       }
+    },
+    "videoMacro": {
+      "title": "Video Macro Analysis",
+      "description": "Extracts 5 key scenes from video and analyzes how you could have won",
+      "errors": {
+        "segmentFetchFailed": "Failed to fetch segments",
+        "noVideoOrSegments": "No video or segments selected",
+        "payloadTooLarge": "Frame data too large",
+        "analysisFailed": "Analysis failed",
+        "noProfile": "User profile not found",
+        "noCredits": "Insufficient credits. Please upgrade to Premium or add credits."
+      },
+      "progress": {
+        "checkingStatus": "Checking account status...",
+        "detectingTimeSync": "Auto-detecting time sync...",
+        "extractingFrames": "Extracting frames...",
+        "preparingUpload": "Preparing upload...",
+        "startingAnalysis": "Starting analysis...",
+        "aiAnalyzing": "AI is analyzing...",
+        "analysisComplete": "Analysis complete!"
+      },
+      "segmentTypes": {
+        "objective": "Objective",
+        "death": "Death",
+        "turningPoint": "Turning Point"
+      },
+      "calibration": {
+        "detecting": "Detecting game time...",
+        "detected": "Detected",
+        "failed": "Detection failed",
+        "error": "Detection error"
+      },
+      "timeSync": {
+        "label": "Time Sync",
+        "autoDetected": "Auto-detected",
+        "onAnalysisStart": "Detected on analysis start",
+        "offset": "Offset",
+        "video": "Video"
+      },
+      "segments": {
+        "title": "Analysis Scenes (5)",
+        "loading": "Loading...",
+        "reload": "Reload",
+        "noSegments": "No segments found"
+      },
+      "buttons": {
+        "selectVideo": "Please select a video",
+        "loadingSegments": "Loading segments...",
+        "startAnalysis": "Start Macro Analysis",
+        "reanalyze": "Re-analyze with different segments",
+        "weeklyLimitReached": "Weekly limit reached",
+        "upgradePrompt": "Upgrade to Premium for 20 analyses/week"
+      },
+      "results": {
+        "segmentsAnalyzed": "segments analyzed",
+        "showDetails": "Show details",
+        "summary": "Analysis Summary",
+        "mainIssue": "Main Issue",
+        "homework": "Today's Homework",
+        "relatedScenes": "Related Scenes",
+        "sceneAnalysis": "Scene Analysis"
+      },
+      "build": {
+        "title": "Build Recommendation",
+        "you": "You",
+        "recommendedCore": "Recommended Core Items"
+      },
+      "scene": {
+        "observation": "Observation",
+        "yourPosition": "Your Position",
+        "allyPositions": "Ally Positions",
+        "waveState": "Wave State",
+        "objective": "Objective",
+        "winningPattern": "Winning Pattern",
+        "gap": "Gap with Reality",
+        "criticalMoment": "Critical Moment",
+        "shouldHaveDone": "What should have been done",
+        "checkInVideo": "Check in video"
+      }
+    },
+    "verification": {
+      "aiVerifying": "AI is verifying video",
+      "checkingConsistency": "Checking for inconsistencies between the video and match data..."
+    },
+    "tips": {
+      "title": "How to Use",
+      "step1": "Select a match to analyze",
+      "step2": "Upload a video file",
+      "step3": "AI auto-analyzes key scenes"
     }
   },
   "widgets": {
@@ -452,6 +700,105 @@
       "stompGames": "💥 Stomp Games (>10k Gold)",
       "icyUnderPressure": "❄️ You are icy under pressure.",
       "relyOnSnowball": "🔥 You rely on snowballing."
+    },
+    "rankGraph": {
+      "rankHistory": "RANK HISTORY",
+      "playstyle": "PLAYSTYLE",
+      "lpChange": "{days} days",
+      "rank": "Rank",
+      "collectingData": "Collecting Data...",
+      "noRankData": "No rank data yet. Click \"Refresh Data\" to start tracking.",
+      "needMoreData": "Graph will appear after 2+ days of data collection.",
+      "currentRank": "Current Rank",
+      "dataProgress": "Collection Progress",
+      "daysCollected": "{current} day(s) / 2+ days for graph",
+      "howItWorks": "Click \"Refresh Data\" daily to record your rank",
+      "noMatchData": "Fetch match data to see your playstyle analysis"
+    },
+    "profileCard": {
+      "recentForm": "Last 10 Games",
+      "totalRecord": "Total Record",
+      "mostPlayed": "Most Played",
+      "noData": "-",
+      "monthlyStats": "This Month's Ranked",
+      "games": "games",
+      "noMonthlyData": "No ranked games this month",
+      "coachInsight": "AI Coach Insights",
+      "topFocus": "Focus Areas",
+      "analysesCompleted": "analyses completed",
+      "noCoachData": "No analysis history",
+      "macro": "Macro",
+      "micro": "Micro",
+      "roleDistribution": "Role Distribution",
+      "topChampions": "Top Champions"
+    },
+    "rankGoal": {
+      "title": "Rank Goal",
+      "subtitle": "Set a goal to stay motivated",
+      "edit": "Edit",
+      "setGoal": "Set Goal",
+      "cancel": "Cancel",
+      "current": "Current",
+      "target": "Target",
+      "unranked": "Unranked",
+      "progress": "Progress",
+      "achieved": "Achieved!",
+      "remaining": "~{lp}LP remaining",
+      "setNewGoal": "Set a new goal",
+      "achievementTitle": "Goal Achieved!",
+      "achievementMessage": "Congratulations! You've reached your target rank.",
+      "close": "Close"
+    },
+    "nextFocus": {
+      "title": "Focus for Next Game",
+      "subtitle": "Advice based on your data",
+      "noTips": "Great performance!",
+      "keepPlaying": "Keep up the good work",
+      "priority": {
+        "high": "Important",
+        "medium": "Suggested",
+        "low": "Info"
+      },
+      "tips": {
+        "vision": {
+          "title": "Improve Vision Control",
+          "desc": "Your ward count is low. Make it a habit to place wards before recalling."
+        },
+        "farming": {
+          "title": "Improve CS Accuracy",
+          "desc": "You're missing minions. Practice last-hitting in practice tool."
+        },
+        "survival": {
+          "title": "Reduce Deaths",
+          "desc": "Your death count is high. Check the minimap before engaging."
+        },
+        "objective": {
+          "title": "Participate in Objectives",
+          "desc": "Your objective contribution is low. Join Dragon and Baron fights."
+        },
+        "macro": {
+          "title": "Macro Improvement",
+          "desc": "This was highlighted by AI Coach analysis. Focus on improving this area."
+        },
+        "micro": {
+          "title": "Mechanics Improvement",
+          "desc": "There's room to improve your trading and skill accuracy."
+        },
+        "mental": {
+          "title": "Mental Reset",
+          "desc": "You're on a losing streak. Take a break or play normals to refresh."
+        }
+      }
+    },
+    "quickStats": {
+      "title": "Quick Stats",
+      "subtitle": "Average of last {games} games",
+      "noData": "Collecting data...",
+      "kda": "KDA",
+      "killParticipation": "Kill Participation",
+      "csPerMin": "CS/min",
+      "visionPerMin": "Vision/min",
+      "avgDamage": "Avg Damage"
     }
   },
   "tooltip": {
@@ -546,5 +893,376 @@
   "settings": {
     "language": "Language",
     "selectLanguage": "Select Language"
+  },
+  "contactPage": {
+    "title": "Contact Us",
+    "intro": "For questions, feedback, or bug reports regarding LoL Coach AI, please feel free to contact us at the email address below.",
+    "emailTitle": "Contact via Email",
+    "requestsTitle": "When Contacting Us",
+    "requests": {
+      "subject": "Please include \"LoL Coach AI\" in the subject line",
+      "bugReport": "For bug reports, please describe the issue in as much detail as possible",
+      "privacy": "Only share personal information (Summoner Name, PUUID) when necessary"
+    },
+    "responseTitle": "Response Time",
+    "responseDesc": "We typically respond within 3 business days. If urgent, please indicate so in your message.",
+    "supportTitle": "Support Topics",
+    "supportItems": {
+      "usage": "Questions about how to use the service",
+      "bugs": "Bug and error reports",
+      "features": "Feature requests and suggestions",
+      "billing": "Premium plan and billing inquiries",
+      "general": "General service-related inquiries"
+    }
+  },
+  "landingPage": {
+    "nav": {
+      "pricing": "Pricing",
+      "login": "Log In",
+      "getStarted": "Get Started Free"
+    },
+    "hero": {
+      "subtitlePrefix": "AI ",
+      "subtitle": "Fetching real-time data from the Riot API.",
+      "subtitleHighlight": "Personalized",
+      "subtitleEnd": " improvements analyzed to fast-track your rank up.",
+      "ctaStart": "Get Started Now →",
+      "ctaAnalyze": "🎥 Try Free Video Analysis",
+      "freeBadge": "No login required - Up to 3 free analyses"
+    },
+    "bento": {
+      "skillAnalysis": "Visualize Your Skills",
+      "skillDesc": "Compare CS, vision score, damage efficiency and more against your tier average. See your strengths and weaknesses at a glance.",
+      "csAccuracy": "CS Accuracy",
+      "visionScore": "Vision Score",
+      "totalDamage": "Total Damage",
+      "aiChatPreview": "The enemy Yasuo has a strong Lv2 power spike. Focus on wave control.",
+      "matchupTitle": "Matchup Guide",
+      "matchupDesc": "AI suggests counters, build paths, and strategies for tough matchups.",
+      "macroTitle": "Macro Analysis",
+      "macroDesc": "Analyze map-wide movements from video and suggest improvements.",
+      "microTitle": "Micro Analysis",
+      "microDesc": "Detailed analysis of mechanics, combos, and positioning.",
+      "winRateChange": "+12% this week",
+      "aiCoachLabel": "AI Coach",
+      "activeNow": "Active now"
+    },
+    "features": {
+      "sectionTitlePrefix": "Data-Driven ",
+      "sectionTitle": "Win",
+      "sectionDesc": "Data-driven improvement, not guesswork.",
+      "statsTitle": "Real-Time Stats Analysis",
+      "statsDesc": "Direct data from the Riot API. Compare 20+ metrics like CS, vision, and damage efficiency against your tier average to pinpoint strengths and areas for improvement.",
+      "statsFeature1": "Auto Data Sync",
+      "statsFeature2": "Tier Benchmarks",
+      "statsFeature3": "Trend Analysis",
+      "chatTitle": "Chat with AI Coach",
+      "chatQuestion1": "How should I play this matchup?",
+      "chatQuestion2": "Why did I lose?",
+      "chatDesc": "Discuss specific match concerns with your AI Coach. Resolve questions through interactive conversation.",
+      "chatFeature1": "Available 24/7",
+      "chatFeature2": "Match Data Integration",
+      "chatFeature3": "Personalized Advice"
+    },
+    "cta": {
+      "titlePrefix": "Reach Your ",
+      "title": "Next Rank",
+      "titleEnd": " Now.",
+      "desc": "No credit card required. Just link your Riot ID and get started.",
+      "button": "Create Free Account",
+      "trustRiot": "Official Riot API Integration",
+      "trustNoCc": "No Credit Card Required",
+      "trustJa": "Japanese Supported"
+    }
+  },
+  "loginPage": {
+    "emptyFields": "Please enter your login ID and password",
+    "loginFailed": "Login failed: ",
+    "emailNotVerified": "Email not verified.\nPlease click the link in the email we sent you.",
+    "welcomeBack": "Welcome Back",
+    "initializing": "Initializing...",
+    "loginButton": "Log In",
+    "noAccount": "Don't have an account?",
+    "register": "Sign Up",
+    "forgotPassword": "Forgot password?",
+    "emailLabel": "Email",
+    "passwordLabel": "Password"
+  },
+  "signupPage": {
+    "allFieldsRequired": "Please fill in all fields",
+    "passwordMismatch": "Passwords do not match.",
+    "alreadyRegistered": "This email is already registered. Please log in.",
+    "registrationFailed": "Registration failed: ",
+    "emailSent": "Confirmation email sent.",
+    "checkEmail": "Click the link in the email to complete registration.",
+    "alreadyRegisteredNote": "* If you didn't receive an email, the address may already be registered.\nIn that case, please go to the login page.",
+    "goToLogin": "Go to Login",
+    "title": "JOIN THE RIFT",
+    "registerButton": "REGISTER ACCOUNT",
+    "alreadyHaveAccount": "Already have an account?",
+    "login": "Log In",
+    "emailLabel": "Email",
+    "passwordLabel": "Password",
+    "confirmPasswordLabel": "Confirm Password"
+  },
+  "onboardingPage": {
+    "welcome": "Let's link your account and start analyzing.",
+    "riotIdFormat": "Please enter your Riot ID in 'Name#Tag' format (e.g. Hide on bush#KR1)",
+    "error": "Error: ",
+    "jpOnly": "* JP server only",
+    "startLink": "Start Linking",
+    "verifyTitle": "Identity Verification (Icon Auth)",
+    "verifyInstruction": "In the LoL client, change your profile icon to\nthe one shown below.",
+    "cancel": "Cancel",
+    "checking": "Checking...",
+    "changed": "I Changed It",
+    "verifySuccess": "Verified! Redirecting to dashboard...",
+    "logout": "Log Out and Return",
+    "timeRemaining": "Time remaining:"
+  },
+  "pricingPage": {
+    "header": {
+      "back": "Back",
+      "tryFree": "Try Free",
+      "login": "Log In",
+      "dashboard": "Dashboard"
+    },
+    "title": "Plans",
+    "subtitle": "Choose the plan that fits you best",
+    "features": {
+      "analysisCount": "Video Analysis Count",
+      "segmentCount": "Analysis Segments",
+      "segmentMethod": "Segment Selection",
+      "riotApi": "Riot API Integration",
+      "matchHistory": "Match History Access",
+      "analysisSave": "Save Analysis History",
+      "buildAdvice": "Build Advice",
+      "championStats": "Champion Stats",
+      "detailedStats": "Detailed Stats Analysis",
+      "ads": "Ads",
+      "adsYes": "Yes",
+      "adsNo": "None",
+      "aiDamageAnalysis": "AI Damage Analysis"
+    },
+    "guest": {
+      "name": "Guest",
+      "price": "/forever",
+      "desc": "Try instantly, no registration needed",
+      "analysisFreq": "Once every 3 days (up to 3 credits)",
+      "analysisFreqShort": "1 analysis per 3 days (max 3 credits)",
+      "fixedSegments": "3 fixed",
+      "fixedSegmentsDesc": "3 fixed segment analysis",
+      "fixedMethod": "Fixed times (3min/8min/15min)",
+      "autoMethod": "Auto-selected from match data",
+      "aiMacro": "AI Macro Analysis",
+      "noMatchData": "No match data integration",
+      "noSaveHistory": "No analysis history saved",
+      "tryNow": "Try Now"
+    },
+    "free": {
+      "name": "Free",
+      "badge": "Recommended",
+      "price": "/forever",
+      "desc": "Experience all features for free",
+      "weeklyAnalysis": "3x/week",
+      "weeklyAnalysisDesc": "3 analyses per week",
+      "autoSelect": "Auto-select",
+      "threeSegments": "3 segments",
+      "autoSegments": "3 auto-selected",
+      "riotApi": "Riot API Integration",
+      "matchHistoryView": "Match history & stats",
+      "saveHistory": "Save analysis history",
+      "noBuildAdvice": "No build advice",
+      "currentPlan": "Current Plan",
+      "register": "Sign Up Free"
+    },
+    "premium": {
+      "name": "Premium",
+      "priceUnit": "/month",
+      "desc": "For those serious about climbing",
+      "weeklyAnalysis": "20x/week",
+      "fiveSegments": "5 segments",
+      "autoSegments": "5 auto-selected",
+      "buildAdvice": "Build Advice",
+      "noAds": "No Ads",
+      "processing": "Processing...",
+      "subscribe": "Subscribe to Premium",
+      "unsubscribe": "Unsubscribe"
+    },
+    "extra": {
+      "name": "Extra",
+      "priceUnit": "/month",
+      "desc": "Gain the edge with AI damage analysis",
+      "weeklyAnalysis": "50x/week",
+      "eightSegments": "8 segments",
+      "autoSegments": "8 auto-selected",
+      "aiDamageAnalysis": "AI Damage Analysis",
+      "subscribe": "Subscribe to Extra",
+      "processing": "Processing...",
+      "unsubscribe": "Unsubscribe"
+    },
+    "comparison": {
+      "title": "Feature Comparison",
+      "feature": "Feature"
+    },
+    "faq": {
+      "title": "FAQ",
+      "q1": "What's the difference between Guest and Free?",
+      "a1": "Guest lets you try instantly without registration, but analysis is limited to 3 fixed scenes. Free members get Riot API integration for auto-selected key scenes from match data, plus analysis history is saved.",
+      "q2": "Can I cancel Premium anytime?",
+      "a2": "Yes, you can cancel anytime. Premium features remain active until the end of your billing period. After cancellation, you automatically continue as a Free member.",
+      "q3": "When do analysis credits reset?",
+      "a3": "Free and Premium weekly credits reset every Monday. Guest credits regenerate 1 credit every 3 days after the last use (up to 3 max).",
+      "q4": "What payment methods are accepted?",
+      "a4": "We accept credit cards (Visa, Mastercard, JCB, American Express). All payments are securely processed through Stripe."
+    },
+    "ctaPremium": {
+      "title": "You're on the Premium Plan",
+      "desc": "Enjoy all features",
+      "button": "Go to Dashboard"
+    },
+    "ctaExtra": {
+      "title": "You're on the Extra Plan",
+      "desc": "Enjoy all features including AI damage analysis",
+      "button": "Go to Dashboard"
+    },
+    "ctaUpgrade": {
+      "title": "Level Up with Premium",
+      "desc": "20 analyses/week and 5 auto-selected segments for efficient improvement"
+    },
+    "ctaGuest": {
+      "title": "Want to try it for free?",
+      "desc": "Experience AI video analysis with no registration required",
+      "tryGuest": "Try as Guest",
+      "registerFree": "Sign Up Free"
+    }
+  },
+  "analyzePage": {
+    "tabs": {
+      "macro": "Macro Analysis",
+      "micro": "Micro Analysis"
+    },
+    "micro": {
+      "clipSelector": "Select 30 seconds to analyze",
+      "clipFrom": "Start position",
+      "clipDescription": "Detailed analysis of 30 seconds of gameplay from the specified position",
+      "analyzing": "AI analyzing...",
+      "polling": "Processing on server...",
+      "overallGrade": "Overall Grade",
+      "situationSnapshot": "Situation Snapshot",
+      "tradeAnalysis": "Trade Analysis",
+      "mechanics": "Mechanics Evaluation",
+      "improvements": "Improvements"
+    },
+    "rewardAd": {
+      "title": "Watch an ad to start analysis",
+      "description": "Analysis will begin after a short ad",
+      "skip": "Skip",
+      "watching": "Watching ad...",
+      "complete": "Start analysis"
+    },
+    "selectVideo": "Please select a video",
+    "noCredits": "Insufficient credits",
+    "detectingTime": "Detecting in-game time...",
+    "extractingFrames": "Extracting frames...",
+    "startingAnalysis": "Starting analysis...",
+    "analysisFailed": "Analysis failed",
+    "verifying": "Verifying video against match data...",
+    "aiVerifying": "AI verification in progress...",
+    "verifyFetchFailed": "Failed to fetch match data",
+    "verifyServerError": "Verification server error",
+    "videoMismatch": "The video does not match the selected match. Please select the correct video.",
+    "championMismatch": "The champion you are playing does not match the match data. Please select the correct match video.",
+    "teamMismatch": "The team composition does not match the match data. A different match video may have been selected.",
+    "loading": "Loading...",
+    "header": {
+      "top": "Top",
+      "dashboard": "Dashboard",
+      "matchSelect": "Match Select",
+      "guest": "Guest",
+      "freeMember": "Free Member",
+      "perWeek": "x/week",
+      "pricing": "Pricing",
+      "login": "Log In"
+    },
+    "hero": {
+      "free": "Free",
+      "desc": "Upload your LoL gameplay and get AI-powered macro tactics advice"
+    },
+    "upload": {
+      "title": "Upload Video",
+      "dragDrop": "Click or drag & drop",
+      "formats": "MP4, MOV, WebM (max 500MB)",
+      "changeVideo": "Choose a different video"
+    },
+    "segments": {
+      "titleAuto": "Analysis Scenes (auto-selected from match data)",
+      "titleFixed": "Analysis Scenes (fixed)",
+      "loading": "Loading match data...",
+      "autoNote": "* Key scenes auto-selected from match data",
+      "registerNote": "* Sign up free to auto-select key scenes from match data",
+      "close": "Close"
+    },
+    "analysis": {
+      "macroTitle": "Macro Analysis",
+      "guestNoCredits": "Guest credits used up. Please wait for the next credit to regenerate.",
+      "weeklyLimit": "Weekly analysis limit reached. Resets on Monday.",
+      "freeRegister": "Sign up free for 3x/week",
+      "comparePlans": "Compare Plans",
+      "viewPlans": "View other plans →"
+    },
+    "buttons": {
+      "loading": "Loading...",
+      "analyzing": "Analyzing...",
+      "selectVideo": "Please select a video",
+      "noCredits": "No Credits",
+      "startAnalysis": "Start Analysis ({credits} remaining)"
+    },
+    "matchInfo": {
+      "victory": "Victory",
+      "defeat": "Defeat"
+    },
+    "results": {
+      "warning": "⚠️ An issue occurred during analysis",
+      "completed": "Analysis complete: {completed}/{requested} segments",
+      "summary": "Analysis Summary",
+      "homework": "Today's Homework",
+      "sceneAnalysis": "Scene Analysis",
+      "position": "Position:",
+      "wave": "Wave:",
+      "winPattern": "Win pattern:",
+      "improvement": "Improvement",
+      "checkVideo": "Check in video",
+      "reanalyze": "Re-analyze",
+      "remainingCredits": "Remaining credits: {remaining}",
+      "viewPlans": "View pricing plans →"
+    }
+  },
+  "visionAnalysis": {
+    "restoringBackground": "Restoring background analysis...",
+    "resultCorrupted": "Analysis results were corrupted. Please re-analyze.",
+    "completedCreatingReport": "Done! Creating report...",
+    "analysisFailed": "Analysis failed.",
+    "aiAnalyzingServer": "AI analyzing... (server processing)",
+    "verifyingVideo": "Verifying video integrity...",
+    "matchDataFetchFailed": "Failed to fetch match data",
+    "playerNotFound": "Player with the specified PUUID not found",
+    "extractingVerificationFrames": "Extracting verification frames...",
+    "aiVerifying": "AI verification in progress...",
+    "verificationServerError": "Verification server error: {error}",
+    "unknownError": "Unknown",
+    "videoMismatch": "The selected video does not match the chosen match.",
+    "championMismatch": "The champion you are playing does not match the match data. Please select the correct match video.",
+    "teamMismatch": "The team composition does not match the match data. A different match video may have been selected.",
+    "preparing": "Preparing...",
+    "verifyingVideoMatch": "Matching video with match data...",
+    "cannotSkipVerification": "Cannot skip verification because match data could not be retrieved.",
+    "extractingFromPosition": "Extracting frames from position ({startTime}s)...",
+    "extractingFromVideo": "Extracting frames from video...",
+    "frameExtractionFailed": "Frame extraction failed (0 frames)",
+    "aiAnalyzingFrames": "AI analyzing... ({frameCount} images sent)",
+    "jobStartFailed": "Failed to start analysis job",
+    "unexpectedError": "An unexpected error occurred",
+    "error": "Error"
   }
 }

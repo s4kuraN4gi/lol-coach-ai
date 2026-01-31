@@ -12,10 +12,13 @@ import LoadingAnimation from "../Components/LoadingAnimation";
 import { useAuth } from "../Providers/AuthProvider";
 import { signOut } from "../actions/auth";
 import Footer from "../Components/layout/Footer";
+import { useTranslation } from "@/contexts/LanguageContext";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 export default function OnboardingPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const { t } = useTranslation();
   const [initLoading, setInitLoading] = useState(true);
 
   // Verification States
@@ -51,7 +54,7 @@ export default function OnboardingPage() {
     setNotification(null);
     if (!inputName.trim()) return;
     if (!inputName.includes('#')) {
-        setNotification({ type: 'error', message: "Riot IDは 'Name#Tag' の形式で入力してください (例: Hide on bush#KR1)" });
+        setNotification({ type: 'error', message: t('onboardingPage.riotIdFormat') });
         return;
     }
 
@@ -60,7 +63,7 @@ export default function OnboardingPage() {
         
         const res = await lookupSummoner(inputName.trim());
         if(res.error) {
-            setNotification({ type: 'error', message: "エラー: " + res.error });
+            setNotification({ type: 'error', message: t('onboardingPage.error') + res.error });
             return;
         }
         // Success
@@ -87,7 +90,7 @@ export default function OnboardingPage() {
           }
           
           // Success!
-          setNotification({ type: 'success', message: "認証成功！ダッシュボードへ移動します..." });
+          setNotification({ type: 'success', message: t('onboardingPage.verifySuccess') });
           setTimeout(() => {
               window.location.href = "/dashboard"; // Hard reload to force context updates
           }, 1500);
@@ -116,17 +119,20 @@ export default function OnboardingPage() {
 
   if (authLoading || initLoading) {
      return (
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
             <LoadingAnimation />
         </div>
      )
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col relative overflow-hidden">
+    <div className="min-h-screen bg-[#0a0a0f] flex flex-col relative overflow-hidden">
+        <div className="absolute top-4 right-4 z-20">
+            <LanguageSwitcher />
+        </div>
         {/* Background Glow */}
-        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[100px] pointer-events-none" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] bg-amber-500/5 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute top-[10%] right-[10%] w-[400px] h-[400px] bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-[10%] left-[10%] w-[300px] h-[300px] bg-purple-500/10 rounded-full blur-[100px] pointer-events-none" />
 
         <div className="flex-1 flex flex-col items-center justify-center p-6">
             <div className="w-full max-w-lg z-10">
@@ -136,7 +142,7 @@ export default function OnboardingPage() {
                         WELCOME, SUMMONER
                     </h1>
                     <p className="text-slate-400">
-                        まずは、あなたのアカウントを連携して分析を開始しましょう。
+                        {t('onboardingPage.welcome')}
                     </p>
                 </div>
 
@@ -163,7 +169,7 @@ export default function OnboardingPage() {
                                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                                 />
                                 <p className="text-xs text-slate-500 mt-2">
-                                    ※ JPサーバーのみ対応しています
+                                    {t('onboardingPage.jpOnly')}
                                 </p>
                             </div>
                             
@@ -172,15 +178,15 @@ export default function OnboardingPage() {
                                 disabled={isPending || !inputName.trim()}
                                 className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold py-3 rounded-lg shadow-lg shadow-blue-500/20 transition-all flex justify-center items-center"
                             >
-                                {isPending ? <div className="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full" /> : "連携を開始する"}
+                                {isPending ? <div className="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full" /> : t('onboardingPage.startLink')}
                             </button>
                         </div>
                     ) : (
                         <div className="space-y-6 animate-fadeIn">
                             <div className="text-center">
-                                <h3 className="text-lg font-bold text-white mb-2">本人確認 (アイコン認証)</h3>
+                                <h3 className="text-lg font-bold text-white mb-2">{t('onboardingPage.verifyTitle')}</h3>
                                 <p className="text-sm text-slate-400 mb-4">
-                                    LoLクライアントで、プロフィールアイコンを<br/>以下に変更してください。
+                                    {t('onboardingPage.verifyInstruction')}
                                 </p>
                                 
                                 <div className="flex items-center justify-center gap-6 mb-6">
@@ -210,7 +216,7 @@ export default function OnboardingPage() {
                                     disabled={isPending}
                                     className="flex-1 py-3 text-slate-400 font-bold hover:text-white transition"
                                 >
-                                    キャンセル
+                                    {t('onboardingPage.cancel')}
                                 </button>
                                 <button
                                     onClick={handleVerify}
@@ -220,11 +226,11 @@ export default function OnboardingPage() {
                                     {isPending ? (
                                         <>
                                         <div className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full" />
-                                        確認中...
+                                        {t('onboardingPage.checking')}
                                         </>
                                     ) : (
                                         <>
-                                        <span>✅</span> 変更しました
+                                        <span>✅</span> {t('onboardingPage.changed')}
                                         </>
                                     )}
                                 </button>
@@ -240,7 +246,7 @@ export default function OnboardingPage() {
                         }} 
                         className="text-xs text-slate-600 hover:text-slate-400 underline"
                     >
-                        ログアウトして戻る
+                        {t('onboardingPage.logout')}
                     </button>
                 </div>
             </div>
@@ -251,6 +257,7 @@ export default function OnboardingPage() {
 }
 
 function Timer({ expiresAt, onExpire }: { expiresAt: number, onExpire?: () => void }) {
+    const { t } = useTranslation();
     const [timeLeft, setTimeLeft] = useState(0);
     const hasExpiredRef = React.useRef(false);
 
@@ -280,7 +287,7 @@ function Timer({ expiresAt, onExpire }: { expiresAt: number, onExpire?: () => vo
 
     return (
         <div className="bg-slate-950/50 rounded px-4 py-2 inline-block border border-slate-800">
-            <span className="text-slate-500 text-xs mr-2">残り時間:</span>
+            <span className="text-slate-500 text-xs mr-2">{t('onboardingPage.timeRemaining')}</span>
             <span className={`font-mono font-bold ${timeLeft < 60000 ? 'text-red-400' : 'text-slate-200'}`}>
                 {format(timeLeft)}
             </span>

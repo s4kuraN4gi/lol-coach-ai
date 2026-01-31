@@ -28,10 +28,10 @@ export default function SidebarNav() {
     ];
 
   return (
-        <aside className="w-64 bg-slate-900/50 backdrop-blur-xl border-r border-slate-800 p-6 flex flex-col justify-between sticky top-0 h-screen z-50">
+        <aside className="w-64 bg-[#0f0f15]/80 backdrop-blur-xl border-r border-white/5 p-6 flex flex-col justify-between sticky top-0 h-screen z-50">
             <div>
-              <h2 className="text-2xl font-black italic tracking-tighter text-foreground mb-8 px-2">
-                  LOL COACH AI
+              <h2 className="text-2xl font-black tracking-tighter mb-8 px-2">
+                  <span className="text-cyan-400">LoL</span> Coach AI
               </h2>
               <nav className="flex flex-col gap-2 text-slate-400">
                   {navItems.map((item) => {

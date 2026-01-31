@@ -105,7 +105,7 @@ export default function AccountPage() {
           try {
             const res = await registerVerificationTimeout();
             if(res.message) setNotification({ type: 'error', message: res.message });
-            else if(res.error) setNotification({ type: 'error', message: "エラー: " + res.error });
+            else if(res.error) setNotification({ type: 'error', message: t('accountPage.messages.error') + res.error });
           } catch(e) {
             console.error(e);
             setNotification({ type: 'error', message: t('accountPage.messages.unexpectedError') });

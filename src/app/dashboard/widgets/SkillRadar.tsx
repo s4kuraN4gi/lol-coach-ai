@@ -8,7 +8,7 @@ export default function SkillRadar({ stats }: { stats: RadarStats | null }) {
     
     if (!stats) {
         return (
-             <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center justify-center min-h-[300px] relative overflow-hidden">
+             <div className="glass-panel rounded-xl p-4 flex items-center justify-center h-full w-full relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-pink-500/5"></div>
                  <div className="text-center relative z-10">
                      <div className="text-slate-500 font-bold mb-2">{t('widgets.skillRadar.noData')}</div>
@@ -50,7 +50,7 @@ export default function SkillRadar({ stats }: { stats: RadarStats | null }) {
     }).join(" ");
 
     return (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 relative overflow-hidden flex flex-col items-center">
+        <div className="glass-panel rounded-xl p-4 relative overflow-hidden flex flex-col items-center h-full w-full">
             {/* Header */}
             <div className="w-full flex justify-between items-start mb-2 z-10">
                 <div className="text-slate-400 text-xs font-bold tracking-wider">{t('widgets.skillRadar.title')}</div>
@@ -65,7 +65,7 @@ export default function SkillRadar({ stats }: { stats: RadarStats | null }) {
             </div>
 
             {/* SVG Radar */}
-            <div className="w-64 h-64 relative">
+            <div className="w-52 h-52 relative flex-1 flex items-center justify-center">
                 <svg viewBox="0 0 200 200" className="w-full h-full overflow-visible drop-shadow-xl">
                     {/* Background Grid */}
                     {[20, 40, 60, 80].map(r => (
@@ -125,21 +125,36 @@ export default function SkillRadar({ stats }: { stats: RadarStats | null }) {
                 {axes.map(axis => {
                     const { x, y } = getCoord(118, axis.angle);
                     const description = t(`widgets.skillRadar.descriptions.${axis.key}`);
+                    // Show tooltip below for top axes (y < 100), above for bottom axes (y >= 100)
+                    const showTooltipBelow = y < 100;
 
                     return (
-                        <div 
+                        <div
                             key={axis.name}
-                            className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center group cursor-help z-20"
+                            className="absolute -translate-x-1/2 -translate-y-1/2 flex items-center gap-0.5 group cursor-help z-20"
                             style={{ left: `${(x/200)*100}%`, top: `${(y/200)*100}%` }}
                         >
                             <span className="text-[10px] font-bold text-slate-400 group-hover:text-blue-400 transition-colors bg-slate-900/80 px-1 rounded backdrop-blur-sm">
                                 {axis.name}
                             </span>
-                            
-                            {/* Tooltip */}
-                            <div className="absolute w-max max-w-[120px] bg-slate-800 text-[10px] text-slate-200 p-2 rounded border border-slate-700 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 bottom-full mb-1 text-center hidden group-hover:block">
-                                <div className="font-bold text-white mb-0.5">{axis.name}</div>
-                                {description}
+
+                            {/* Question Mark Icon */}
+                            <span className="w-3 h-3 rounded-full bg-slate-700 group-hover:bg-blue-500 text-[8px] font-bold text-slate-400 group-hover:text-white flex items-center justify-center transition-colors">
+                                ?
+                            </span>
+
+                            {/* Tooltip - position based on axis location */}
+                            <div className={`absolute w-max max-w-[140px] bg-slate-800 text-[10px] text-slate-200 p-2 rounded border border-slate-700 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 left-1/2 -translate-x-1/2 text-center invisible group-hover:visible ${
+                                showTooltipBelow ? 'top-full mt-1' : 'bottom-full mb-1'
+                            }`}>
+                                <div className="font-bold text-white mb-1" style={{ color: axis.color }}>{axis.name}</div>
+                                <div className="text-slate-300">{description}</div>
+                                {/* Arrow - flip based on position */}
+                                <div className={`absolute left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-transparent ${
+                                    showTooltipBelow
+                                        ? 'bottom-full border-b-4 border-b-slate-700'
+                                        : 'top-full border-t-4 border-t-slate-700'
+                                }`}></div>
                             </div>
                         </div>
                     )
@@ -147,7 +162,7 @@ export default function SkillRadar({ stats }: { stats: RadarStats | null }) {
             </div>
             
             {/* Insight Text */}
-            <div className="mt-4 text-center">
+            <div className="mt-2 text-center">
                  {/* Logic to find highest stat */}
                  {(() => {
                      const best = axes.reduce((prev, current) => 

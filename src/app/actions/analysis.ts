@@ -1,9 +1,9 @@
 "use server";
 
-import { createClient } from "@/utils/supabase/server";
+import { createClient, createServiceRoleClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { stripe } from "@/lib/stripe";
-import { WEEKLY_ANALYSIS_LIMIT, type AnalysisStatus } from "./constants";
+import { FREE_WEEKLY_ANALYSIS_LIMIT, PREMIUM_WEEKLY_ANALYSIS_LIMIT, type AnalysisStatus, getWeeklyLimit } from "./constants";
 
 // Weekly limit constant is imported from ./constants
 
@@ -236,9 +236,34 @@ export async function getVideoAnalysisStatus(matchId: string) {
     .single();
 
   if (error) return { status: "idle" }; // No record found
-  return { 
-      status: data.status, 
-      result: data.result,
+
+  // Safety check: Ensure result is not corrupted or too large
+  let safeResult = data.result;
+  if (safeResult) {
+    try {
+      const resultStr = JSON.stringify(safeResult);
+      console.log(`[getVideoAnalysisStatus] Result size for ${matchId}: ${resultStr.length} chars`);
+      if (resultStr.length > 500 * 1024) { // 500KB max
+        console.error(`[getVideoAnalysisStatus] Result too large (${Math.round(resultStr.length / 1024)}KB), returning error`);
+        safeResult = null;
+        return {
+          status: "failed",
+          result: null,
+          error: "分析結果が破損していました。再度分析してください。",
+          id: data.id,
+          created_at: data.created_at,
+          inputs: data.inputs
+        };
+      }
+    } catch (e) {
+      console.error(`[getVideoAnalysisStatus] Failed to serialize result:`, e);
+      safeResult = null;
+    }
+  }
+
+  return {
+      status: data.status,
+      result: safeResult,
       error: data.error,
       id: data.id,
       created_at: data.created_at,
@@ -249,7 +274,7 @@ export async function getVideoAnalysisStatus(matchId: string) {
 // NEW: Get Specific Job Status (For Micro Analysis)
 export async function getAnalysisJobStatus(jobId: string) {
   const supabase = await createClient();
-  
+
   // Note: We skip auth check inside query for speed, but RLS will handle it if enabled.
   // However, explicit check is better.
   const { data: { user } } = await supabase.auth.getUser();
@@ -262,14 +287,80 @@ export async function getAnalysisJobStatus(jobId: string) {
     .single();
 
   if (error || !data) return { status: "not_found" };
-  
-  return { 
-      status: data.status, 
-      result: data.result,
+
+  // Safety check: Ensure result is not corrupted or too large
+  let safeResult = data.result;
+  if (safeResult) {
+    try {
+      const resultStr = JSON.stringify(safeResult);
+      console.log(`[getAnalysisJobStatus] Result size: ${resultStr.length} chars`);
+      if (resultStr.length > 500 * 1024) { // 500KB max
+        console.error(`[getAnalysisJobStatus] Result too large (${Math.round(resultStr.length / 1024)}KB), truncating`);
+        safeResult = {
+          error: "Analysis result was corrupted. Please re-analyze.",
+          summary: "データが破損していました。再分析してください。",
+          observed_champions: [],
+          mistakes: [],
+          finalAdvice: ""
+        };
+      }
+    } catch (e) {
+      console.error(`[getAnalysisJobStatus] Failed to serialize result:`, e);
+      safeResult = {
+        error: "Failed to load analysis result",
+        summary: "分析結果の読み込みに失敗しました。",
+        observed_champions: [],
+        mistakes: [],
+        finalAdvice: ""
+      };
+    }
+  }
+
+  return {
+      status: data.status,
+      result: safeResult,
       error: data.error,
       id: data.id,
-      created_at: data.created_at 
+      created_at: data.created_at
   };
+}
+
+/**
+ * Get the latest completed MICRO analysis for a match
+ * Used to restore analysis results when user navigates back to the page
+ */
+export async function getLatestMicroAnalysisForMatch(matchId: string): Promise<{
+    found: boolean;
+    result?: any;
+}> {
+    const supabase = await createClient();
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        return { found: false };
+    }
+
+    // Fetch the latest completed MICRO analysis for this match
+    // analysis_type is NULL or 'micro' for MICRO analyses (legacy data may not have type)
+    const { data, error } = await supabase
+        .from("video_analyses")
+        .select("result")
+        .eq("match_id", matchId)
+        .eq("user_id", user.id)
+        .eq("status", "completed")
+        .or("analysis_type.is.null,analysis_type.eq.micro")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+    if (error || !data || !data.result) {
+        return { found: false };
+    }
+
+    return {
+        found: true,
+        result: data.result
+    };
 }
 
 // NEW: Get Analyzed Match IDs (Bulk for UI Labels)
@@ -294,29 +385,32 @@ export async function getAnalyzedMatchIds() {
 }
 
 // NEW: Get Latest Active Analysis (for Auto-Resume)
+// Note: We intentionally exclude 'result' field to prevent loading large/corrupted data
 export async function getLatestActiveAnalysis() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
+  // Only select fields needed for auto-resume (exclude large 'result' field)
   const { data, error } = await supabase
     .from("video_analyses")
-    .select("*")
+    .select("id, match_id, status, error, inputs, created_at, analysis_type")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)
     .single();
 
   if (error || !data) return null;
-  
+
   // Optional: Only return if it's recent? (e.g. within 1 hour)
   // For now, return the latest one.
   return {
+    id: data.id,
     matchId: data.match_id,
     status: data.status,
-    result: data.result,
     error: data.error,
-    inputs: data.inputs
+    inputs: data.inputs,
+    analysis_type: data.analysis_type as 'micro' | 'macro' | null
   };
 }
 
@@ -588,7 +682,7 @@ export async function analyzeMatchQuick(
 
   // 4. Generate Prompt with Multi-Model Fallback
   // EXACT match with coach.ts/chat to ensure success
-  const MODELS_TO_TRY = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-flash-latest"];
+  const MODELS_TO_TRY = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
   let finalJson = "";
 
   try {
@@ -746,7 +840,7 @@ export async function analyzeMatch(
         const { GoogleGenerativeAI } = await import("@google/generative-ai");
         const genAI = new GoogleGenerativeAI(apiKey);
         
-        const MODELS_TO_TRY = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-flash-latest"];
+        const MODELS_TO_TRY = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
         
         const prompt = `
 あなたはLeague of Legendsのプロコーチです。
@@ -864,6 +958,7 @@ export async function claimDailyReward() {
 }
 
 // 強制的にStripeの最新ステータスと同期する
+// カスタマーの全アクティブサブスクリプションを確認し、最上位tierを適用
 export async function syncSubscriptionStatus() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -871,16 +966,120 @@ export async function syncSubscriptionStatus() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("stripe_subscription_id")
+    .select("stripe_subscription_id, stripe_customer_id, subscription_tier")
     .eq("id", user.id)
     .single();
 
-  if (!profile?.stripe_subscription_id) return { error: "No subscription ID found" };
+  // Diagnostic info for debugging
+  const debug: Record<string, any> = {
+    userId: user.id,
+    email: user.email,
+    currentTierInDB: profile?.subscription_tier,
+    customerId: profile?.stripe_customer_id,
+    storedSubId: profile?.stripe_subscription_id,
+  };
 
   try {
-      const subscription = await stripe.subscriptions.retrieve(profile.stripe_subscription_id);
-      
-      const periodEnd = (subscription as any).current_period_end;
+      const EXTRA_PRICE_ID = process.env.NEXT_PUBLIC_STRIPE_EXTRA_PRICE_ID;
+      const hasServiceKey = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+      debug.EXTRA_PRICE_ID = EXTRA_PRICE_ID || '(NOT SET)';
+      debug.hasServiceRoleKey = hasServiceKey;
+
+      // If no customer ID in DB, search Stripe by email to find the customer
+      let customerId = profile?.stripe_customer_id;
+      if (!customerId && user.email) {
+        console.log(`[Sync] No customer ID in DB, searching Stripe by email: ${user.email}`);
+        const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+        if (customers.data.length > 0) {
+          customerId = customers.data[0].id;
+          debug.customerFoundByEmail = true;
+          console.log(`[Sync] Found Stripe customer by email: ${customerId}`);
+        }
+      }
+
+      if (!customerId && !profile?.stripe_subscription_id) {
+        return { error: "No subscription info found (no Stripe customer for this email)", debug };
+      }
+
+      let bestSubscription: any = null;
+      let bestTier: 'free' | 'premium' | 'extra' = 'free';
+
+      // If customer ID exists, list all active subscriptions to find the best one
+      const allActiveSubs: any[] = [];
+      if (customerId) {
+        const subs = await stripe.subscriptions.list({
+          customer: customerId,
+          status: 'active',
+          limit: 10,
+        });
+        allActiveSubs.push(...subs.data);
+
+        debug.activeSubCount = subs.data.length;
+        debug.activeSubs = subs.data.map(s => ({
+          id: s.id,
+          priceId: s.items.data[0]?.price?.id,
+          status: s.status,
+        }));
+
+        for (const sub of subs.data) {
+          const priceId = sub.items.data[0]?.price?.id;
+          const tier = (EXTRA_PRICE_ID && priceId === EXTRA_PRICE_ID) ? 'extra' : 'premium';
+
+          // Pick the highest tier subscription (extra > premium)
+          if (!bestSubscription || (tier === 'extra' && bestTier !== 'extra')) {
+            bestSubscription = sub;
+            bestTier = tier;
+          }
+        }
+
+        // Also check trialing subscriptions
+        if (!bestSubscription) {
+          const trialingSubs = await stripe.subscriptions.list({
+            customer: customerId,
+            status: 'trialing',
+            limit: 10,
+          });
+          if (trialingSubs.data.length > 0) {
+            allActiveSubs.push(...trialingSubs.data);
+            bestSubscription = trialingSubs.data[0];
+            const priceId = bestSubscription.items.data[0]?.price?.id;
+            bestTier = (EXTRA_PRICE_ID && priceId === EXTRA_PRICE_ID) ? 'extra' : 'premium';
+          }
+        }
+
+        // Cancel duplicate subscriptions (keep only the best one)
+        if (bestSubscription && allActiveSubs.length > 1) {
+          for (const sub of allActiveSubs) {
+            if (sub.id !== bestSubscription.id) {
+              try {
+                await stripe.subscriptions.cancel(sub.id);
+                console.log(`[Sync] Cancelled duplicate subscription: ${sub.id}`);
+              } catch (cancelErr: any) {
+                console.warn(`[Sync] Failed to cancel duplicate ${sub.id}: ${cancelErr.message}`);
+              }
+            }
+          }
+        }
+      }
+
+      // Fallback: use stored subscription ID directly
+      if (!bestSubscription && profile?.stripe_subscription_id) {
+        bestSubscription = await stripe.subscriptions.retrieve(profile.stripe_subscription_id);
+        const priceId = bestSubscription.items.data[0]?.price?.id;
+        bestTier = (EXTRA_PRICE_ID && priceId === EXTRA_PRICE_ID) ? 'extra' : 'premium';
+      }
+
+      if (!bestSubscription) {
+        return { error: "No active subscription found on Stripe", debug };
+      }
+
+      debug.bestSubId = bestSubscription.id;
+      debug.bestSubPriceId = bestSubscription.items.data[0]?.price?.id;
+      debug.determinedTier = bestTier;
+      debug.priceIdMatch = bestSubscription.items.data[0]?.price?.id === EXTRA_PRICE_ID;
+
+      const periodEnd = (bestSubscription.items?.data?.[0] as any)?.current_period_end
+        ?? (bestSubscription as any).current_period_end;
       let endDate = null;
       if (periodEnd) {
           try {
@@ -890,20 +1089,47 @@ export async function syncSubscriptionStatus() {
           }
       }
 
-      const updateData = {
-        subscription_status: subscription.status,
-        is_premium: subscription.status === 'active' || subscription.status === 'trialing',
+      const isActive = bestSubscription.status === 'active' || bestSubscription.status === 'trialing';
+
+      const updateData: Record<string, any> = {
+        stripe_subscription_id: bestSubscription.id,
+        subscription_status: bestSubscription.status,
+        is_premium: isActive,
+        subscription_tier: isActive ? bestTier : 'free',
         subscription_end_date: endDate,
-        auto_renew: !subscription.cancel_at_period_end,
+        auto_renew: !bestSubscription.cancel_at_period_end,
       };
 
-      await supabase.from("profiles").update(updateData).eq("id", user.id);
+      // Also save stripe_customer_id if it was found by email but missing in DB
+      if (customerId && !profile?.stripe_customer_id) {
+        updateData.stripe_customer_id = customerId;
+      }
+
+      console.log("[Sync] Updating profile with:", JSON.stringify(updateData));
+      console.log("[Sync] Debug:", JSON.stringify(debug));
+
+      // Use service role client to bypass RLS for subscription_tier update
+      const adminDb = createServiceRoleClient();
+      const { data: updatedRows, error: updateError } = await adminDb
+        .from("profiles")
+        .update(updateData)
+        .eq("id", user.id)
+        .select("subscription_tier, is_premium");
+
+      if (updateError) {
+        console.error("[Sync] DB update FAILED:", updateError.message, updateError.code, updateError.details);
+        debug.dbError = { message: updateError.message, code: updateError.code, details: updateError.details };
+      } else {
+        console.log("[Sync] DB update result:", JSON.stringify(updatedRows));
+        debug.dbUpdateResult = updatedRows;
+      }
+
       revalidatePath("/dashboard", "layout");
 
-      return { success: true, AutoRenew: updateData.auto_renew };
+      return { success: !updateError, tier: updateData.subscription_tier, debug };
   } catch (e: any) {
       console.error("Sync Error:", e);
-      return { error: e.message };
+      return { error: e.message, debug };
   }
 }
 
@@ -950,27 +1176,16 @@ export async function checkWeeklyLimit(): Promise<{
         };
     }
 
-    if (status.is_premium) {
-        const remaining = WEEKLY_ANALYSIS_LIMIT - (status.weekly_analysis_count || 0);
-        return {
-            canAnalyze: remaining > 0,
-            remaining: Math.max(0, remaining),
-            used: status.weekly_analysis_count || 0,
-            limit: WEEKLY_ANALYSIS_LIMIT,
-            resetDate: status.weekly_reset_date || '',
-            isPremium: true
-        };
-    } else {
-        // Free user - use credits
-        return {
-            canAnalyze: status.analysis_credits > 0,
-            remaining: status.analysis_credits,
-            used: 0,
-            limit: 3, // Max credits for free users
-            resetDate: status.last_credit_update || '',
-            isPremium: false
-        };
-    }
+    const limit = getWeeklyLimit(status);
+    const remaining = limit - (status.weekly_analysis_count || 0);
+    return {
+        canAnalyze: remaining > 0,
+        remaining: Math.max(0, remaining),
+        used: status.weekly_analysis_count || 0,
+        limit,
+        resetDate: status.weekly_reset_date || '',
+        isPremium: status.is_premium
+    };
 }
 
 /**

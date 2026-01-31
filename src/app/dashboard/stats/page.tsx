@@ -1,165 +1,60 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { fetchMatchIds, fetchMatchDetail } from "@/app/actions/riot";
+import { useState, useMemo, useEffect } from "react";
 import DashboardLayout from "@/app/Components/layout/DashboardLayout";
 import Link from "next/link";
 import { useSummoner } from "@/app/Providers/SummonerProvider";
 import StatsSkeleton from "../components/skeletons/StatsSkeleton";
 // Premium Imports
 import PlanStatusBadge from "@/app/Components/subscription/PlanStatusBadge";
-import PremiumFeatureGate from "@/app/Components/subscription/PremiumFeatureGate";
-import { getAnalysisStatus } from "@/app/actions/analysis";
 import { type AnalysisStatus } from "@/app/actions/constants";
-import AdSenseBanner from "@/app/Components/ads/AdSenseBanner";
 import { useTranslation } from "@/contexts/LanguageContext";
+// SWR Hooks
+import { useMatchHistory } from "@/hooks/useStatsData";
+import { useAnalysisStatus } from "@/hooks/useCoachData";
 
-type HistoryItem = {
-    matchId: string;
-    champion: string;
-    win: boolean;
-    kda: string;
-    date: string;
-    mode: string;
-    duration: number;
-    // For stats calculation
-    kills: number;
-    deaths: number;
-    assists: number;
-}
+type FilterType = "ALL" | "SOLO" | "FLEX" | "NORMAL" | "ARAM";
 
 export default function StatsPage() {
     const { activeSummoner, loading: summonerLoading } = useSummoner();
     const { t } = useTranslation();
-    
-    // Premium Status State
+    const [filter, setFilter] = useState<FilterType>("ALL");
+
+    // SWR Hooks
+    const { status: swrStatus, refresh: refreshStatus } = useAnalysisStatus();
+    const { history, isLoading, isValidating } = useMatchHistory(
+        activeSummoner?.puuid || null,
+        filter
+    );
+
+    // Local status state for updates
     const [analysisStatus, setAnalysisStatus] = useState<AnalysisStatus | null>(null);
 
-    // history includes null for loading items
-    const [history, setHistory] = useState<(HistoryItem | null)[]>([]);
-    const [loadingIds, setLoadingIds] = useState(false); // Only for initial ID fetch
-    const [error, setError] = useState<string | null>(null);
-    const [filter, setFilter] = useState<"ALL" | "SOLO" | "FLEX" | "NORMAL" | "ARAM">("ALL");
-
-    // Fetch Premium Status
+    // Sync SWR status to local state
     useEffect(() => {
-        getAnalysisStatus().then(setAnalysisStatus);
-    }, []);
-
-    useEffect(() => {
-        if (summonerLoading) return;
-        
-        let ignore = false;
-
-        async function loadData() {
-            if (!activeSummoner?.puuid) return;
-
-            setLoadingIds(true);
-            setError(null);
-            setHistory([]); 
-            
-            try {
-                // Determine Queue ID / Type
-                let queueId: number | undefined;
-                let type: string | undefined;
-
-                switch (filter) {
-                    case "SOLO": queueId = 420; break;
-                    case "FLEX": queueId = 440; break;
-                    case "ARAM": queueId = 450; break;
-                    case "NORMAL": type = "normal"; break;
-                    default: break;
-                }
-
-                // Fetch Match IDs (Fast)
-                const matchIdsRes = await fetchMatchIds(activeSummoner.puuid, 10, queueId, type);
-                
-                if (ignore) return;
-
-                if (matchIdsRes.error) {
-                     if (matchIdsRes.error !== "No PUUID") {
-                         throw new Error(matchIdsRes.error);
-                     }
-                }
-
-                if (matchIdsRes.success && matchIdsRes.data && matchIdsRes.data.length > 0) {
-                    // Initialize history with placeholders
-                    const ids = matchIdsRes.data;
-                    setHistory(new Array(ids.length).fill(null));
-                    setLoadingIds(false); // Stop full page loading, show skeletons
-
-                    // Fetch Details Incrementally
-                    ids.forEach((id, index) => {
-                         fetchMatchDetail(id).then(res => {
-                             if (ignore) return;
-                             
-                             if (res.success && res.data) {
-                                 const m = res.data;
-                                 const p = m.info.participants.find((p: any) => p.puuid === activeSummoner.puuid);
-                                 
-                                 if (p) {
-                                     const item: HistoryItem = {
-                                        matchId: m.metadata.matchId,
-                                        champion: p.championName,
-                                        win: p.win,
-                                        kda: `${p.kills}/${p.deaths}/${p.assists}`,
-                                        date: new Date(m.info.gameCreation).toLocaleDateString(),
-                                        mode: m.info.gameMode,
-                                        duration: m.info.gameDuration,
-                                        kills: p.kills,
-                                        deaths: p.deaths,
-                                        assists: p.assists
-                                     };
-
-                                     setHistory(prev => {
-                                         const next = [...prev];
-                                         next[index] = item;
-                                         return next;
-                                     });
-                                 }
-                             }
-                         }).catch(err => console.error("Match Detail Error", err));
-                    });
-
-                } else {
-                    setHistory([]);
-                    setLoadingIds(false);
-                }
-            } catch (e: any) {
-                console.error("Stats Data Error:", e);
-                if (!ignore) {
-                     setHistory([]);
-                     setLoadingIds(false);
-                }
-            }
+        if (swrStatus !== undefined) {
+            setAnalysisStatus(swrStatus);
         }
-
-        loadData();
-
-        return () => {
-            ignore = true;
-        };
-    }, [activeSummoner, activeSummoner?.puuid, summonerLoading, filter]);
+    }, [swrStatus]);
 
     // Derived Stats (Memoized)
     const stats = useMemo(() => {
-        const completed = history.filter((h): h is HistoryItem => h !== null);
         const newStats = { wins: 0, losses: 0, kills: 0, deaths: 0, assists: 0 };
-        
-        completed.forEach(h => {
+
+        history.forEach(h => {
             if (h.win) newStats.wins++;
             else newStats.losses++;
             newStats.kills += h.kills;
             newStats.deaths += h.deaths;
             newStats.assists += h.assists;
         });
-        
+
         return newStats;
     }, [history]);
 
     const totalGames = stats.wins + stats.losses;
     const winRate = totalGames > 0 ? Math.round((stats.wins / totalGames) * 100) : 0;
-    const avgKda = totalGames > 0 
+    const avgKda = totalGames > 0
         ? ((stats.kills + stats.assists) / Math.max(1, stats.deaths)).toFixed(2)
         : "0.00";
 
@@ -172,13 +67,13 @@ export default function StatsPage() {
         "ARAM": t('statsPage.filters.aram')
     };
 
-    // 1. Initial ID Loading (Show Full Page Skeleton)
-    if (summonerLoading || loadingIds) {
-         return (
+    // 1. Initial Loading (Show Full Page Skeleton)
+    if (summonerLoading || (isLoading && history.length === 0)) {
+        return (
             <DashboardLayout>
                 <StatsSkeleton />
             </DashboardLayout>
-         );
+        );
     }
 
     // 2. No Account State
@@ -194,101 +89,70 @@ export default function StatsPage() {
         );
     }
 
-    // 3. Error State
-    if (error) {
-        return (
-            <DashboardLayout>
-                 <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
-                    <h2 className="text-xl font-bold text-red-400 mb-2">{t('statsPage.errorTitle')}</h2>
-                    <p className="bg-slate-900 border border-slate-800 p-4 rounded text-sm text-slate-300 mb-4 whitespace-pre-wrap max-w-lg">
-                        {error}
-                    </p>
-                    <button 
-                        onClick={() => window.location.reload()}
-                        className="text-blue-400 underline"
-                    >
-                        {t('statsPage.tryRefreshing')}
-                    </button>
-                </div>
-            </DashboardLayout>
-        )
-    }
-
-    // 4. Main Content (Progressive)
-    const isPremium = analysisStatus?.is_premium ?? false;
-
+    // 3. Main Content
     return (
         <DashboardLayout>
-             <div className="max-w-7xl mx-auto p-4 md:p-8 animate-fadeIn">
-                 {/* Header with Premium Badge */}
-                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-                     <h1 className="text-3xl font-black italic tracking-tighter text-white">
-                        {t('statsPage.title')}
-                     </h1>
-                     <PlanStatusBadge 
-                        initialStatus={analysisStatus} 
-                        onStatusUpdate={setAnalysisStatus}
-                     />
-                 </div>
-
-                 {/* AdSense Top Banner */}
-                 <div className="mb-6 flex justify-center">
-                      <AdSenseBanner className="w-full max-w-[728px] h-[90px] bg-slate-800/30 rounded" />
-                 </div>
-
-                {/* Premium Gated Stats */}
-                <PremiumFeatureGate
-                    isPremium={isPremium}
-                    title={t('statsPage.unlockTitle')}
-                    description={t('statsPage.unlockDesc')}
-                    onUpgrade={() => {
-                        // Optimistic update handled by component or page reload if needed
-                        getAnalysisStatus().then(setAnalysisStatus);
-                    }}
-                >
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                         <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
-                            <div className="text-slate-400 text-xs font-bold tracking-wider mb-1">{t('statsPage.stats.winRate')}</div>
-                            <div className={`text-3xl font-black ${winRate >= 50 ? 'text-blue-400' : 'text-slate-200'}`}>
-                                {winRate}%
-                            </div>
-                            <div className="text-xs text-slate-500 mt-1">{stats.wins}W - {stats.losses}L</div>
-                         </div>
-                         <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
-                            <div className="text-slate-400 text-xs font-bold tracking-wider mb-1">{t('statsPage.stats.kdaRatio')}</div>
-                            <div className="text-3xl font-black text-yellow-500">{avgKda}</div>
-                            <div className="text-xs text-slate-500 mt-1">{t('statsPage.stats.avgPerformance')}</div>
-                         </div>
-                         {/* Adding Placeholder Cards for 'PREMIUM' Look */}
-                         <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl opacity-75">
-                            <div className="text-slate-400 text-xs font-bold tracking-wider mb-1">{t('statsPage.stats.csPerMin')}</div>
-                            <div className="text-3xl font-black text-purple-400">7.2</div>
-                            <div className="text-xs text-slate-500 mt-1">{t('statsPage.stats.top15')}</div>
-                         </div>
-                         <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl opacity-75">
-                            <div className="text-slate-400 text-xs font-bold tracking-wider mb-1">{t('statsPage.stats.visionScore')}</div>
-                            <div className="text-3xl font-black text-green-400">24.5</div>
-                            <div className="text-xs text-slate-500 mt-1">{t('statsPage.stats.excellent')}</div>
-                         </div>
+            <div className="max-w-7xl mx-auto p-4 md:p-8 animate-fadeIn">
+                {/* Header with Premium Badge */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-3xl font-black italic tracking-tighter text-white">
+                            {t('statsPage.title')}
+                        </h1>
+                        {isValidating && (
+                            <span className="text-xs text-slate-500 flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>
+                                Syncing...
+                            </span>
+                        )}
                     </div>
-                </PremiumFeatureGate>
+                    <PlanStatusBadge
+                        initialStatus={analysisStatus}
+                        onStatusUpdate={setAnalysisStatus}
+                    />
+                </div>
+
+                {/* Stats - Available for all users */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                    <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
+                        <div className="text-slate-400 text-xs font-bold tracking-wider mb-1">{t('statsPage.stats.winRate')}</div>
+                        <div className={`text-3xl font-black ${winRate >= 50 ? 'text-blue-400' : 'text-slate-200'}`}>
+                            {winRate}%
+                        </div>
+                        <div className="text-xs text-slate-500 mt-1">{stats.wins}W - {stats.losses}L</div>
+                    </div>
+                    <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
+                        <div className="text-slate-400 text-xs font-bold tracking-wider mb-1">{t('statsPage.stats.kdaRatio')}</div>
+                        <div className="text-3xl font-black text-yellow-500">{avgKda}</div>
+                        <div className="text-xs text-slate-500 mt-1">{t('statsPage.stats.avgPerformance')}</div>
+                    </div>
+                    <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl opacity-75">
+                        <div className="text-slate-400 text-xs font-bold tracking-wider mb-1">{t('statsPage.stats.csPerMin')}</div>
+                        <div className="text-3xl font-black text-purple-400">7.2</div>
+                        <div className="text-xs text-slate-500 mt-1">{t('statsPage.stats.top15')}</div>
+                    </div>
+                    <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl opacity-75">
+                        <div className="text-slate-400 text-xs font-bold tracking-wider mb-1">{t('statsPage.stats.visionScore')}</div>
+                        <div className="text-3xl font-black text-green-400">24.5</div>
+                        <div className="text-xs text-slate-500 mt-1">{t('statsPage.stats.excellent')}</div>
+                    </div>
+                </div>
 
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
                         <span className="w-1.5 h-6 bg-blue-500 rounded-full"></span>
                         {t('statsPage.matchGallery')}
                     </h2>
-                    
+
                     <div className="flex bg-slate-900/80 rounded-lg p-1 border border-slate-700 overflow-x-auto max-w-full">
                         {(["ALL", "SOLO", "FLEX", "NORMAL", "ARAM"] as const).map((mode) => (
-                             <button 
+                            <button
                                 key={mode}
                                 onClick={() => setFilter(mode)}
-                                className={`px-3 py-1 text-xs font-bold rounded-md whitespace-nowrap transition ${
-                                    filter === mode 
-                                    ? "bg-blue-600 text-white shadow-md" 
-                                    : "text-slate-400 hover:text-slate-200"
-                                }`}
+                                className={`px-3 py-1 text-xs font-bold rounded-md whitespace-nowrap transition ${filter === mode
+                                        ? "bg-blue-600 text-white shadow-md"
+                                        : "text-slate-400 hover:text-slate-200"
+                                    }`}
                             >
                                 {filterLabels[mode]}
                             </button>
@@ -296,76 +160,77 @@ export default function StatsPage() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {history.map((match, i) => match ? (
-                        <Link 
-                            key={match.matchId} 
-                            href={`/dashboard/match/${match.matchId}`}
-                            className={`
-                                relative overflow-hidden rounded-xl border border-slate-800 bg-slate-900/50 hover:bg-slate-800 transition-all duration-300 group
-                                ${match.win ? 'hover:border-blue-500/50' : 'hover:border-red-500/50'}
-                                animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-backwards
-                            `}
-                            style={{ animationDelay: `${i * 50}ms` }}
-                        >
-                             <div className="absolute inset-0 opacity-20 grayscale group-hover:grayscale-0 transition duration-500">
-                                 <img 
-                                    src={`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${match.champion}_0.jpg`} 
-                                    alt={match.champion}
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => e.currentTarget.style.display = 'none'} 
-                                 />
-                             </div>
-                             
-                             <div className="relative p-6 z-10 flex flex-col h-full justify-between min-h-[160px]">
-                                 <div className="flex justify-between items-start">
-                                     <div>
-                                        <div className="text-2xl font-black text-white italic">{match.champion}</div>
-                                        <div className="text-xs text-slate-400 font-mono">{match.mode} • {match.date}</div>
-                                     </div>
-                                     <div className={`px-2 py-1 rounded text-xs font-bold ${match.win ? 'bg-blue-500/20 text-blue-300' : 'bg-red-500/20 text-red-300'}`}>
-                                         {match.win ? t('statsPage.victory') : t('statsPage.defeat')}
-                                     </div>
-                                 </div>
-                                 
-                                 <div className="mt-4 flex justify-between items-end">
-                                     <div className="text-slate-300 font-mono text-sm">
-                                         KDA <span className="text-white font-bold text-lg">{match.kda}</span>
-                                     </div>
-                                      <div className="text-xs text-blue-400 font-bold opacity-0 group-hover:opacity-100 transform translate-x-4 group-hover:translate-x-0 transition-all">
-                                          {t('statsPage.analyze')}
-                                      </div>
-                                 </div>
-                             </div>
-                        </Link>
-                    ) : (
-                        // Skeleton Logic Inline
-                        <div key={`skeleton-${i}`} className="rounded-xl border border-slate-800 bg-slate-900/50 h-[160px] p-6 relative animate-pulse">
-                            <div className="flex justify-between items-start mb-auto">
-                                <div>
-                                    <div className="h-8 w-32 bg-slate-800 rounded mb-2"></div>
-                                    <div className="h-3 w-24 bg-slate-800 rounded"></div>
+                {/* Loading state for filter change */}
+                {isLoading && history.length === 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {[1, 2, 3, 4, 5, 6].map((i) => (
+                            <div key={i} className="rounded-xl border border-slate-800 bg-slate-900/50 h-[160px] p-6 animate-pulse">
+                                <div className="flex justify-between items-start mb-auto">
+                                    <div>
+                                        <div className="h-8 w-32 bg-slate-800 rounded mb-2"></div>
+                                        <div className="h-3 w-24 bg-slate-800 rounded"></div>
+                                    </div>
+                                    <div className="h-6 w-16 bg-slate-800 rounded"></div>
                                 </div>
-                                <div className="h-6 w-16 bg-slate-800 rounded"></div>
+                                <div className="mt-4 flex justify-between items-end">
+                                    <div className="h-5 w-24 bg-slate-800 rounded"></div>
+                                </div>
                             </div>
-                            <div className="mt-4 flex justify-between items-end">
-                                <div className="h-5 w-24 bg-slate-800 rounded"></div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-                {history.length === 0 && !loadingIds && (
+                        ))}
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {history.map((match, i) => (
+                            <Link
+                                key={match.matchId}
+                                href={`/dashboard/match/${match.matchId}`}
+                                className={`
+                                    relative overflow-hidden rounded-xl border border-slate-800 bg-slate-900/50 hover:bg-slate-800 transition-all duration-300 group
+                                    ${match.win ? 'hover:border-blue-500/50' : 'hover:border-red-500/50'}
+                                    animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-backwards
+                                `}
+                                style={{ animationDelay: `${i * 50}ms` }}
+                            >
+                                <div className="absolute inset-0 opacity-20 grayscale group-hover:grayscale-0 transition duration-500">
+                                    <img
+                                        src={`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${match.champion}_0.jpg`}
+                                        alt={match.champion}
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => e.currentTarget.style.display = 'none'}
+                                    />
+                                </div>
+
+                                <div className="relative p-6 z-10 flex flex-col h-full justify-between min-h-[160px]">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <div className="text-2xl font-black text-white italic">{match.champion}</div>
+                                            <div className="text-xs text-slate-400 font-mono">{match.mode} • {match.date}</div>
+                                        </div>
+                                        <div className={`px-2 py-1 rounded text-xs font-bold ${match.win ? 'bg-blue-500/20 text-blue-300' : 'bg-red-500/20 text-red-300'}`}>
+                                            {match.win ? t('statsPage.victory') : t('statsPage.defeat')}
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-4 flex justify-between items-end">
+                                        <div className="text-slate-300 font-mono text-sm">
+                                            KDA <span className="text-white font-bold text-lg">{match.kda}</span>
+                                        </div>
+                                        <div className="text-xs text-blue-400 font-bold opacity-0 group-hover:opacity-100 transform translate-x-4 group-hover:translate-x-0 transition-all">
+                                            {t('statsPage.analyze')}
+                                        </div>
+                                    </div>
+                                </div>
+                            </Link>
+                        ))}
+                    </div>
+                )}
+
+                {history.length === 0 && !isLoading && (
                     <div className="text-center py-10 text-slate-500 border border-slate-800 border-dashed rounded-xl">
                         {t('statsPage.noMatches')}
                     </div>
                 )}
-                
-                {/* AdSense Bottom Banner */}
-                <div className="mt-8 flex justify-center">
-                     <AdSenseBanner className="w-full max-w-[728px] h-[90px] bg-slate-800/30 rounded" />
-                </div>
-             </div>
+            </div>
         </DashboardLayout>
-    )
+    );
 }
-
