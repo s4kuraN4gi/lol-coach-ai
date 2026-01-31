@@ -2,6 +2,8 @@
 
 This document contains all the information needed to apply for a Riot Games Production API Key.
 
+**Last Updated**: January 31, 2026
+
 ---
 
 ## Application Name
@@ -9,9 +11,14 @@ This document contains all the information needed to apply for a Riot Games Prod
 
 ---
 
+## Production URL
+**https://lolcoachai.vercel.app**
+
+---
+
 ## Short Description (for application form)
 ```
-LoL Coach AI is an AI-powered coaching platform that helps League of Legends players improve their gameplay through match analysis, video analysis with AI feedback, and personalized coaching conversations.
+LoL Coach AI is an AI-powered coaching platform that analyzes League of Legends gameplay through match data, video analysis, and interactive AI coaching to help players improve their skills and climb the ranked ladder.
 ```
 
 ---
@@ -20,43 +27,67 @@ LoL Coach AI is an AI-powered coaching platform that helps League of Legends pla
 
 ### What is LoL Coach AI?
 
-LoL Coach AI is a web-based coaching platform that leverages artificial intelligence to help League of Legends players of all skill levels improve their gameplay. The service combines Riot Games match data with advanced AI analysis to provide actionable insights and personalized coaching.
+LoL Coach AI is a comprehensive web-based coaching platform designed to help League of Legends players improve their gameplay through data-driven insights and AI-powered analysis. By combining Riot Games match data with advanced AI technology (Google Gemini), we provide personalized coaching that was previously only available through expensive human coaches.
 
 ### Core Features
 
-1. **Match History Analysis**
-   - Fetches and displays player match history
-   - Shows detailed statistics including KDA, CS, vision score, and damage dealt
-   - Compares performance against lane opponents
-   - Tracks ranked progression and tier changes
+#### 1. Dashboard & Performance Tracking
+- **Profile Overview**: Display summoner profile, level, and current rank
+- **Rank History Graph**: Visualize LP progression over time with daily tracking
+- **Skill Radar**: Analyze player strengths across 5 key areas (Combat, Objectives, Farming, Vision, Survival)
+- **Win Conditions Widget**: Track first blood, first tower, and solo kill success rates
+- **Nemesis & Prey Analysis**: Identify best and worst champion matchups
 
-2. **Video Gameplay Analysis**
-   - Users upload gameplay recordings for AI analysis
-   - AI identifies key moments (objectives, deaths, turning points)
-   - Provides macro-level coaching on positioning and decision-making
-   - Generates homework assignments for improvement
+#### 2. Detailed Match Analysis
+- Complete match history with filtering (Solo Queue, Flex, Normal, ARAM)
+- Per-match statistics: KDA, CS, vision score, damage dealt, gold earned
+- Team comparison and performance breakdown
+- Lane opponent comparison and matchup analysis
 
-3. **AI Coaching Conversations**
-   - Interactive chat with an AI coach powered by advanced language models
-   - Contextual advice based on player's recent matches and champion pool
-   - Answers gameplay questions and provides strategic guidance
+#### 3. Champion Statistics
+- Champion-specific performance metrics
+- Win rates, average KDA, and CS per minute
+- Laning phase statistics (CS@10, gold difference)
+- Power spike analysis and matchup recommendations
 
-4. **Champion Statistics & Recommendations**
-   - Displays champion performance statistics
-   - Provides build recommendations based on game context
-   - Offers matchup-specific advice
+#### 4. AI Video Coaching (Premium Feature)
+- **Macro Analysis**: Upload gameplay videos for comprehensive timeline-based coaching
+- **Micro Analysis**: Frame-by-frame analysis of specific moments (teamfights, deaths)
+- **Build Recommendations**: AI-powered item build suggestions based on game context
+- **Personalized Homework**: Actionable improvement tasks based on gameplay patterns
+
+#### 5. Interactive AI Coach
+- Real-time chat with an AI coach powered by Google Gemini
+- Context-aware advice based on recent match history
+- Champion-specific tips and strategic guidance
+- Match consultation for reviewing specific games
+
+#### 6. Gold Economy Education
+- Educational content about gold values in League of Legends
+- Objective priority guides (Dragons, Baron, Towers)
+- CS and gold efficiency analysis
 
 ### Target Audience
 
-- League of Legends players in Japan (primary market)
-- Players of all skill levels from Iron to Challenger
-- Players seeking to improve their macro gameplay and decision-making
+- **Primary Market**: League of Legends players in Japan
+- **Secondary Markets**: Korea, English-speaking regions
+- **Skill Levels**: All ranks from Iron to Challenger
+- **Focus**: Players seeking to improve macro gameplay, decision-making, and consistency
+
+### Languages Supported
+- Japanese (日本語) - Primary
+- English
+- Korean (한국어)
 
 ### Monetization Model
 
-- **Free Tier**: Limited access with user-provided API key option
-- **Premium Subscription**: 980 JPY/month for enhanced features and higher usage limits
-- **Advertising**: Google AdSense for free tier users
+| Tier | Price | Features |
+|------|-------|----------|
+| Free | 0 JPY | Basic stats, limited AI analysis (3 credits/day), ads displayed |
+| Premium | 980 JPY/month | Unlimited AI analysis, video coaching, ad-free, priority support |
+
+- **Payment Provider**: Stripe
+- **Advertising**: Google AdSense (Free tier only)
 
 ---
 
@@ -64,58 +95,88 @@ LoL Coach AI is a web-based coaching platform that leverages artificial intellig
 
 | Endpoint | Purpose | Rate Limit Impact |
 |----------|---------|-------------------|
-| `/riot/account/v1/accounts/by-riot-id/{name}/{tag}` | Initial account lookup | Low |
+| `/riot/account/v1/accounts/by-riot-id/{name}/{tag}` | Account lookup by Riot ID | Low |
 | `/riot/account/v1/accounts/by-puuid/{puuid}` | Account verification | Low |
-| `/lol/summoner/v4/summoners/by-puuid/{puuid}` | Summoner data display | Low |
-| `/lol/league/v4/entries/by-summoner/{id}` | Ranked info display | Low |
-| `/lol/match/v5/matches/by-puuid/{puuid}/ids` | Match history listing | Medium |
-| `/lol/match/v5/matches/{matchId}` | Match details for analysis | Medium |
-| `/lol/match/v5/matches/{matchId}/timeline` | Timeline for video sync | Medium |
-| `/lol/platform/v4/third-party-code/by-summoner/{id}` | Account verification | Low |
+| `/lol/summoner/v4/summoners/by-puuid/{puuid}` | Summoner profile data | Low |
+| `/lol/league/v4/entries/by-summoner/{id}` | Ranked tier and LP info | Low |
+| `/lol/match/v5/matches/by-puuid/{puuid}/ids` | Match history IDs (up to 50) | Medium |
+| `/lol/match/v5/matches/{matchId}` | Full match details | Medium |
+| `/lol/match/v5/matches/{matchId}/timeline` | Match timeline for analysis | Medium |
+| `/lol/platform/v4/third-party-code/by-summoner/{id}` | Account ownership verification | Low |
+
+### Data Dragon Integration
+- Champion information and icons
+- Item data and icons
+- Rune information
+- Spell data
 
 ### Rate Limit Handling
 
-Our application implements:
-- Exponential backoff retry logic for 429 responses
-- Request caching to minimize redundant API calls
-- Immutable data caching (match details cached for 24 hours)
-- User-facing rate limit notifications
+Our application implements robust rate limiting:
+
+1. **Exponential Backoff**: Automatic retry with increasing delays on 429 responses
+2. **Retry-After Header**: Respects Riot's specified wait times
+3. **Request Caching**:
+   - Match details: 24-hour cache (immutable data)
+   - Summoner info: 1-hour cache
+   - Timeline data: 24-hour cache
+4. **User Notifications**: Clear messaging when rate limits are reached
 
 ---
 
 ## Technical Implementation
 
-### Platform
-- **Framework**: Next.js 14 (React)
-- **Hosting**: Vercel
-- **Database**: Supabase (PostgreSQL)
-- **Authentication**: Google OAuth + Riot RSO
-- **Payments**: Stripe
+### Platform & Infrastructure
+| Component | Technology |
+|-----------|------------|
+| Framework | Next.js 14 (React 18) |
+| Hosting | Vercel (Edge Network) |
+| Database | Supabase (PostgreSQL) |
+| Authentication | Google OAuth + Supabase Auth |
+| Payments | Stripe |
+| AI Engine | Google Gemini API |
+| Analytics | Google Analytics |
 
 ### Security Measures
-- API keys stored in environment variables
-- Server-side API calls only (no client-side key exposure)
+- API keys stored securely in environment variables
+- All Riot API calls made server-side only
+- No client-side API key exposure
 - HTTPS enforced on all endpoints
-- User authentication required for all API operations
+- User authentication required for all data operations
+- Row-Level Security (RLS) enabled in Supabase
+
+### Data Storage & Privacy
+- **Match Data**: Cached in PostgreSQL for performance
+- **User Preferences**: Stored with user consent
+- **Data Retention**: 90 days for match cache, user data retained until account deletion
+- **No Third-Party Sharing**: Raw API data is never sold or shared
 
 ---
 
 ## Legal Compliance
 
 ### Required Disclosures
-- Full Riot Games disclaimer displayed in footer on all pages
-- Disclaimer text included in Terms of Service
-- Multi-language support (English, Japanese, Korean)
+- Full Riot Games disclaimer displayed in footer on ALL pages
+- Disclaimer included in Terms of Service
+- Multi-language support for all legal pages
 
 ### Legal Pages
-- Privacy Policy: `/privacy` (Japanese), `/privacy-en` (English)
-- Terms of Service: `/terms` (Japanese), `/terms-en` (English)
-- Contact: `/contact`
+| Page | Japanese | English |
+|------|----------|---------|
+| Privacy Policy | `/privacy` | `/privacy-en` |
+| Terms of Service | `/terms` | `/terms-en` |
+| Contact | `/contact` | `/contact` (multilingual) |
+| Legal Notice | `/legal` | - |
 
-### Riot Disclaimer (displayed on site)
+### Riot Games Disclaimer (displayed on site)
 ```
 LoL Coach AI isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties are trademarks or registered trademarks of Riot Games, Inc.
 ```
+
+This disclaimer appears:
+- In the footer of every page
+- In the Terms of Service
+- In the sidebar navigation
 
 ---
 
@@ -123,39 +184,90 @@ LoL Coach AI isn't endorsed by Riot Games and doesn't reflect the views or opini
 
 - **Developer Name**: Masamizu
 - **Contact Email**: s4kuran4gi@gmail.com
-- **Website**: [Production URL to be added]
+- **Website**: https://lolcoachai.vercel.app
+- **Support Page**: https://lolcoachai.vercel.app/contact
 
 ---
 
 ## Estimated Traffic
 
-### Current Development Phase
-- Daily Active Users: ~50-100
-- API Calls per Day: ~5,000-10,000
+### Current Phase (Beta)
+| Metric | Value |
+|--------|-------|
+| Daily Active Users | 50-100 |
+| API Calls per Day | 5,000-10,000 |
+| Peak Hours | 18:00-24:00 JST |
 
 ### Projected Growth (6 months)
-- Daily Active Users: ~500-1,000
-- API Calls per Day: ~50,000-100,000
+| Metric | Value |
+|--------|-------|
+| Daily Active Users | 500-1,000 |
+| API Calls per Day | 50,000-100,000 |
+| Target Markets | Japan, Korea, NA |
+
+### Scaling Strategy
+- Implement more aggressive caching as user base grows
+- Consider regional API key distribution if needed
+- Monitor rate limit usage and optimize accordingly
 
 ---
 
 ## Screenshots
 
-[Add screenshots of the application here before submitting]
+Screenshots of the application are available at:
+`/docs/screenshots/`
 
-1. Dashboard showing match history
-2. Video analysis interface
-3. AI coaching chat
-4. Champion statistics page
+### Required Screenshots:
+1. `dashboard.png` - Main dashboard with widgets
+2. `match-analysis.png` - Detailed match analysis page
+3. `ai-coach.png` - AI coaching interface
+4. `video-analysis.png` - Video analysis feature
+5. `champion-stats.png` - Champion statistics page
+6. `footer-disclaimer.png` - Riot disclaimer in footer
 
 ---
 
 ## Additional Notes for Riot Review
 
-1. **Data Usage**: We only use Riot API data to provide coaching insights. We do not sell or share raw API data with third parties.
+### 1. Data Usage Policy
+- Riot API data is used **exclusively** for providing coaching insights
+- No raw data is sold or shared with third parties
+- AI analysis uses match data as context but data is not stored by AI services
 
-2. **User Privacy**: Users must authenticate and link their own accounts. We do not scrape data from accounts without user consent.
+### 2. User Privacy & Consent
+- Users must authenticate and explicitly link their Riot accounts
+- No data scraping from accounts without user consent
+- Users can delete their data at any time via account settings
 
-3. **AI Analysis**: Our AI analysis uses Google Gemini for gameplay advice. Match data is used as context but is not stored by the AI service.
+### 3. AI Integration
+- Google Gemini AI provides gameplay analysis and coaching
+- Match data is used as context for personalized advice
+- No match data is permanently stored by Google's AI service
 
-4. **Compliance**: We are committed to complying with all Riot Games API policies and will promptly address any concerns raised by the Riot team.
+### 4. Compliance Commitment
+- We are fully committed to complying with all Riot Games API policies
+- Will promptly address any concerns raised by the Riot team
+- Regular policy reviews to ensure continued compliance
+
+### 5. Future Development
+- Planning to add more educational content
+- Considering integration with additional regions
+- Continuous improvement of AI coaching accuracy
+
+---
+
+## Checklist for Application
+
+- [x] Production URL active and accessible
+- [x] Privacy Policy (English & Japanese)
+- [x] Terms of Service (English & Japanese)
+- [x] Contact page with email
+- [x] Riot disclaimer on all pages
+- [x] Rate limit handling implemented
+- [x] Server-side API calls only
+- [x] User authentication required
+- [ ] Screenshots prepared (see /docs/screenshots/)
+
+---
+
+*This document is maintained as part of our commitment to transparency with Riot Games.*

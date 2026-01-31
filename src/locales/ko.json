@@ -452,6 +452,20 @@
       "stompGames": "💥 대승 (>10k 골드)",
       "icyUnderPressure": "❄️ 압박 속에서도 냉정함",
       "relyOnSnowball": "🔥 스노우볼 의존형"
+    },
+    "rankGraph": {
+      "rankHistory": "랭크 추이",
+      "playstyle": "플레이스타일",
+      "lpChange": "{days}일간",
+      "rank": "랭크",
+      "collectingData": "데이터 수집 중...",
+      "noRankData": "랭크 데이터가 아직 없습니다. \"데이터 새로고침\"을 실행하세요.",
+      "needMoreData": "매일 업데이트하면 데이터가 쌓이고 그래프가 표시됩니다.",
+      "currentRank": "현재 랭크",
+      "dataProgress": "수집 진행",
+      "daysCollected": "{current}일 / 2일 이상이면 그래프 표시",
+      "howItWorks": "매일 \"데이터 새로고침\"으로 랭크가 기록됩니다",
+      "noMatchData": "매치 데이터를 가져오면 플레이스타일이 표시됩니다"
     }
   },
   "tooltip": {
@@ -546,5 +560,26 @@
   "settings": {
     "language": "언어",
     "selectLanguage": "언어 선택"
+  },
+  "contactPage": {
+    "title": "문의하기",
+    "intro": "LoL Coach AI에 대한 질문, 의견, 버그 신고 등이 있으시면 아래 이메일 주소로 편하게 문의해주세요.",
+    "emailTitle": "이메일로 문의",
+    "requestsTitle": "문의 시 요청사항",
+    "requests": {
+      "subject": "제목에 \"LoL Coach AI\"를 포함해주세요",
+      "bugReport": "버그 신고의 경우 상황을 가능한 한 자세히 설명해주세요",
+      "privacy": "개인정보(소환사명, PUUID)는 필요한 경우에만 공유해주세요"
+    },
+    "responseTitle": "답변 안내",
+    "responseDesc": "일반적으로 영업일 기준 3일 이내에 답변드립니다. 급한 경우 메시지에 표시해주세요.",
+    "supportTitle": "지원 항목",
+    "supportItems": {
+      "usage": "서비스 이용 방법에 관한 질문",
+      "bugs": "버그 및 오류 신고",
+      "features": "기능 요청 및 제안",
+      "billing": "프리미엄 플랜 및 결제 문의",
+      "general": "기타 서비스 관련 문의"
+    }
   }
 }

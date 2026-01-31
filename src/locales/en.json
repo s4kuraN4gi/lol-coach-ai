@@ -452,6 +452,20 @@
       "stompGames": "💥 Stomp Games (>10k Gold)",
       "icyUnderPressure": "❄️ You are icy under pressure.",
       "relyOnSnowball": "🔥 You rely on snowballing."
+    },
+    "rankGraph": {
+      "rankHistory": "RANK HISTORY",
+      "playstyle": "PLAYSTYLE",
+      "lpChange": "{days} days",
+      "rank": "Rank",
+      "collectingData": "Collecting Data...",
+      "noRankData": "No rank data yet. Click \"Refresh Data\" to start tracking.",
+      "needMoreData": "Graph will appear after 2+ days of data collection.",
+      "currentRank": "Current Rank",
+      "dataProgress": "Collection Progress",
+      "daysCollected": "{current} day(s) / 2+ days for graph",
+      "howItWorks": "Click \"Refresh Data\" daily to record your rank",
+      "noMatchData": "Fetch match data to see your playstyle analysis"
     }
   },
   "tooltip": {
@@ -546,5 +560,26 @@
   "settings": {
     "language": "Language",
     "selectLanguage": "Select Language"
+  },
+  "contactPage": {
+    "title": "Contact Us",
+    "intro": "For questions, feedback, or bug reports regarding LoL Coach AI, please feel free to contact us at the email address below.",
+    "emailTitle": "Contact via Email",
+    "requestsTitle": "When Contacting Us",
+    "requests": {
+      "subject": "Please include \"LoL Coach AI\" in the subject line",
+      "bugReport": "For bug reports, please describe the issue in as much detail as possible",
+      "privacy": "Only share personal information (Summoner Name, PUUID) when necessary"
+    },
+    "responseTitle": "Response Time",
+    "responseDesc": "We typically respond within 3 business days. If urgent, please indicate so in your message.",
+    "supportTitle": "Support Topics",
+    "supportItems": {
+      "usage": "Questions about how to use the service",
+      "bugs": "Bug and error reports",
+      "features": "Feature requests and suggestions",
+      "billing": "Premium plan and billing inquiries",
+      "general": "General service-related inquiries"
+    }
   }
 }

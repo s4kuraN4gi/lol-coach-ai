@@ -14,7 +14,7 @@ export default function Footer() {
                 <div className="flex gap-6 text-sm text-slate-400">
                     <Link href="/terms" className="hover:text-primary-400 transition-colors">{t('footer.terms')}</Link>
                     <Link href="/privacy" className="hover:text-primary-400 transition-colors">{t('footer.privacy')}</Link>
-                    <a href="https://forms.gle/example" target="_blank" rel="noopener noreferrer" className="hover:text-primary-400 transition-colors">{t('footer.contact')}</a>
+                    <Link href="/contact" className="hover:text-primary-400 transition-colors">{t('footer.contact')}</Link>
                 </div>
 
                 {/* Riot Games Disclaimer (Legal Jibber Jabber) */}

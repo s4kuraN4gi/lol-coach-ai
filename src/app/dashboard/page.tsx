@@ -5,6 +5,7 @@ import DashboardLayout from "../Components/layout/DashboardLayout";
 import LoadingAnimation from "../Components/LoadingAnimation";
 import ProfileCard from "./components/ProfileCard";
 import RankCard from "./components/RankCard";
+import RankGraph from "./components/RankGraph";
 import LPWidget from "./widgets/LPWidget";
 import ChampionPerformance from "./widgets/ChampionPerformance";
 import SkillRadar from "./widgets/SkillRadar"; 
@@ -18,7 +19,7 @@ import AdSenseBanner from "../Components/ads/AdSenseBanner";
 
 import { useSummoner } from "../Providers/SummonerProvider";
 import { useAuth } from "../Providers/AuthProvider";
-import { type MatchStatsDTO, type BasicStatsDTO } from "@/app/actions/stats";
+import { type MatchStatsDTO, type BasicStatsDTO, type RankHistoryEntry, fetchRankHistory } from "@/app/actions/stats";
 import DashboardSkeleton from "./components/skeletons/DashboardSkeleton";
 import DashboardUpdater from "./components/DashboardUpdater";
 import { useTranslation } from "@/contexts/LanguageContext";
@@ -28,6 +29,7 @@ type DashboardStatsDTO = MatchStatsDTO & BasicStatsDTO;
 export default function DashboardPage() {
     const {activeSummoner, loading:summonerLoading} = useSummoner();
     const [stats, setStats] = useState<DashboardStatsDTO | null>(null);
+    const [rankHistory, setRankHistory] = useState<RankHistoryEntry[]>([]);
     const [isFetching, setIsFetching] = useState(false);
     const [currentQueue, setCurrentQueue] = useState<"SOLO" | "FLEX">("SOLO");
     const [error, setError] = useState<string | null>(null);
@@ -74,15 +76,27 @@ export default function DashboardPage() {
             if (!isMounted.current) return;
 
             setStats(data);
-            
+
             // Auto-select Queue
             const hasSolo = data.ranks.some((r: any) => r.queueType === "RANKED_SOLO_5x5");
             const hasFlex = data.ranks.some((r: any) => r.queueType === "RANKED_FLEX_SR");
-            
+
             if (!hasSolo && hasFlex) setCurrentQueue("FLEX");
             else if (hasSolo) setCurrentQueue("SOLO");
 
             setDebugLogs(prev => [...prev, `[Client] Cache Loaded. Matches: ${data.recentMatches.length}`]);
+
+            // Fetch rank history for graph (non-blocking)
+            try {
+                const queueType = hasSolo ? 'RANKED_SOLO_5x5' : 'RANKED_FLEX_SR';
+                const history = await fetchRankHistory(puuid, queueType, 30);
+                if (isMounted.current) {
+                    setRankHistory(history);
+                    setDebugLogs(prev => [...prev, `[Client] Rank History: ${history.length} entries`]);
+                }
+            } catch (historyErr) {
+                console.error("Failed to fetch rank history", historyErr);
+            }
 
         } catch (error: any) {
             console.error("Failed to fetch dashboard stats", error);
@@ -214,7 +228,7 @@ export default function DashboardPage() {
             }} />
 
             {matchesLoaded ? (
-                <LPWidget rank={displayedRank} recentMatches={stats?.recentMatches || []} />
+                <RankGraph histories={[]} rankHistory={rankHistory} />
             ) : (
                 <div className="bg-slate-900/50 rounded-2xl p-6 border border-slate-800 h-48 animate-pulse"></div>
             )}

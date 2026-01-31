@@ -45,6 +45,88 @@ export type DashboardStatsDTO = {
     debugLog: string[];
 }
 
+// === RANK HISTORY TYPES ===
+
+export type RankHistoryEntry = {
+    id: string;
+    puuid: string;
+    queue_type: string;
+    tier: string | null;
+    rank: string | null;
+    league_points: number | null;
+    wins: number | null;
+    losses: number | null;
+    recorded_at: string; // YYYY-MM-DD
+    created_at: string;
+}
+
+// === RANK HISTORY FUNCTIONS ===
+
+/**
+ * Record current rank to history (called during performFullUpdate)
+ * Uses UPSERT to avoid duplicates per day
+ */
+export async function recordRankHistory(puuid: string, ranks: LeagueEntryDTO[]): Promise<void> {
+    const supabase = await createClient();
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+    for (const rank of ranks) {
+        try {
+            const { error } = await supabase.from('rank_history').upsert({
+                puuid,
+                queue_type: rank.queueType,
+                tier: rank.tier,
+                rank: rank.rank,
+                league_points: rank.leaguePoints,
+                wins: rank.wins,
+                losses: rank.losses,
+                recorded_at: today
+            }, {
+                onConflict: 'puuid,queue_type,recorded_at'
+            });
+
+            if (error) {
+                console.error(`[RankHistory] Failed to record ${rank.queueType}:`, error.message);
+            } else {
+                console.log(`[RankHistory] Recorded ${rank.queueType}: ${rank.tier} ${rank.rank} ${rank.leaguePoints}LP`);
+            }
+        } catch (e: any) {
+            console.error(`[RankHistory] Error:`, e.message);
+        }
+    }
+}
+
+/**
+ * Fetch rank history for a given puuid and queue type
+ * Returns last 30 days of data for graphing
+ */
+export async function fetchRankHistory(
+    puuid: string,
+    queueType: 'RANKED_SOLO_5x5' | 'RANKED_FLEX_SR' = 'RANKED_SOLO_5x5',
+    days: number = 30
+): Promise<RankHistoryEntry[]> {
+    const supabase = await createClient();
+
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    const startDateStr = startDate.toISOString().split('T')[0];
+
+    const { data, error } = await supabase
+        .from('rank_history')
+        .select('*')
+        .eq('puuid', puuid)
+        .eq('queue_type', queueType)
+        .gte('recorded_at', startDateStr)
+        .order('recorded_at', { ascending: true });
+
+    if (error) {
+        console.error(`[RankHistory] Fetch error:`, error.message);
+        return [];
+    }
+
+    return data || [];
+}
+
 // Rate limit safe fetcher
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
@@ -325,6 +407,13 @@ export async function performFullUpdate(puuid: string) {
     
     // Merge new IDs ...
     const mergedIds = Array.from(new Set([...matchIds, ...oldIds])).slice(0, 100);
+
+    // Record rank history for graphing (non-blocking, fire and forget)
+    if (ranks.length > 0) {
+        recordRankHistory(puuid, ranks).catch(e => {
+            console.error('[Action] recordRankHistory failed:', e);
+        });
+    }
 
     // 3. Save to DB
     const updatePayload: any = { 

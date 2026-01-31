@@ -452,6 +452,20 @@
       "stompGames": "💥 圧勝 (>10kゴールド)",
       "icyUnderPressure": "❄️ プレッシャーに強い",
       "relyOnSnowball": "🔥 スノーボール依存型"
+    },
+    "rankGraph": {
+      "rankHistory": "ランク推移",
+      "playstyle": "プレイスタイル",
+      "lpChange": "{days}日間",
+      "rank": "ランク",
+      "collectingData": "データ収集中...",
+      "noRankData": "ランクデータがまだありません。「データを更新」を実行してください。",
+      "needMoreData": "毎日の更新でデータが蓄積され、グラフが表示されます。",
+      "currentRank": "現在のランク",
+      "dataProgress": "収集進捗",
+      "daysCollected": "{current}日 / 2日以上でグラフ表示",
+      "howItWorks": "毎日「データを更新」でランクが記録されます",
+      "noMatchData": "試合データを取得するとプレイスタイルが表示されます"
     }
   },
   "tooltip": {
@@ -546,5 +560,26 @@
   "settings": {
     "language": "言語",
     "selectLanguage": "言語を選択"
+  },
+  "contactPage": {
+    "title": "お問い合わせ",
+    "intro": "LoL Coach AIに関するご質問、ご意見、不具合報告などがございましたら、下記メールアドレスまでお気軽にお問い合わせください。",
+    "emailTitle": "メールでのお問い合わせ",
+    "requestsTitle": "お問い合わせの際のお願い",
+    "requests": {
+      "subject": "件名に「LoL Coach AI」と記載してください",
+      "bugReport": "不具合報告の場合は、発生状況をできるだけ詳しくお知らせください",
+      "privacy": "サモナー名やPUUIDなどの個人情報は、必要な場合のみお知らせください"
+    },
+    "responseTitle": "返信について",
+    "responseDesc": "通常、3営業日以内にご返信いたします。お急ぎの場合はその旨を記載してください。",
+    "supportTitle": "サポート対象",
+    "supportItems": {
+      "usage": "サービスの使い方に関するご質問",
+      "bugs": "不具合・エラーのご報告",
+      "features": "機能のご要望・ご提案",
+      "billing": "プレミアムプラン・お支払いに関するお問い合わせ",
+      "general": "その他サービスに関する全般的なお問い合わせ"
+    }
   }
 }
