@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useSummoner } from "../../Providers/SummonerProvider";
 import { getStatsFromCache, type MatchStatsDTO, type BasicStatsDTO } from "@/app/actions/stats";
 import LoadingAnimation from "../../Components/LoadingAnimation";
@@ -145,9 +146,11 @@ export default function AllChampionsPage() {
                         <div className="flex items-center gap-4 relative z-10">
                             {/* Icon */}
                             <div className="w-14 h-14 rounded-lg border border-slate-700 overflow-hidden relative shadow-lg group-hover:border-blue-500/50 transition-colors">
-                                <img 
-                                    src={`https://ddragon.leagueoflegends.com/cdn/14.23.1/img/champion/${champ.name}.png`} 
+                                <Image
+                                    src={`https://ddragon.leagueoflegends.com/cdn/14.23.1/img/champion/${champ.name}.png`}
                                     alt={champ.name}
+                                    width={56}
+                                    height={56}
                                     className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
                                 />
                             </div>

@@ -1,16 +1,16 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { fetchMatchIds, fetchMatchDetail } from "@/app/actions/riot";
-import { resolveChampionId } from "@/app/actions/champion";
 import Link from "next/link";
 import { ChampionDetailsDTO } from "@/app/actions/champion";
 import { useTranslation } from "@/contexts/LanguageContext";
 // Premium Imports
 import PlanStatusBadge from "@/app/Components/subscription/PlanStatusBadge";
 import PremiumFeatureGate from "@/app/Components/subscription/PremiumFeatureGate";
-import { getAnalysisStatus } from "@/app/actions/analysis";
 import { type AnalysisStatus } from "@/app/actions/constants";
+// SWR Hooks
+import { useChampionMatchIds, useChampionMatchDetails } from "@/hooks/useChampionData";
+import { useAnalysisStatus } from "@/hooks/useCoachData";
 
 type Match = any; // We can use strict type if available
 
@@ -33,78 +33,24 @@ function HelperTooltip({ text }: { text: string }) {
 
 export default function ChampionDetailView({ puuid, championName }: { puuid: string, championName: string }) {
     const { t } = useTranslation();
-    const [loadingIds, setLoadingIds] = useState(true);
-    const [matchDetails, setMatchDetails] = useState<Match[]>([]);
-    const [totalMatches, setTotalMatches] = useState<number>(0);
-    const [error, setError] = useState<string | null>(null);
-    
-    // Premium Status State
+
+    // SWR Hooks for data fetching with caching
+    const { matchIds, isLoading: loadingIds, error: idsError } = useChampionMatchIds(puuid, championName);
+    const { matches: matchDetails, isLoading: loadingMatches, totalMatches, loadedCount } = useChampionMatchDetails(matchIds);
+
+    // Premium Status via SWR
+    const { status: swrStatus, refresh: refreshStatus } = useAnalysisStatus();
     const [analysisStatus, setAnalysisStatus] = useState<AnalysisStatus | null>(null);
 
-    // Fetch Premium Status
+    // Sync SWR status to local state
     useEffect(() => {
-        getAnalysisStatus().then(setAnalysisStatus);
-    }, []);
-
-    useEffect(() => {
-        let ignore = false;
-
-        async function load() {
-            try {
-                // 1. Resolve ID
-                const champIdStr = await resolveChampionId(championName);
-                if (!champIdStr) {
-                    setError(`Champion ${championName} not found.`);
-                    setLoadingIds(false);
-                    return;
-                }
-                const champId = parseInt(champIdStr);
-
-// 2. Fetch Match IDs (Filtered)
-                // DEBUG: Log the resolved ID and request
-                console.log(`[ChampionDetail] Fetching matches for ${championName} (ID: ${champId})...`);
-                const idsRes = await fetchMatchIds(puuid, 50, undefined, undefined, champId);
-                
-                if (idsRes.success && idsRes.data) {
-                     console.log(`[ChampionDetail] Found ${idsRes.data.length} matches for champion ${champId}`);
-                } else {
-                     console.log(`[ChampionDetail] Failed to find matches or error: ${idsRes.error}`);
-                }
-
-                if (ignore) return;
-                
-                if (!idsRes.success || !idsRes.data) {
-                    setError("Failed to fetch matches.");
-                    setLoadingIds(false);
-                    return;
-                }
-
-                setLoadingIds(false); // Skeletons/Empty state
-
-                // 3. Stream Details
-                // We fetch in chunks or parallel
-                const ids = idsRes.data;
-                setTotalMatches(ids.length);
-                
-                // Fetch in batches of 5 to allow progressive update without network hammering
-                // Actually parallel logic in StatsPage was good. 
-                ids.forEach(id => {
-                    fetchMatchDetail(id).then(res => {
-                         if(ignore) return;
-                         if (res.success && res.data) {
-                             setMatchDetails(prev => [...prev, res.data]);
-                         }
-                    });
-                });
-
-            } catch (e) {
-                console.error(e);
-                if(!ignore) setError("An unexpected error occurred.");
-            }
+        if (swrStatus !== undefined) {
+            setAnalysisStatus(swrStatus);
         }
-        load();
-        return () => { ignore = true; };
-    }, [puuid, championName]);
+    }, [swrStatus]);
+
+    // Error state
+    const error = idsError ? `Champion ${championName} not found.` : null;
 
     // --- AGGREGATION LOGIC (Memoized) ---
     const stats: ChampionDetailsDTO | null = useMemo(() => {
@@ -274,11 +220,10 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
     }, [matchDetails, championName, puuid]);
 
 
-    // Progress Calculation
-    const loadedCount = matchDetails.length;
+    // Progress Calculation (using SWR hook values)
     const progress = totalMatches > 0 ? Math.round((loadedCount / totalMatches) * 100) : 0;
-    const isComplete = totalMatches > 0 && loadedCount >= totalMatches;
-    
+    const isComplete = totalMatches > 0 && loadedCount >= totalMatches && !loadingMatches;
+
     // Determine Premium Status
     const isPremium = analysisStatus?.is_premium ?? false;
 
@@ -291,11 +236,10 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
              </div>
          );
     }
-    
-    // Skeleton or Empty State
+
     // Skeleton or Empty State
     if (!stats) {
-        if (!loadingIds && (matchDetails.length === 0 || (matchDetails.length > 0 && !stats))) {
+        if (!loadingIds && !loadingMatches && matchDetails.length === 0) {
             return (
                 <div className="p-8">
                      <h1 className="text-3xl font-bold text-slate-100 mb-4">{decodeURIComponent(championName)}</h1>
@@ -305,8 +249,8 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                 </div>
             )
         }
-        
-        // Initial Skeleton
+
+        // Initial Skeleton (loading state)
         return (
             <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-6">
                  {/* Header Skeleton */}
@@ -468,7 +412,7 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                         isPremium={isPremium} 
                         title={t('championDetail.premium.unlockSpikes')} 
                         description={t('championDetail.premium.spikesDesc')}
-                        onUpgrade={() => getAnalysisStatus().then(setAnalysisStatus)}
+                        onUpgrade={async () => { await refreshStatus(); }}
                     >
                         <div className="p-5">
                             <div className="flex items-center gap-2 mb-4">
@@ -526,7 +470,7 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                     isPremium={isPremium} 
                     title={t('championDetail.premium.unlockMatchup')} 
                     description={t('championDetail.premium.matchupDesc')}
-                    onUpgrade={() => getAnalysisStatus().then(setAnalysisStatus)}
+                    onUpgrade={async () => { await refreshStatus(); }}
                 >
                     <div className="p-6">
                         <div className="flex items-center gap-2 mb-4">

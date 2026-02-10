@@ -8,7 +8,7 @@ export default function SkillRadar({ stats }: { stats: RadarStats | null }) {
     
     if (!stats) {
         return (
-             <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center justify-center min-h-[300px] relative overflow-hidden">
+             <div className="glass-panel rounded-xl p-4 flex items-center justify-center h-full w-full relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-pink-500/5"></div>
                  <div className="text-center relative z-10">
                      <div className="text-slate-500 font-bold mb-2">{t('widgets.skillRadar.noData')}</div>
@@ -50,7 +50,7 @@ export default function SkillRadar({ stats }: { stats: RadarStats | null }) {
     }).join(" ");
 
     return (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 relative overflow-hidden flex flex-col items-center">
+        <div className="glass-panel rounded-xl p-4 relative overflow-hidden flex flex-col items-center h-full w-full">
             {/* Header */}
             <div className="w-full flex justify-between items-start mb-2 z-10">
                 <div className="text-slate-400 text-xs font-bold tracking-wider">{t('widgets.skillRadar.title')}</div>
@@ -65,7 +65,7 @@ export default function SkillRadar({ stats }: { stats: RadarStats | null }) {
             </div>
 
             {/* SVG Radar */}
-            <div className="w-64 h-64 relative">
+            <div className="w-52 h-52 relative flex-1 flex items-center justify-center">
                 <svg viewBox="0 0 200 200" className="w-full h-full overflow-visible drop-shadow-xl">
                     {/* Background Grid */}
                     {[20, 40, 60, 80].map(r => (
@@ -162,7 +162,7 @@ export default function SkillRadar({ stats }: { stats: RadarStats | null }) {
             </div>
             
             {/* Insight Text */}
-            <div className="mt-4 text-center">
+            <div className="mt-2 text-center">
                  {/* Logic to find highest stat */}
                  {(() => {
                      const best = axes.reduce((prev, current) => 

@@ -1,5 +1,6 @@
 {
   "common": {
+    "backToHome": "← 홈으로 돌아가기",
     "backToOverview": "← 개요로 돌아가기",
     "backToList": "← 목록으로 돌아가기",
     "readMore": "가이드 보기 →",
@@ -143,6 +144,11 @@
       "spikesDesc": "게임에서 언제가장 강한지 확인하세요.",
       "unlockMatchup": "매치업 분석 잠금 해제",
       "matchupDesc": "특정 챔피언에 대한 성능을 심층 분석합니다."
+    },
+    "noSummoner": {
+      "title": "소환사 정보를 찾을 수 없습니다",
+      "desc": "계정 설정에서 소환사를 연결해주세요.",
+      "link": "계정 연결로 이동"
     }
   },
   "matchDetail": {
@@ -166,6 +172,84 @@
       "preparing": "준비 중...",
       "analyzeButton": "매치 분석"
     }
+  },
+  "damageCalculator": {
+    "title": "데미지 계산 시뮬레이터",
+    "yourChampion": "내 챔피언",
+    "enemyChampion": "적 챔피언",
+    "stats": "스탯",
+    "loading": "챔피언 데이터 로딩 중...",
+    "autoAttack": "기본 공격",
+    "fullCombo": "풀 콤보 합계",
+    "physical": "물리",
+    "magic": "마법",
+    "true": "고정",
+    "selectItem": "아이템 선택",
+    "selectChampion": "챔피언 선택",
+    "searchItems": "아이템 검색...",
+    "searchChampions": "챔피언 검색...",
+    "noItems": "아이템을 찾을 수 없습니다",
+    "noChampions": "챔피언을 찾을 수 없습니다",
+    "dataNa": "데이터 불완전",
+    "none": "없음",
+    "comboMode": "순간 콤보",
+    "comboBuilderMode": "콤보 빌더",
+    "simulationMode": "전투 시뮬레이션",
+    "comboBuilder": {
+      "addAction": "액션 추가",
+      "sequence": "콤보 순서",
+      "clearAll": "전체 삭제",
+      "results": "결과",
+      "action": "액션",
+      "time": "시간",
+      "damage": "피해",
+      "procs": "발동 효과",
+      "cumulative": "누적",
+      "targetHP": "대상 HP",
+      "totalDamage": "총 피해",
+      "comboTime": "콤보 시간",
+      "hpPercent": "HP %",
+      "emptyHint": "위 버튼을 클릭하여 콤보를 구성하세요",
+      "passive": "패시브"
+    },
+    "aiAnalysisMode": "AI 분석",
+    "aiAnalysis": {
+      "title": "AI 데미지 분석",
+      "analyzeButton": "AI로 콤보 분석",
+      "analyzing": "AI 분석 중...",
+      "error": "분석에 실패했습니다. 다시 시도해주세요.",
+      "extraRequired": "Extra로 업그레이드하여 AI 데미지 분석을 이용하세요",
+      "upgradeToExtra": "Extra 플랜 보기",
+      "optimalCombo": "최적 콤보",
+      "comboReasoning": "콤보 이유",
+      "comboBreakdown": "콤보 상세",
+      "step": "단계",
+      "action": "액션",
+      "damage": "피해",
+      "type": "유형",
+      "notes": "비고",
+      "cumulative": "누적",
+      "totalDamage": "총 피해",
+      "killPotential": "킬 포텐셜",
+      "canKill": "킬 가능",
+      "cannotKill": "킬 불가",
+      "hpRemaining": "남은 HP",
+      "extendedTrade": "연장전 DPS",
+      "dps": "DPS",
+      "strategicAdvice": "전략 조언"
+    }
+  },
+  "simulation": {
+    "duration": "전투 시간",
+    "draw": "무승부",
+    "wins": "WIN",
+    "totalDamage": "총 데미지",
+    "aaCount": "AA 횟수",
+    "abilityCasts": "스킬 사용",
+    "showTimeline": "타임라인 표시",
+    "hideTimeline": "타임라인 숨기기",
+    "loadMore": "더 보기",
+    "remaining": "건"
   },
   "accountPage": {
     "title": "계정 설정",
@@ -243,7 +327,9 @@
       "defaultDesc": "이 기능을 사용하려면 프리미엄 플랜으로 업그레이드해야 합니다.",
       "unlockNow": "지금 잠금 해제",
       "checkoutFailed": "결제를 시작하지 못했습니다.",
-      "error": "오류가 발생했습니다."
+      "error": "오류가 발생했습니다.",
+      "extraOnly": "Extra 플랜 전용 기능",
+      "viewPlans": "요금제 보기"
     },
     "promoCard": {
       "title": "프리미엄 잠금 해제",
@@ -265,7 +351,9 @@
       "credits": "크레딧",
       "remaining": "남음",
       "upgrading": "업그레이드 중...",
-      "upgradeToPremium": "프리미엄으로 업그레이드"
+      "upgradeToPremium": "프리미엄으로 업그레이드",
+      "viewPlans": "요금제",
+      "extra": "EXTRA"
     }
   },
   "coachPage": {
@@ -309,7 +397,76 @@
       "finalAdvice": "총평",
       "analyzeAnother": "다른 장면 분석하기",
       "visionError": "Vision 분석 오류",
-      "youtubeNotSupported": "YouTube Vision 분석은 준비 중입니다. 로컬 파일을 사용해주세요."
+      "youtubeNotSupported": "YouTube Vision 분석은 준비 중입니다. 로컬 파일을 사용해주세요.",
+      "situationSnapshot": "상황 스냅샷",
+      "myStatus": "나",
+      "enemyStatus": "상대",
+      "environment": "환경",
+      "tradeAnalysis": "트레이드 분석",
+      "damageGiven": "가한 피해",
+      "damageTaken": "받은 피해",
+      "reason": "이유",
+      "cooldownContext": "쿨다운 상황",
+      "optimalAction": "최적 행동",
+      "noTrade": "이 클립에서는 트레이드가 발생하지 않았습니다",
+      "mechanicsEvaluation": "메카닉 평가",
+      "skillsUsed": "사용한 스킬",
+      "skillsDodged": "회피한 스킬",
+      "improvements": "개선점",
+      "tips": "팁",
+      "keyCombo": "핵심 콤보",
+      "current": "현재",
+      "ideal": "이상",
+      "practice": "연습",
+      "aaWeaving": "AA 위빙",
+      "positioning": "포지셔닝",
+      "combo": "콤보",
+      "enums": {
+        "timing": {
+          "perfect": "완벽",
+          "good": "좋음",
+          "early": "빠름",
+          "late": "느림",
+          "missed": "놓침"
+        },
+        "difficulty": {
+          "easy": "쉬움",
+          "medium": "보통",
+          "hard": "어려움"
+        },
+        "outcome": {
+          "win": "승리",
+          "lose": "패배",
+          "even": "무승부",
+          "noTrade": "트레이드 없음"
+        },
+        "priority": {
+          "high": "높음",
+          "medium": "보통",
+          "low": "낮음"
+        },
+        "category": {
+          "trading": "트레이드",
+          "dodging": "회피",
+          "cooldownTracking": "쿨다운 관리",
+          "positioning": "포지셔닝",
+          "combo": "콤보",
+          "resourceManagement": "자원 관리",
+          "waveControl": "웨이브 관리"
+        },
+        "score": {
+          "excellent": "우수",
+          "good": "좋음",
+          "needsWork": "개선 필요",
+          "risky": "위험",
+          "poor": "부족"
+        },
+        "skillLevel": {
+          "beginner": "초보자",
+          "intermediate": "중급자",
+          "advanced": "고급자"
+        }
+      }
     },
     "macro": {
       "modeLabel": "분석 모드 (Analysis Mode)",
@@ -327,7 +484,9 @@
       "noCredits": "크레딧 부족",
       "premiumUnlimited": "💎 PREMIUM UNLIMITED",
       "verificationFailed": "동영상 검증에 실패했습니다.\n선택한 경기와 동영상 내용이 일치하지 않습니다.",
-      "launchFailed": "분석을 시작할 수 없습니다."
+      "launchFailed": "분석을 시작할 수 없습니다.",
+      "weeklyLimitReached": "주간 한도에 도달했습니다",
+      "weeklyRemaining": "🧠 분석 ({remaining}회 남음)"
     },
     "results": {
       "matchVerificationError": "동영상 검증 실패",
@@ -373,6 +532,95 @@
         "label": "한타",
         "desc": "포지셔닝, 스킬 활용, 타겟 선정"
       }
+    },
+    "videoMacro": {
+      "title": "영상 매크로 분석",
+      "description": "영상에서 5개의 핵심 장면을 추출하여 어떻게 이길 수 있었는지 분석합니다",
+      "errors": {
+        "segmentFetchFailed": "세그먼트를 가져오지 못했습니다",
+        "noVideoOrSegments": "영상 또는 세그먼트가 선택되지 않았습니다",
+        "payloadTooLarge": "프레임 데이터가 너무 큽니다",
+        "analysisFailed": "분석에 실패했습니다",
+        "noProfile": "사용자 프로필을 찾을 수 없습니다",
+        "noCredits": "크레딧이 부족합니다. 프리미엄 플랜으로 업그레이드하거나 크레딧을 추가해 주세요."
+      },
+      "progress": {
+        "checkingStatus": "계정 상태 확인 중...",
+        "detectingTimeSync": "시간 동기화 자동 감지 중...",
+        "extractingFrames": "프레임 추출 중...",
+        "preparingUpload": "업로드 준비 중...",
+        "startingAnalysis": "분석 시작 중...",
+        "aiAnalyzing": "AI 분석 중...",
+        "analysisComplete": "분석 완료!"
+      },
+      "segmentTypes": {
+        "objective": "오브젝트",
+        "death": "데스",
+        "turningPoint": "터닝포인트"
+      },
+      "calibration": {
+        "detecting": "게임 시간 감지 중...",
+        "detected": "감지 완료",
+        "failed": "시간 감지 실패",
+        "error": "감지 오류"
+      },
+      "timeSync": {
+        "label": "시간 동기화",
+        "autoDetected": "자동 감지됨",
+        "onAnalysisStart": "분석 시작 시 감지",
+        "offset": "오프셋",
+        "video": "영상"
+      },
+      "segments": {
+        "title": "분석 대상 장면 (5개)",
+        "loading": "로딩 중...",
+        "reload": "다시 로드",
+        "noSegments": "세그먼트를 찾을 수 없습니다"
+      },
+      "buttons": {
+        "selectVideo": "영상을 선택해주세요",
+        "loadingSegments": "세그먼트 로딩 중...",
+        "startAnalysis": "매크로 분석 시작",
+        "reanalyze": "다른 세그먼트로 재분석",
+        "weeklyLimitReached": "주간 한도에 도달했습니다",
+        "upgradePrompt": "프리미엄으로 업그레이드하면 주 20회 분석 가능"
+      },
+      "results": {
+        "segmentsAnalyzed": "세그먼트 분석 완료",
+        "showDetails": "상세 보기",
+        "summary": "분석 요약",
+        "mainIssue": "주요 문제점",
+        "homework": "오늘의 숙제",
+        "relatedScenes": "관련 장면",
+        "sceneAnalysis": "장면별 분석"
+      },
+      "build": {
+        "title": "빌드 추천",
+        "you": "나",
+        "recommendedCore": "추천 코어 아이템"
+      },
+      "scene": {
+        "observation": "상황 관찰",
+        "yourPosition": "나의 위치",
+        "allyPositions": "아군 위치",
+        "waveState": "웨이브 상태",
+        "objective": "오브젝트",
+        "winningPattern": "승리 패턴",
+        "gap": "실제와의 차이",
+        "criticalMoment": "결정적 순간",
+        "shouldHaveDone": "이렇게 했어야 했다",
+        "checkInVideo": "영상에서 확인"
+      }
+    },
+    "verification": {
+      "aiVerifying": "AI가 영상을 대조 중",
+      "checkingConsistency": "영상과 경기 데이터 간 불일치가 없는지 확인하고 있습니다..."
+    },
+    "tips": {
+      "title": "사용법",
+      "step1": "분석할 경기를 선택",
+      "step2": "동영상 파일을 업로드",
+      "step3": "AI가 주요 장면을 자동 분석"
     }
   },
   "widgets": {
@@ -466,6 +714,91 @@
       "daysCollected": "{current}일 / 2일 이상이면 그래프 표시",
       "howItWorks": "매일 \"데이터 새로고침\"으로 랭크가 기록됩니다",
       "noMatchData": "매치 데이터를 가져오면 플레이스타일이 표시됩니다"
+    },
+    "profileCard": {
+      "recentForm": "최근 10경기",
+      "totalRecord": "총 전적",
+      "mostPlayed": "최다 플레이",
+      "noData": "-",
+      "monthlyStats": "이번 달 랭크 전적",
+      "games": "경기",
+      "noMonthlyData": "이번 달 랭크 경기 없음",
+      "coachInsight": "AI 코치 인사이트",
+      "topFocus": "개선 포인트",
+      "analysesCompleted": "회 분석 완료",
+      "noCoachData": "분석 기록 없음",
+      "macro": "매크로",
+      "micro": "마이크로",
+      "roleDistribution": "역할 분포",
+      "topChampions": "탑 챔피언"
+    },
+    "rankGoal": {
+      "title": "랭크 목표",
+      "subtitle": "목표를 설정하고 동기 부여 유지",
+      "edit": "편집",
+      "setGoal": "목표 설정",
+      "cancel": "취소",
+      "current": "현재",
+      "target": "목표",
+      "unranked": "언랭크",
+      "progress": "진행률",
+      "achieved": "달성!",
+      "remaining": "약 {lp}LP 남음",
+      "setNewGoal": "새 목표 설정",
+      "achievementTitle": "목표 달성!",
+      "achievementMessage": "축하합니다! 목표 랭크에 도달했습니다.",
+      "close": "닫기"
+    },
+    "nextFocus": {
+      "title": "다음 게임 포인트",
+      "subtitle": "데이터 기반 조언",
+      "noTips": "훌륭한 성과입니다!",
+      "keepPlaying": "이 조자세를 유지하세요",
+      "priority": {
+        "high": "중요",
+        "medium": "권장",
+        "low": "참고"
+      },
+      "tips": {
+        "vision": {
+          "title": "시야 관리 개선",
+          "desc": "와드 설치 수가 적습니다. 리콜 전에 와드를 설치하는 습관을 들이세요."
+        },
+        "farming": {
+          "title": "CS 정확도 향상",
+          "desc": "미니언을 놓치고 있습니다. 라스트히팅 연습을 하세요."
+        },
+        "survival": {
+          "title": "데스 수 줄이기",
+          "desc": "데스 수가 많습니다. 교전 전에 미니맵을 확인하세요."
+        },
+        "objective": {
+          "title": "오브젝트 참여",
+          "desc": "오브젝트 기여도가 낮습니다. 드래곤과 바론 싸움에 참여하세요."
+        },
+        "macro": {
+          "title": "매크로 개선",
+          "desc": "AI 코치 분석에서 지적된 포인트입니다. 개선에 집중하세요."
+        },
+        "micro": {
+          "title": "메카닉 개선",
+          "desc": "트레이딩과 스킬 정확도를 개선할 여지가 있습니다."
+        },
+        "mental": {
+          "title": "멘탈 리셋",
+          "desc": "연패 중입니다. 휴식을 취하거나 일반 게임으로 리프레시하세요."
+        }
+      }
+    },
+    "quickStats": {
+      "title": "퀵 스탯",
+      "subtitle": "최근 {games}게임 평균",
+      "noData": "데이터 수집 중...",
+      "kda": "KDA",
+      "killParticipation": "킬 관여율",
+      "csPerMin": "CS/분",
+      "visionPerMin": "시야/분",
+      "avgDamage": "평균 데미지"
     }
   },
   "tooltip": {
@@ -581,5 +914,355 @@
       "billing": "프리미엄 플랜 및 결제 문의",
       "general": "기타 서비스 관련 문의"
     }
+  },
+  "landingPage": {
+    "nav": {
+      "pricing": "요금제",
+      "login": "로그인",
+      "getStarted": "무료로 시작하기"
+    },
+    "hero": {
+      "subtitlePrefix": "AI가 ",
+      "subtitle": "Riot API에서 실시간으로 데이터를 가져옵니다.",
+      "subtitleHighlight": "나만의 맞춤",
+      "subtitleEnd": " 개선점을 분석하여 최단 기간에 랭크 업으로 이끕니다.",
+      "ctaStart": "지금 시작하기 →",
+      "ctaAnalyze": "🎥 무료 영상 분석 체험",
+      "freeBadge": "로그인 불필요 - 3회까지 무료 분석"
+    },
+    "bento": {
+      "skillAnalysis": "당신의 스킬을 시각화",
+      "skillDesc": "CS, 시야 점수, 데미지 효율 등을 티어 평균과 비교합니다. 강점과 약점을 한눈에 파악하세요.",
+      "csAccuracy": "CS 정확도",
+      "visionScore": "시야 점수",
+      "totalDamage": "총 데미지",
+      "aiChatPreview": "상대 Yasuo는 Lv2 선행이 강합니다. 웨이브 컨트롤에 집중하세요.",
+      "matchupTitle": "매치업 공략",
+      "matchupDesc": "어려운 매치업의 대응법, 빌드 패스, 운영을 AI가 제안합니다.",
+      "macroTitle": "매크로 분석",
+      "macroDesc": "영상에서 맵 전체의 움직임을 분석하고 개선점을 제시합니다.",
+      "microTitle": "마이크로 분석",
+      "microDesc": "조작 정밀도, 콤보, 포지셔닝을 상세하게 분석합니다.",
+      "winRateChange": "+12% 이번 주",
+      "aiCoachLabel": "AI 코치",
+      "activeNow": "활동 중"
+    },
+    "features": {
+      "sectionTitlePrefix": "데이터로 ",
+      "sectionTitle": "승리",
+      "sectionDesc": "감에 의존하지 않는 데이터 기반 실력 향상을 실현합니다.",
+      "statsTitle": "실시간 전적 분석",
+      "statsDesc": "Riot API에서 직접 데이터를 가져옵니다. CS, 시야, 데미지 효율 등 20개 이상의 지표를 티어 평균과 비교하여 강점과 개선점을 명확히 합니다.",
+      "statsFeature1": "자동 데이터 동기화",
+      "statsFeature2": "티어별 벤치마크",
+      "statsFeature3": "트렌드 분석",
+      "chatTitle": "AI 코치와 대화",
+      "chatQuestion1": "이 매치업 어떻게 해야 해?",
+      "chatQuestion2": "왜 졌지?",
+      "chatDesc": "경기별 구체적인 고민을 AI 코치와 상담하세요. 대화 형식으로 의문을 해결합니다.",
+      "chatFeature1": "24시간 대응",
+      "chatFeature2": "경기 데이터 연동",
+      "chatFeature3": "맞춤형 조언"
+    },
+    "cta": {
+      "titlePrefix": "지금 바로 ",
+      "title": "다음 랭크",
+      "titleEnd": "으로.",
+      "desc": "신용카드 불필요. Riot ID 연결만으로 바로 시작할 수 있습니다.",
+      "button": "무료 계정 생성",
+      "trustRiot": "Riot 공식 API 연동",
+      "trustNoCc": "신용카드 불필요",
+      "trustJa": "일본어 지원"
+    }
+  },
+  "loginPage": {
+    "emptyFields": "로그인 ID와 비밀번호를 입력해주세요",
+    "loginFailed": "로그인 실패: ",
+    "emailNotVerified": "이메일 인증이 완료되지 않았습니다.\n받은 이메일의 링크를 클릭해주세요.",
+    "welcomeBack": "다시 오신 것을 환영합니다",
+    "initializing": "초기화 중...",
+    "loginButton": "로그인",
+    "noAccount": "계정이 없으신가요?",
+    "register": "회원가입",
+    "forgotPassword": "비밀번호를 잊으셨나요?",
+    "emailLabel": "이메일",
+    "passwordLabel": "비밀번호"
+  },
+  "signupPage": {
+    "allFieldsRequired": "모든 항목을 입력해주세요",
+    "passwordMismatch": "비밀번호가 일치하지 않습니다.",
+    "alreadyRegistered": "이 이메일 주소는 이미 등록되어 있습니다. 로그인해주세요.",
+    "registrationFailed": "등록 실패: ",
+    "emailSent": "확인 이메일을 보냈습니다.",
+    "checkEmail": "이메일의 링크를 클릭하여 등록을 완료해주세요.",
+    "alreadyRegisteredNote": "※ 이메일이 도착하지 않은 경우, 이미 등록된 계정일 수 있습니다.\n해당하는 경우 로그인 화면으로 이동해주세요.",
+    "goToLogin": "로그인 화면으로",
+    "title": "전장에 참가",
+    "registerButton": "계정 등록",
+    "alreadyHaveAccount": "이미 계정이 있으신가요?",
+    "login": "로그인",
+    "emailLabel": "이메일",
+    "passwordLabel": "비밀번호",
+    "confirmPasswordLabel": "비밀번호 확인"
+  },
+  "onboardingPage": {
+    "welcome": "먼저 계정을 연결하여 분석을 시작하세요.",
+    "riotIdFormat": "라이엇 ID는 'Name#Tag' 형식으로 입력해주세요 (예: Hide on bush#KR1)",
+    "error": "오류: ",
+    "jpOnly": "※ JP 서버만 지원합니다",
+    "startLink": "연결 시작",
+    "verifyTitle": "본인 확인 (아이콘 인증)",
+    "verifyInstruction": "LoL 클라이언트에서 프로필 아이콘을\n아래 아이콘으로 변경해주세요.",
+    "cancel": "취소",
+    "checking": "확인 중...",
+    "changed": "변경했습니다",
+    "verifySuccess": "인증 성공! 대시보드로 이동합니다...",
+    "logout": "로그아웃하고 돌아가기",
+    "timeRemaining": "남은 시간:"
+  },
+  "pricingPage": {
+    "header": {
+      "back": "뒤로",
+      "tryFree": "무료 체험",
+      "login": "로그인",
+      "dashboard": "대시보드"
+    },
+    "title": "플랜",
+    "subtitle": "자신에게 맞는 플랜을 선택하세요",
+    "features": {
+      "analysisCount": "영상 분석 횟수",
+      "segmentCount": "분석 세그먼트 수",
+      "segmentMethod": "세그먼트 선택 방법",
+      "riotApi": "Riot API 연동",
+      "matchHistory": "경기 기록 열람",
+      "analysisSave": "분석 기록 저장",
+      "buildAdvice": "빌드 어드바이스",
+      "championStats": "챔피언 통계",
+      "detailedStats": "상세 전적 분석",
+      "ads": "광고",
+      "adsYes": "있음",
+      "adsNo": "없음",
+      "aiDamageAnalysis": "AI 데미지 분석"
+    },
+    "guest": {
+      "name": "게스트",
+      "price": "/영구",
+      "desc": "등록 없이 바로 체험",
+      "analysisFreq": "3일에 1회 (최대 3회분)",
+      "analysisFreqShort": "3일에 1회 분석 (최대 3회분 보유)",
+      "fixedSegments": "고정 3개",
+      "fixedSegmentsDesc": "고정 3세그먼트 분석",
+      "fixedMethod": "시간 고정 (3분/8분/15분)",
+      "autoMethod": "경기 데이터에서 자동 선택",
+      "aiMacro": "AI 매크로 분석",
+      "noMatchData": "경기 데이터 연동 없음",
+      "noSaveHistory": "분석 기록 저장 없음",
+      "tryNow": "지금 체험하기"
+    },
+    "free": {
+      "name": "무료 회원",
+      "badge": "추천",
+      "price": "/영구",
+      "desc": "모든 기능을 무료로 체험",
+      "weeklyAnalysis": "주 3회",
+      "weeklyAnalysisDesc": "주 3회 분석",
+      "autoSelect": "자동 선택",
+      "threeSegments": "3세그먼트",
+      "autoSegments": "자동 선택 3개",
+      "riotApi": "Riot API 연동",
+      "matchHistoryView": "경기 기록 및 통계 열람",
+      "saveHistory": "분석 기록 저장",
+      "noBuildAdvice": "빌드 어드바이스 없음",
+      "currentPlan": "현재 플랜",
+      "register": "무료로 등록"
+    },
+    "premium": {
+      "name": "프리미엄",
+      "priceUnit": "/월",
+      "desc": "본격적으로 실력 향상을 원하는 분에게",
+      "weeklyAnalysis": "주 20회",
+      "fiveSegments": "5세그먼트",
+      "autoSegments": "자동 선택 5개",
+      "buildAdvice": "빌드 어드바이스",
+      "noAds": "광고 없음",
+      "processing": "처리 중...",
+      "subscribe": "프리미엄 구독",
+      "unsubscribe": "구독 해지"
+    },
+    "extra": {
+      "name": "Extra",
+      "priceUnit": "/월",
+      "desc": "AI 데미지 분석으로 차이를 만드세요",
+      "weeklyAnalysis": "주 50회",
+      "eightSegments": "8세그먼트",
+      "autoSegments": "자동 선택 8개",
+      "aiDamageAnalysis": "AI 데미지 분석",
+      "subscribe": "Extra 구독",
+      "processing": "처리 중...",
+      "unsubscribe": "구독 해지"
+    },
+    "comparison": {
+      "title": "기능 비교표",
+      "feature": "기능"
+    },
+    "faq": {
+      "title": "자주 묻는 질문",
+      "q1": "게스트와 무료 회원의 차이는?",
+      "a1": "게스트는 등록 없이 바로 체험할 수 있지만, 분석은 고정된 3개 장면만 가능합니다. 무료 회원이 되면 Riot API 연동으로 경기 데이터에서 중요한 장면을 자동 선택하여 더 정확한 분석을 받을 수 있습니다. 또한 분석 기록도 저장됩니다.",
+      "q2": "프리미엄 해지는 언제든 가능한가요?",
+      "a2": "네, 언제든 해지할 수 있습니다. 해지 후에도 결제 기간 종료까지 프리미엄 기능을 이용할 수 있습니다. 해지 후에는 자동으로 무료 회원으로 전환됩니다.",
+      "q3": "분석 횟수는 언제 초기화되나요?",
+      "a3": "무료 회원과 프리미엄의 주간 횟수는 매주 월요일에 초기화됩니다. 게스트 크레딧은 마지막 사용 후 3일 뒤에 1회분이 복구됩니다(최대 3회분까지).",
+      "q4": "결제 방법은 무엇이 있나요?",
+      "a4": "신용카드(Visa, Mastercard, JCB, American Express)를 지원합니다. Stripe를 통한 안전한 결제 처리를 합니다."
+    },
+    "ctaPremium": {
+      "title": "프리미엄 플랜을 이용 중입니다",
+      "desc": "모든 기능을 즐기세요",
+      "button": "대시보드로"
+    },
+    "ctaExtra": {
+      "title": "Extra 플랜을 이용 중입니다",
+      "desc": "AI 데미지 분석을 포함한 모든 기능을 즐기세요",
+      "button": "대시보드로"
+    },
+    "ctaUpgrade": {
+      "title": "프리미엄 플랜으로 더 빠르게 성장",
+      "desc": "주 20회 분석과 5세그먼트 자동 선택으로 효율적으로 개선"
+    },
+    "ctaGuest": {
+      "title": "먼저 무료로 체험해보시겠어요?",
+      "desc": "등록 없이 AI 영상 분석을 체험할 수 있습니다",
+      "tryGuest": "게스트로 체험하기",
+      "registerFree": "무료 회원 등록"
+    }
+  },
+  "analyzePage": {
+    "tabs": {
+      "macro": "매크로 분석",
+      "micro": "마이크로 분석"
+    },
+    "micro": {
+      "clipSelector": "분석할 30초를 선택하세요",
+      "clipFrom": "시작 위치",
+      "clipDescription": "지정 위치에서 30초간의 플레이를 상세 분석합니다",
+      "analyzing": "AI 분석 중...",
+      "polling": "서버에서 처리 중...",
+      "overallGrade": "종합 평가",
+      "situationSnapshot": "상황 스냅샷",
+      "tradeAnalysis": "트레이드 분석",
+      "mechanics": "메카닉 평가",
+      "improvements": "개선점"
+    },
+    "rewardAd": {
+      "title": "광고를 시청하고 분석 시작",
+      "description": "짧은 광고 후 분석이 시작됩니다",
+      "skip": "건너뛰기",
+      "watching": "광고 시청 중...",
+      "complete": "분석 시작"
+    },
+    "selectVideo": "영상을 선택해주세요",
+    "noCredits": "크레딧이 부족합니다",
+    "detectingTime": "게임 내 시간 감지 중...",
+    "extractingFrames": "프레임 추출 중...",
+    "startingAnalysis": "분석 시작...",
+    "analysisFailed": "분석에 실패했습니다",
+    "verifying": "영상과 경기 데이터를 대조 중...",
+    "aiVerifying": "AI 대조 실행 중...",
+    "verifyFetchFailed": "경기 데이터를 가져오지 못했습니다",
+    "verifyServerError": "대조 서버 오류가 발생했습니다",
+    "videoMismatch": "선택한 경기와 영상 내용이 일치하지 않습니다. 올바른 영상을 선택해주세요.",
+    "championMismatch": "조작 중인 챔피언이 경기 데이터와 일치하지 않습니다. 올바른 경기 영상을 선택해주세요.",
+    "teamMismatch": "팀 구성이 경기 데이터와 일치하지 않습니다. 다른 경기 영상이 선택되었을 수 있습니다.",
+    "loading": "로딩 중...",
+    "header": {
+      "top": "맨 위로",
+      "dashboard": "대시보드",
+      "matchSelect": "경기 선택",
+      "guest": "게스트",
+      "freeMember": "무료 회원",
+      "perWeek": "회/주",
+      "pricing": "요금제",
+      "login": "로그인"
+    },
+    "hero": {
+      "free": "무료",
+      "desc": "LoL 플레이 영상을 업로드하면 AI가 매크로 전술을 조언합니다"
+    },
+    "upload": {
+      "title": "영상 업로드",
+      "dragDrop": "클릭 또는 드래그 앤 드롭",
+      "formats": "MP4, MOV, WebM (최대 500MB)",
+      "changeVideo": "다른 영상 선택"
+    },
+    "segments": {
+      "titleAuto": "분석 대상 장면 (경기 데이터에서 자동 선택)",
+      "titleFixed": "분석 대상 장면 (고정)",
+      "loading": "경기 데이터 로딩 중...",
+      "autoNote": "※ 경기 데이터를 기반으로 중요 장면을 자동 선택합니다",
+      "registerNote": "※ 무료 회원 등록으로 경기 데이터 기반 중요 장면 자동 선택",
+      "close": "닫기"
+    },
+    "analysis": {
+      "macroTitle": "매크로 분석",
+      "guestNoCredits": "게스트 크레딧을 모두 사용했습니다. 다음 복구까지 잠시 기다려주세요.",
+      "weeklyLimit": "이번 주 분석 횟수에 도달했습니다. 월요일에 초기화됩니다.",
+      "freeRegister": "무료 회원 등록으로 주 3회",
+      "comparePlans": "플랜 비교",
+      "viewPlans": "다른 플랜 보기 →"
+    },
+    "buttons": {
+      "loading": "로딩 중...",
+      "analyzing": "분석 중...",
+      "selectVideo": "영상을 선택해주세요",
+      "noCredits": "크레딧 부족",
+      "startAnalysis": "분석 시작 (잔여 {credits}회)"
+    },
+    "matchInfo": {
+      "victory": "승리",
+      "defeat": "패배"
+    },
+    "results": {
+      "warning": "⚠️ 분석 중 문제가 발생했습니다",
+      "completed": "분석 완료: {completed}/{requested} 세그먼트",
+      "summary": "분석 요약",
+      "homework": "오늘의 숙제",
+      "sceneAnalysis": "장면별 분석",
+      "position": "위치:",
+      "wave": "웨이브:",
+      "winPattern": "승리 패턴:",
+      "improvement": "개선 포인트",
+      "checkVideo": "영상에서 확인",
+      "reanalyze": "재분석하기",
+      "remainingCredits": "잔여 크레딧: {remaining}회",
+      "viewPlans": "요금제 보기 →"
+    }
+  },
+  "visionAnalysis": {
+    "restoringBackground": "백그라운드 분석 복원 중...",
+    "resultCorrupted": "분석 결과가 손상되었습니다. 다시 분석해주세요.",
+    "completedCreatingReport": "완료! 리포트 생성 중...",
+    "analysisFailed": "분석에 실패했습니다.",
+    "aiAnalyzingServer": "AI 분석 중... (서버 처리 중)",
+    "verifyingVideo": "영상 무결성 확인 중...",
+    "matchDataFetchFailed": "경기 데이터를 가져오는 데 실패했습니다",
+    "playerNotFound": "지정된 PUUID의 플레이어를 찾을 수 없습니다",
+    "extractingVerificationFrames": "대조용 프레임 추출 중...",
+    "aiVerifying": "AI 대조 실행 중...",
+    "verificationServerError": "검증 서버 오류: {error}",
+    "unknownError": "알 수 없음",
+    "videoMismatch": "선택한 경기와 다른 영상이 선택되었습니다.",
+    "championMismatch": "조작 중인 챔피언이 경기 데이터와 일치하지 않습니다. 올바른 경기 영상을 선택해주세요.",
+    "teamMismatch": "팀 구성이 경기 데이터와 일치하지 않습니다. 다른 경기 영상이 선택되었을 수 있습니다.",
+    "preparing": "준비 중...",
+    "verifyingVideoMatch": "영상과 경기 데이터 대조 중...",
+    "cannotSkipVerification": "경기 정보를 가져오는 데 실패하여 검증을 건너뛸 수 없습니다.",
+    "extractingFromPosition": "지정 위치({startTime}s)에서 프레임 추출 중...",
+    "extractingFromVideo": "영상에서 프레임 추출 중...",
+    "frameExtractionFailed": "프레임 추출에 실패했습니다 (0개)",
+    "aiAnalyzingFrames": "AI 분석 중... ({frameCount}개 이미지 전송)",
+    "jobStartFailed": "분석 작업 시작에 실패했습니다",
+    "unexpectedError": "예기치 않은 오류가 발생했습니다",
+    "error": "오류"
   }
 }

@@ -6,6 +6,7 @@ import { AuthProvider } from "./Providers/AuthProvider";
 import { VisionAnalysisProvider } from "./Providers/VisionAnalysisProvider";
 import { CoachUIProvider } from "./Providers/CoachUIProvider";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import SWRProvider from "./Providers/SWRProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -51,15 +52,17 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${outfit.variable} antialiased`}
       >
         <LanguageProvider>
-          <AuthProvider>
-            <SummonerProvider>
-              <VisionAnalysisProvider>
-                <CoachUIProvider>
-                  {children}
-                </CoachUIProvider>
-              </VisionAnalysisProvider>
-            </SummonerProvider>
-          </AuthProvider>
+          <SWRProvider>
+            <AuthProvider>
+              <SummonerProvider>
+                <VisionAnalysisProvider>
+                  <CoachUIProvider>
+                    {children}
+                  </CoachUIProvider>
+                </VisionAnalysisProvider>
+              </SummonerProvider>
+            </AuthProvider>
+          </SWRProvider>
         </LanguageProvider>
       </body>
     </html>

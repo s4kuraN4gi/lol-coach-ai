@@ -32,6 +32,22 @@ export type UniqueStats = {
     clutch: { closeWr: number, stompWr: number, closeGames: number, stompGames: number };
 }
 
+export type QuickStats = {
+    csPerMin: number;
+    visionPerMin: number;
+    kda: number;
+    killParticipation: number;
+    avgDamage: number;
+    gamesAnalyzed: number;
+}
+
+export type RoleStats = {
+    TOP: number;
+    JUNGLE: number;
+    MIDDLE: number;
+    BOTTOM: number;
+    UTILITY: number;
+}
 
 export type DashboardStatsDTO = {
     ranks: LeagueEntryDTO[];
@@ -70,9 +86,14 @@ export async function recordRankHistory(puuid: string, ranks: LeagueEntryDTO[]):
     const supabase = await createClient();
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
+    // Check auth context for debugging
+    const { data: { user } } = await supabase.auth.getUser();
+    console.log(`[RankHistory] Auth context - User ID: ${user?.id || 'NOT AUTHENTICATED'}`);
+    console.log(`[RankHistory] Recording for PUUID: ${puuid.slice(0, 8)}... Date: ${today}`);
+
     for (const rank of ranks) {
         try {
-            const { error } = await supabase.from('rank_history').upsert({
+            const payload = {
                 puuid,
                 queue_type: rank.queueType,
                 tier: rank.tier,
@@ -81,17 +102,21 @@ export async function recordRankHistory(puuid: string, ranks: LeagueEntryDTO[]):
                 wins: rank.wins,
                 losses: rank.losses,
                 recorded_at: today
-            }, {
+            };
+
+            console.log(`[RankHistory] Upserting:`, JSON.stringify(payload));
+
+            const { data, error } = await supabase.from('rank_history').upsert(payload, {
                 onConflict: 'puuid,queue_type,recorded_at'
-            });
+            }).select();
 
             if (error) {
-                console.error(`[RankHistory] Failed to record ${rank.queueType}:`, error.message);
+                console.error(`[RankHistory] UPSERT FAILED for ${rank.queueType}:`, error.message, error.code, error.details);
             } else {
-                console.log(`[RankHistory] Recorded ${rank.queueType}: ${rank.tier} ${rank.rank} ${rank.leaguePoints}LP`);
+                console.log(`[RankHistory] SUCCESS - Recorded ${rank.queueType}: ${rank.tier} ${rank.rank} ${rank.leaguePoints}LP`, data);
             }
         } catch (e: any) {
-            console.error(`[RankHistory] Error:`, e.message);
+            console.error(`[RankHistory] Exception:`, e.message, e.stack);
         }
     }
 }
@@ -219,6 +244,8 @@ export type MatchStatsDTO = {
     championStats: ChampionStat[];
     radarStats: RadarStats | null;
     uniqueStats: UniqueStats | null;
+    quickStats: QuickStats | null;
+    roleStats: RoleStats | null;
     debugLog: string[];
 }
 
@@ -254,7 +281,9 @@ export async function getStatsFromCache(puuid: string): Promise<MatchStatsDTO & 
         recentMatches: [],
         championStats: [],
         radarStats: null,
-        uniqueStats: null
+        uniqueStats: null,
+        quickStats: null,
+        roleStats: null
     };
 
     if (account) {
@@ -339,6 +368,8 @@ export async function performFullUpdate(puuid: string) {
     let oldIds: string[] = [];
     let targetSummonerId = "";
     let targetAccountId = "";
+    let summonerLevel: number | null = null;
+    let profileIconId: number | null = null;
     
     try {
         const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -381,25 +412,28 @@ export async function performFullUpdate(puuid: string) {
         
         oldIds = (account?.recent_match_ids as string[]) || [];
 
-        // ... (rest of logic) ...
+        // Fetch rank using PUUID directly (newer API, more reliable)
+        try {
+            const { fetchRankByPuuid } = await import('@/app/actions/riot');
+            console.log(`[Action] Fetching Rank by PUUID: ${puuid.slice(0, 8)}...`);
+            ranks = await fetchRankByPuuid(puuid);
+            console.log(`[Action] Rank Result (Raw): ${JSON.stringify(ranks)}`);
+        } catch (rankErr) {
+            console.error(`[Action] Rank Fetch Error (Non-fatal):`, rankErr);
+        }
 
-        if (targetSummonerId) {
-             console.log(`[Trace] 4. Before Rank Fetch - ID: ${targetSummonerId}`);
-             try {
-                // Check if ID is suspicious (e.g. PUUID length)
-                console.log(`[Action] Fetching Rank for ID: ${targetSummonerId} (Length: ${targetSummonerId.length})`);
-                
-                if (targetSummonerId.length > 70) {
-                    console.warn(`[Action] WARNING: Resolved ID is length ${targetSummonerId.length}. This looks like a PUUID, not a SummonerID!`);
-                }
-                
-                ranks = await fetchRank(targetSummonerId);
-                console.log(`[Action] Rank Result (Raw): ${JSON.stringify(ranks)}`);
-             } catch (rankErr) {
-                console.error(`[Action] Rank Fetch Error (Non-fatal):`, rankErr);
-             }
-        } else {
-             console.log(`[Trace] 4. Before Rank Fetch - ID IS EMPTY (Skipping)`);
+        // Fetch summoner data for level and icon update
+        try {
+            const { fetchSummonerByPuuid } = await import('@/app/actions/riot');
+            console.log(`[Action] Fetching Summoner Data for level/icon update...`);
+            const summonerData = await fetchSummonerByPuuid(puuid);
+            if (summonerData) {
+                summonerLevel = summonerData.summonerLevel ?? null;
+                profileIconId = summonerData.profileIconId ?? null;
+                console.log(`[Action] Summoner Data: Level=${summonerLevel}, Icon=${profileIconId}`);
+            }
+        } catch (summonerErr) {
+            console.error(`[Action] Summoner Fetch Error (Non-fatal):`, summonerErr);
         }
     } catch (dbReadErr) {
         console.error(`[Action] DB Read Error:`, dbReadErr);
@@ -408,22 +442,32 @@ export async function performFullUpdate(puuid: string) {
     // Merge new IDs ...
     const mergedIds = Array.from(new Set([...matchIds, ...oldIds])).slice(0, 100);
 
-    // Record rank history for graphing (non-blocking, fire and forget)
+    // Record rank history for graphing (await to ensure it's saved before returning)
     if (ranks.length > 0) {
-        recordRankHistory(puuid, ranks).catch(e => {
+        try {
+            await recordRankHistory(puuid, ranks);
+        } catch (e) {
             console.error('[Action] recordRankHistory failed:', e);
-        });
+        }
     }
 
     // 3. Save to DB
-    const updatePayload: any = { 
+    const updatePayload: any = {
         rank_info: ranks,
         recent_match_ids: mergedIds,
         last_updated_at: new Date().toISOString()
     };
-    
+
     if (targetSummonerId) {
         updatePayload.summoner_id = targetSummonerId;
+    }
+
+    if (summonerLevel !== null) {
+        updatePayload.summoner_level = summonerLevel;
+    }
+
+    if (profileIconId !== null) {
+        updatePayload.profile_icon_id = profileIconId;
     }
     
     console.log(`[Action] DB Update Payload: ${JSON.stringify(updatePayload, null, 2)}`);
@@ -477,14 +521,287 @@ export async function fetchMatchStats(puuid: string, offlineOnly: boolean = fals
         const { matches, logs: serviceLogs } = await fetchAndCacheMatches(puuid, 50);
         serviceLogs.forEach(l => log(l));
         
-        const baseResult: MatchStatsDTO & BasicStatsDTO = { ranks: [], debugLog: logs, recentMatches: [], championStats: [], radarStats: null, uniqueStats: null };
+        const baseResult: MatchStatsDTO & BasicStatsDTO = { ranks: [], debugLog: logs, recentMatches: [], championStats: [], radarStats: null, uniqueStats: null, quickStats: null, roleStats: null };
         const result = processMatchStats(matches.map(m=>m.info), puuid, baseResult);
         const { ranks, ...finalMatchStats } = result;
         return finalMatchStats;
     } catch (e: any) {
         console.error("fetchMatchStats error", e);
-        return { recentMatches: [], championStats: [], radarStats: null, uniqueStats: null, debugLog: [e.message] };
+        return { recentMatches: [], championStats: [], radarStats: null, uniqueStats: null, quickStats: null, roleStats: null, debugLog: [e.message] };
     }
+}
+
+// === PROFILE ENHANCED DATA ===
+
+export type MonthlyStats = {
+    month: string; // "2026-02" format
+    rankedGames: number;
+    wins: number;
+    losses: number;
+    winRate: number;
+}
+
+export type CoachFeedbackSummary = {
+    macroAnalyses: number;
+    microAnalyses: number;
+    macroIssues: { concept: string; count: number }[];
+    microIssues: { category: string; count: number }[];
+}
+
+export type ProfileEnhancedData = {
+    monthlyStats: MonthlyStats | null;
+    coachFeedback: CoachFeedbackSummary | null;
+}
+
+/**
+ * Fetch enhanced profile data:
+ * 1. Monthly ranked match statistics
+ * 2. Aggregated AI coach feedback
+ */
+export async function fetchProfileEnhancedData(puuid: string): Promise<ProfileEnhancedData> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { monthlyStats: null, coachFeedback: null };
+    }
+
+    // Calculate current month range
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+    // 1. Fetch monthly ranked stats from cached matches
+    let monthlyStats: MonthlyStats | null = null;
+    try {
+        const { data: account } = await supabase
+            .from('summoner_accounts')
+            .select('recent_match_ids')
+            .eq('puuid', puuid)
+            .single();
+
+        if (account?.recent_match_ids && Array.isArray(account.recent_match_ids)) {
+            const matchIds = account.recent_match_ids as string[];
+
+            if (matchIds.length > 0) {
+                // Fetch match cache data
+                const { data: cachedMatches } = await supabase
+                    .from('match_cache')
+                    .select('match_id, data')
+                    .in('match_id', matchIds);
+
+                if (cachedMatches && cachedMatches.length > 0) {
+                    let rankedGames = 0;
+                    let wins = 0;
+
+                    for (const cache of cachedMatches) {
+                        const matchData = cache.data as any;
+                        const info = matchData?.info;
+                        if (!info) continue;
+
+                        // Check if ranked and within current month
+                        const gameTime = info.gameCreation;
+                        if (!gameTime) continue;
+
+                        const gameDate = new Date(gameTime);
+                        const isThisMonth = gameDate >= monthStart && gameDate <= monthEnd;
+                        const isRanked = info.queueId === 420 || info.queueId === 440; // Solo/Duo or Flex
+
+                        if (isThisMonth && isRanked) {
+                            const participant = info.participants?.find((p: any) => p.puuid === puuid);
+                            if (participant) {
+                                rankedGames++;
+                                if (participant.win) wins++;
+                            }
+                        }
+                    }
+
+                    if (rankedGames > 0) {
+                        monthlyStats = {
+                            month: currentMonth,
+                            rankedGames,
+                            wins,
+                            losses: rankedGames - wins,
+                            winRate: Math.round((wins / rankedGames) * 100)
+                        };
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        console.error('[ProfileEnhanced] Monthly stats error:', e);
+    }
+
+    // 2. Fetch AI coach feedback from video_analyses
+    let coachFeedback: CoachFeedbackSummary | null = null;
+    try {
+        const { data: analyses } = await supabase
+            .from('video_analyses')
+            .select('result, inputs, created_at')
+            .eq('user_id', user.id)
+            .eq('status', 'completed')
+            .order('created_at', { ascending: false })
+            .limit(30); // Last 30 analyses
+
+        if (analyses && analyses.length > 0) {
+            const macroConcepts: Record<string, number> = {};
+            const microCategories: Record<string, number> = {};
+            let macroCount = 0;
+            let microCount = 0;
+
+            for (const analysis of analyses) {
+                const result = analysis.result as any;
+                const inputs = analysis.inputs as any;
+                if (!result) continue;
+
+                const mode = inputs?.mode || 'MACRO'; // Default to MACRO for legacy data
+
+                if (mode === 'MACRO') {
+                    macroCount++;
+                    // Extract macro concepts from segments
+                    if (result.segments && Array.isArray(result.segments)) {
+                        for (const segment of result.segments) {
+                            const concept = segment.winningPattern?.macroConceptUsed;
+                            if (concept) {
+                                macroConcepts[concept] = (macroConcepts[concept] || 0) + 1;
+                            }
+                        }
+                    }
+                } else if (mode === 'MICRO') {
+                    microCount++;
+                    // Extract micro categories from enhanced.improvements
+                    if (result.enhanced?.improvements && Array.isArray(result.enhanced.improvements)) {
+                        for (const improvement of result.enhanced.improvements) {
+                            const category = improvement.category;
+                            if (category) {
+                                microCategories[category] = (microCategories[category] || 0) + 1;
+                            }
+                        }
+                    }
+                    // Also check legacy mistakes array
+                    if (result.mistakes && Array.isArray(result.mistakes)) {
+                        for (const mistake of result.mistakes) {
+                            // Use title as category for legacy data
+                            const title = mistake.title;
+                            if (title) {
+                                microCategories[title] = (microCategories[title] || 0) + 1;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Sort and get top issues
+            const macroIssues = Object.entries(macroConcepts)
+                .map(([concept, count]) => ({ concept, count }))
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 3);
+
+            const microIssues = Object.entries(microCategories)
+                .map(([category, count]) => ({ category, count }))
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 3);
+
+            // Only create feedback if there's at least some data
+            if (macroCount > 0 || microCount > 0) {
+                coachFeedback = {
+                    macroAnalyses: macroCount,
+                    microAnalyses: microCount,
+                    macroIssues,
+                    microIssues
+                };
+            }
+        }
+    } catch (e) {
+        console.error('[ProfileEnhanced] Coach feedback error:', e);
+    }
+
+    return { monthlyStats, coachFeedback };
+}
+
+// === RANK GOAL TYPES & FUNCTIONS ===
+
+import { TIER_ORDER, RANK_ORDER } from '@/lib/rankUtils';
+
+export type RankGoal = {
+    tier: string;
+    rank: string;
+    setAt: string; // ISO timestamp
+}
+
+/**
+ * Get rank goal for a summoner
+ */
+export async function getRankGoal(puuid: string): Promise<RankGoal | null> {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+        .from('summoner_accounts')
+        .select('rank_goal')
+        .eq('puuid', puuid)
+        .single();
+
+    if (error || !data?.rank_goal) {
+        return null;
+    }
+
+    return data.rank_goal as RankGoal;
+}
+
+/**
+ * Set rank goal for a summoner
+ */
+export async function setRankGoal(puuid: string, tier: string, rank: string): Promise<{ success: boolean; error?: string }> {
+    const supabase = await createClient();
+
+    // Validate tier and rank
+    if (!TIER_ORDER.includes(tier.toUpperCase())) {
+        return { success: false, error: 'Invalid tier' };
+    }
+
+    // Master+ don't have rank divisions
+    const tierIndex = TIER_ORDER.indexOf(tier.toUpperCase());
+    if (tierIndex < 7 && !RANK_ORDER.includes(rank.toUpperCase())) {
+        return { success: false, error: 'Invalid rank' };
+    }
+
+    const goal: RankGoal = {
+        tier: tier.toUpperCase(),
+        rank: tierIndex >= 7 ? 'I' : rank.toUpperCase(),
+        setAt: new Date().toISOString()
+    };
+
+    const { error } = await supabase
+        .from('summoner_accounts')
+        .update({ rank_goal: goal })
+        .eq('puuid', puuid);
+
+    if (error) {
+        console.error('[RankGoal] Set error:', error);
+        return { success: false, error: error.message };
+    }
+
+    return { success: true };
+}
+
+/**
+ * Clear rank goal for a summoner
+ */
+export async function clearRankGoal(puuid: string): Promise<{ success: boolean }> {
+    const supabase = await createClient();
+
+    const { error } = await supabase
+        .from('summoner_accounts')
+        .update({ rank_goal: null })
+        .eq('puuid', puuid);
+
+    if (error) {
+        console.error('[RankGoal] Clear error:', error);
+        return { success: false };
+    }
+
+    return { success: true };
 }
 
 // Internal Helper to process matches into stats
@@ -494,12 +811,16 @@ function processMatchStats(matches: any[], puuid: string, initialResult: MatchSt
     
     let totalK = 0, totalD = 0, totalA = 0;
     let totalDmgObj = 0, totalVision = 0, totalCS = 0, totalDuration = 0, gameCount = 0;
-    
+    let totalTeamKills = 0, totalDamage = 0; // For QuickStats
+
     // Unique Stats Trackers
     const winCondTracker = { firstBlood: { wins: 0, total: 0 }, firstTower: { wins: 0, total: 0 }, soloKill: { wins: 0, total: 0 } };
     const opponentMap = new Map<string, { wins: number, total: number }>();
     let soloDeathCount = 0, totalCsAt10 = 0, totalMaxCsAdv = 0;
     let closeWins = 0, closeTotal = 0, stompWins = 0, stompTotal = 0;
+
+    // Role Stats Tracker
+    const roleCounter: RoleStats = { TOP: 0, JUNGLE: 0, MIDDLE: 0, BOTTOM: 0, UTILITY: 0 };
 
     // Filter & Sort
     const validMatches = matches.filter(m => m.gameMode === 'CLASSIC');
@@ -511,6 +832,12 @@ function processMatchStats(matches: any[], puuid: string, initialResult: MatchSt
 
         // Recent Matches
         result.recentMatches.push({ win: p.win, timestamp: info.gameCreation });
+
+        // Role Stats
+        const role = p.teamPosition as keyof RoleStats;
+        if (role && roleCounter[role] !== undefined) {
+            roleCounter[role]++;
+        }
 
         // Champion Stats
         const champ = p.championName;
@@ -529,6 +856,13 @@ function processMatchStats(matches: any[], puuid: string, initialResult: MatchSt
         totalDmgObj += p.damageDealtToObjectives || 0;
         totalVision += p.visionScore || 0;
         totalCS += (p.totalMinionsKilled || 0) + (p.neutralMinionsKilled || 0);
+        totalDamage += p.totalDamageDealtToChampions || 0;
+
+        // Team kills for kill participation
+        const teamKills = info.participants
+            .filter((pt: any) => pt.teamId === p.teamId)
+            .reduce((acc: number, pt: any) => acc + (pt.kills || 0), 0);
+        totalTeamKills += teamKills;
 
         // Unique
         if (p.firstBloodKill) { winCondTracker.firstBlood.total++; if (p.win) winCondTracker.firstBlood.wins++; }
@@ -594,6 +928,19 @@ function processMatchStats(matches: any[], puuid: string, initialResult: MatchSt
             survival: { csAdvantage: Math.round(totalMaxCsAdv / gameCount), csAt10: parseFloat((totalCsAt10/gameCount).toFixed(1)) },
             clutch: { closeWr: closeTotal ? Math.round((closeWins/closeTotal)*100) : 0, stompWr: stompTotal ? Math.round((stompWins/stompTotal)*100) : 0, closeGames: closeTotal, stompGames: stompTotal }
         };
+
+        // QuickStats
+        result.quickStats = {
+            csPerMin: parseFloat((totalCS / totalDuration).toFixed(1)),
+            visionPerMin: parseFloat((totalVision / totalDuration).toFixed(2)),
+            kda: parseFloat(((totalK + totalA) / Math.max(1, totalD)).toFixed(2)),
+            killParticipation: totalTeamKills > 0 ? Math.round(((totalK + totalA) / totalTeamKills) * 100) : 0,
+            avgDamage: Math.round(totalDamage / gameCount),
+            gamesAnalyzed: gameCount
+        };
+
+        // RoleStats
+        result.roleStats = roleCounter;
     }
 
     return result;

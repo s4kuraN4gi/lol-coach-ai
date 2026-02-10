@@ -101,9 +101,16 @@ export class VideoProcessor {
                 // Draw
                 if (this.ctx) {
                     this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
-                    
-                    // Compress to High Quality JPEG (0.95) - Better than 0.7, smaller than PNG
-                    const dataUrl = this.canvas.toDataURL("image/jpeg", 0.95);
+
+                    // Use WebP for better compression at same quality
+                    // WebP is ~25-35% smaller than JPEG at equivalent quality
+                    // Falls back to JPEG if WebP not supported
+                    let dataUrl = this.canvas.toDataURL("image/webp", 0.92);
+
+                    // Fallback to JPEG if WebP not supported (dataUrl will be PNG in that case)
+                    if (!dataUrl.startsWith("data:image/webp")) {
+                        dataUrl = this.canvas.toDataURL("image/jpeg", 0.95);
+                    }
                     
                     frames.push({
                         timestamp: currentTime,

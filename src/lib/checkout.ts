@@ -1,17 +1,18 @@
-export async function triggerStripeCheckout() {
+export async function triggerStripeCheckout(tier: 'premium' | 'extra' = 'premium') {
     try {
+        const priceId = tier === 'extra'
+            ? process.env.NEXT_PUBLIC_STRIPE_EXTRA_PRICE_ID
+            : process.env.NEXT_PUBLIC_STRIPE_PRICE_ID;
+
+        console.log(`[CheckoutClient] tier=${tier}, priceId=${priceId}, envExtra=${process.env.NEXT_PUBLIC_STRIPE_EXTRA_PRICE_ID}, envPremium=${process.env.NEXT_PUBLIC_STRIPE_PRICE_ID}`);
+
         const response = await fetch('/api/checkout', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                // Price ID is handled server-side via env var, but we can pass it if we have multiple plans.
-                // For now, let's keep it simple as the API route reads from ENV by default if not passed,
-                // OR we pass it explicitly if we want to be safe.
-                // The current API route implementation *requires* priceId in body or logic to read it.
-                // Let's pass the env var here to match previous implementation.
-                priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID,
+                priceId,
             }),
         });
 

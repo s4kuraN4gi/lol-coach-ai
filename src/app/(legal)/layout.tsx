@@ -4,7 +4,7 @@ export default function LegalLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-300 font-sans selection:bg-blue-500 selection:text-white">
+    <div className="min-h-screen bg-[#0a0a0f] text-slate-300 font-sans selection:bg-cyan-500 selection:text-black">
       <div className="container mx-auto px-6 py-12 max-w-4xl">
          <header className="mb-12 border-b border-slate-800 pb-6">
              <a href="/" className="text-2xl font-black text-foreground hover:opacity-80 transition">

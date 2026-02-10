@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoL Coach AI - 収益シミュレーション</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #10b981;
+            font-size: 2rem;
+        }
+        .section {
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+        .section h2 {
+            color: #10b981;
+            margin-bottom: 16px;
+            font-size: 1.25rem;
+        }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .card {
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(100, 116, 139, 0.3);
+        }
+        .card h3 { color: #94a3b8; font-size: 0.875rem; margin-bottom: 8px; }
+        .card .value { font-size: 2rem; font-weight: bold; color: #fff; }
+        .card .unit { font-size: 0.875rem; color: #64748b; }
+        .premium .value { color: #f59e0b; }
+        .profit .value { color: #10b981; }
+        .cost .value { color: #ef4444; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(100, 116, 139, 0.3);
+        }
+        th { color: #10b981; font-weight: 600; }
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-top: 20px;
+        }
+        .assumptions {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+        .assumptions h4 { color: #10b981; margin-bottom: 8px; }
+        .assumptions ul { padding-left: 20px; }
+        .assumptions li { margin-bottom: 4px; color: #94a3b8; }
+        .highlight { color: #10b981; font-weight: bold; }
+        .negative { color: #ef4444; }
+        .positive { color: #10b981; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>LoL Coach AI - 収益シミュレーション</h1>
+
+        <!-- プラン概要 -->
+        <div class="section">
+            <h2>プラン設計</h2>
+            <div class="grid">
+                <div class="card">
+                    <h3>無料プラン</h3>
+                    <div class="value">0<span class="unit">円/月</span></div>
+                    <ul style="margin-top: 12px; padding-left: 20px; color: #94a3b8;">
+                        <li>セグメント: 2個</li>
+                        <li>週間分析: 3回まで</li>
+                        <li>広告: あり</li>
+                        <li>APIコスト: 約1.4円/回</li>
+                    </ul>
+                </div>
+                <div class="card premium">
+                    <h3>プレミアムプラン</h3>
+                    <div class="value">980<span class="unit">円/月</span></div>
+                    <ul style="margin-top: 12px; padding-left: 20px; color: #94a3b8;">
+                        <li>セグメント: 5個（フル）</li>
+                        <li>週間分析: 20回まで</li>
+                        <li>広告: なし</li>
+                        <li>高速並列処理</li>
+                        <li>APIコスト: 約3.2円/回</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 月間シミュレーション -->
+        <div class="section">
+            <h2>月間収益シミュレーション</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>シナリオ</th>
+                        <th>MAU</th>
+                        <th>プレミアム率</th>
+                        <th>プレミアム収益</th>
+                        <th>広告収益</th>
+                        <th>APIコスト</th>
+                        <th>純利益</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>初期</td>
+                        <td>500人</td>
+                        <td>3%</td>
+                        <td>14,700円</td>
+                        <td>5,000円</td>
+                        <td class="negative">-4,200円</td>
+                        <td class="positive">+15,500円</td>
+                    </tr>
+                    <tr>
+                        <td>成長期</td>
+                        <td>2,000人</td>
+                        <td>5%</td>
+                        <td>98,000円</td>
+                        <td>20,000円</td>
+                        <td class="negative">-16,800円</td>
+                        <td class="positive">+101,200円</td>
+                    </tr>
+                    <tr>
+                        <td>安定期</td>
+                        <td>5,000人</td>
+                        <td>5%</td>
+                        <td>245,000円</td>
+                        <td>50,000円</td>
+                        <td class="negative">-42,000円</td>
+                        <td class="positive">+253,000円</td>
+                    </tr>
+                    <tr>
+                        <td>拡大期</td>
+                        <td>10,000人</td>
+                        <td>7%</td>
+                        <td>686,000円</td>
+                        <td>100,000円</td>
+                        <td class="negative">-84,000円</td>
+                        <td class="positive">+702,000円</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="assumptions">
+                <h4>計算の前提条件</h4>
+                <ul>
+                    <li>プレミアム価格: 980円/月</li>
+                    <li>広告収益: 無料ユーザー1人あたり約10円/月（ページビュー・バナー広告）</li>
+                    <li>無料ユーザー分析回数: 平均 月8回（週2回）</li>
+                    <li>プレミアムユーザー分析回数: 平均 月40回（週10回）</li>
+                    <li>APIコスト: 無料1.4円/回、プレミアム3.2円/回</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 収益グラフ -->
+        <div class="section">
+            <h2>MAU別 月間収益予測</h2>
+            <div class="chart-container">
+                <canvas id="revenueChart"></canvas>
+            </div>
+        </div>
+
+        <!-- コスト構造グラフ -->
+        <div class="section">
+            <h2>収益構造の内訳（MAU 5,000人の場合）</h2>
+            <div class="chart-container" style="height: 300px;">
+                <canvas id="breakdownChart"></canvas>
+            </div>
+        </div>
+
+        <!-- 損益分岐点 -->
+        <div class="section">
+            <h2>損益分岐点分析</h2>
+            <div class="grid">
+                <div class="card profit">
+                    <h3>損益分岐MAU</h3>
+                    <div class="value">約50<span class="unit">人</span></div>
+                    <p style="color: #94a3b8; margin-top: 8px;">プレミアム率3%、広告収益含む</p>
+                </div>
+                <div class="card">
+                    <h3>APIコスト回収に必要なプレミアム率</h3>
+                    <div class="value">約1.5<span class="unit">%</span></div>
+                    <p style="color: #94a3b8; margin-top: 8px;">広告収益なしの場合</p>
+                </div>
+            </div>
+            <div class="chart-container" style="margin-top: 20px;">
+                <canvas id="breakEvenChart"></canvas>
+            </div>
+        </div>
+
+        <!-- 結論 -->
+        <div class="section">
+            <h2>結論</h2>
+            <div class="grid">
+                <div class="card profit">
+                    <h3>ビジネスモデルの評価</h3>
+                    <div class="value" style="font-size: 1.5rem;">健全</div>
+                    <ul style="margin-top: 12px; padding-left: 20px; color: #94a3b8;">
+                        <li>APIコストは収益の約15-20%と低い</li>
+                        <li>プレミアム率3%でも黒字化可能</li>
+                        <li>広告収益がバッファとして機能</li>
+                        <li>スケールするほど利益率向上</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>推奨アクション</h3>
+                    <ol style="margin-top: 12px; padding-left: 20px; color: #94a3b8;">
+                        <li>無料プランのセグメント制限（2個）を実装</li>
+                        <li>週間分析回数制限を実装</li>
+                        <li>バナー広告を複数箇所に配置</li>
+                        <li>プレミアム並列処理を実装</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // MAU別収益グラフ
+        const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+        new Chart(revenueCtx, {
+            type: 'line',
+            data: {
+                labels: ['500', '1,000', '2,000', '3,000', '5,000', '7,500', '10,000'],
+                datasets: [
+                    {
+                        label: 'プレミアム収益',
+                        data: [14700, 29400, 98000, 147000, 245000, 367500, 686000],
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    },
+                    {
+                        label: '広告収益',
+                        data: [5000, 10000, 20000, 30000, 50000, 75000, 100000],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'APIコスト',
+                        data: [4200, 8400, 16800, 25200, 42000, 63000, 84000],
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    },
+                    {
+                        label: '純利益',
+                        data: [15500, 31000, 101200, 151800, 253000, 379500, 702000],
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                        fill: true,
+                        tension: 0.4,
+                        borderWidth: 3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: '#e0e0e0' } }
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: 'MAU（月間アクティブユーザー）', color: '#94a3b8' },
+                        ticks: { color: '#94a3b8' },
+                        grid: { color: 'rgba(100, 116, 139, 0.2)' }
+                    },
+                    y: {
+                        title: { display: true, text: '金額（円）', color: '#94a3b8' },
+                        ticks: { color: '#94a3b8', callback: v => v.toLocaleString() + '円' },
+                        grid: { color: 'rgba(100, 116, 139, 0.2)' }
+                    }
+                }
+            }
+        });
+
+        // 収益内訳グラフ
+        const breakdownCtx = document.getElementById('breakdownChart').getContext('2d');
+        new Chart(breakdownCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['プレミアム収益', '広告収益', 'APIコスト（控除）'],
+                datasets: [{
+                    data: [245000, 50000, 42000],
+                    backgroundColor: ['#f59e0b', '#3b82f6', '#ef4444'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { color: '#e0e0e0' }
+                    }
+                }
+            }
+        });
+
+        // 損益分岐点グラフ
+        const breakEvenCtx = document.getElementById('breakEvenChart').getContext('2d');
+        new Chart(breakEvenCtx, {
+            type: 'line',
+            data: {
+                labels: ['0', '50', '100', '200', '500', '1000'],
+                datasets: [
+                    {
+                        label: '総収益',
+                        data: [0, 1960, 3920, 7840, 19700, 39400],
+                        borderColor: '#10b981',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'APIコスト',
+                        data: [0, 420, 840, 1680, 4200, 8400],
+                        borderColor: '#ef4444',
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: '#e0e0e0' } },
+                    annotation: {
+                        annotations: {
+                            breakEven: {
+                                type: 'line',
+                                xMin: 0.5,
+                                xMax: 0.5,
+                                borderColor: '#f59e0b',
+                                borderWidth: 2,
+                                borderDash: [5, 5]
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: 'MAU', color: '#94a3b8' },
+                        ticks: { color: '#94a3b8' },
+                        grid: { color: 'rgba(100, 116, 139, 0.2)' }
+                    },
+                    y: {
+                        title: { display: true, text: '金額（円）', color: '#94a3b8' },
+                        ticks: { color: '#94a3b8', callback: v => v.toLocaleString() + '円' },
+                        grid: { color: 'rgba(100, 116, 139, 0.2)' }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

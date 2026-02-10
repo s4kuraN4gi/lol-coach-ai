@@ -2,6 +2,7 @@
 
 import { ChampionStat } from "@/app/actions/stats";
 import Link from "next/link";
+import Image from "next/image";
 import { useTranslation } from "@/contexts/LanguageContext";
 
 export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }) {
@@ -9,7 +10,7 @@ export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }
     
     if (!stats || stats.length === 0) {
         return (
-             <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col items-center justify-center min-h-[200px] text-center">
+             <div className="glass-panel rounded-xl p-4 flex flex-col items-center justify-center min-h-[200px] text-center h-full w-full">
                  <div className="text-slate-500 font-bold mb-2">{t('widgets.championPerformance.noData')}</div>
                  <div className="text-xs text-slate-600">{t('widgets.championPerformance.noDataDesc')}</div>
             </div>
@@ -19,14 +20,15 @@ export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }
     const topChamp = stats[0];
 
     return (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 relative overflow-hidden group">
+        <div className="glass-panel rounded-xl p-6 relative overflow-hidden group h-full w-full">
              {/* Background Splash for Top Champ */}
              <div className="absolute inset-0 opacity-10 grayscale group-hover:grayscale-0 transition duration-700">
-                  <img 
-                    src={`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${topChamp.name}_0.jpg`} 
-                    alt="Background" 
-                    className="w-full h-full object-cover"
-                    onError={(e) => e.currentTarget.style.display = 'none'}
+                  <Image
+                    src={`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${topChamp.name}_0.jpg`}
+                    alt="Background"
+                    fill
+                    className="object-cover"
+                    unoptimized
                  />
                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/80 to-transparent"></div>
              </div>
@@ -40,12 +42,13 @@ export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }
                  </div>
 
                  {/* Top 1 Highlight */}
-                 {/* Top 1 Highlight */}
-                 <Link href={`/dashboard/champion/${encodeURIComponent(topChamp.name)}`} className="flex items-center gap-4 mb-6 hover:bg-white/5 p-2 -ml-2 rounded-lg transition overflow-visible group/top cursor-pointer">
+                 <Link href={`/dashboard/champion/${encodeURIComponent(topChamp.name)}`} className="flex items-center gap-4 mb-4 hover:bg-white/5 p-2 -ml-2 rounded-lg transition overflow-visible group/top cursor-pointer">
                      <div className="w-16 h-16 rounded-lg border-2 border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.3)] overflow-hidden relative">
-                         <img 
-                            src={`https://ddragon.leagueoflegends.com/cdn/14.23.1/img/champion/${topChamp.name}.png`} 
+                         <Image
+                            src={`https://ddragon.leagueoflegends.com/cdn/14.23.1/img/champion/${topChamp.name}.png`}
                             alt={topChamp.name}
+                            width={64}
+                            height={64}
                             className="w-full h-full object-cover"
                          />
                          <div className="absolute bottom-0 right-0 bg-yellow-500 text-black font-black text-[10px] px-1">#1</div>
@@ -68,15 +71,17 @@ export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }
                      </div>
                  </Link>
                  
-                 {/* List 2 & 3 */}
-                 <div className="space-y-3">
-                     {stats.slice(1, 3).map((champ, i) => (
+                 {/* List 2-5 */}
+                 <div className="space-y-2">
+                     {stats.slice(1, 5).map((champ, i) => (
                          <Link key={champ.name} href={`/dashboard/champion/${encodeURIComponent(champ.name)}`} className="flex items-center justify-between p-2 rounded bg-slate-800/50 border border-slate-700/50 hover:bg-slate-800 hover:border-blue-500/30 transition group/list cursor-pointer">
                              <div className="flex items-center gap-3">
                                  <div className="w-8 h-8 rounded border border-slate-600 overflow-hidden">
-                                    <img 
-                                        src={`https://ddragon.leagueoflegends.com/cdn/14.23.1/img/champion/${champ.name}.png`} 
+                                    <Image
+                                        src={`https://ddragon.leagueoflegends.com/cdn/14.23.1/img/champion/${champ.name}.png`}
                                         alt={champ.name}
+                                        width={32}
+                                        height={32}
                                         className="w-full h-full object-cover"
                                     />
                                  </div>

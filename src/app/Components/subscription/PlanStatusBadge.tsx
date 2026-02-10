@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useState, useTransition, useEffect } from "react";
-import { getAnalysisStatus } from "@/app/actions/analysis";
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { type AnalysisStatus } from "@/app/actions/constants";
-import { triggerStripeCheckout } from "@/lib/checkout";
 import { useTranslation } from "@/contexts/LanguageContext";
 
 type Props = {
@@ -13,7 +12,6 @@ type Props = {
 
 export default function PlanStatusBadge({ initialStatus, onStatusUpdate }: Props) {
     const [status, setStatus] = useState<AnalysisStatus | null>(initialStatus);
-    const [isPending, startTransition] = useTransition();
     const { t } = useTranslation();
 
     useEffect(() => {
@@ -21,13 +19,7 @@ export default function PlanStatusBadge({ initialStatus, onStatusUpdate }: Props
     }, [initialStatus]);
 
     const isPremium = status?.is_premium;
-    const credits = status?.analysis_credits ?? 0;
-
-    const handleUpgrade = async () => {
-        startTransition(async () => {
-          await triggerStripeCheckout();
-        });
-    };
+    const isExtra = status?.subscription_tier === 'extra';
 
     if (!status) {
         return (
@@ -40,40 +32,32 @@ export default function PlanStatusBadge({ initialStatus, onStatusUpdate }: Props
         );
     }
 
+    const badgeText = isExtra
+        ? t('premium.statusBadge.extra', 'EXTRA')
+        : isPremium
+            ? t('premium.statusBadge.premium')
+            : t('premium.statusBadge.freeAgent');
+
+    const badgeClass = isExtra
+        ? "text-violet-400 drop-shadow-[0_0_5px_rgba(167,139,250,0.5)]"
+        : isPremium
+            ? "text-amber-400 drop-shadow-[0_0_5px_rgba(251,191,36,0.5)]"
+            : "text-slate-200";
+
     return (
         <div className="glass-panel px-4 py-2 rounded-lg flex items-center gap-4 border border-slate-700/50 bg-slate-900/50">
             <div>
               <span className="text-xs text-slate-400 block font-bold">{t('premium.statusBadge.plan')}</span>
-              <span
-                className={`font-black tracking-wide ${
-                  isPremium ? "text-amber-400 drop-shadow-[0_0_5px_rgba(251,191,36,0.5)]" : "text-slate-200"
-                }`}
-              >
-                {isPremium ? t('premium.statusBadge.premium') : t('premium.statusBadge.freeAgent')}
+              <span className={`font-black tracking-wide ${badgeClass}`}>
+                {badgeText}
               </span>
             </div>
-            {!isPremium && (
-              <div className="border-l border-slate-700 pl-4">
-                <span className="text-xs text-slate-400 block font-bold">{t('premium.statusBadge.credits')}</span>
-                <span
-                  className={`font-black ${
-                    credits === 0 ? "text-red-500" : "text-blue-400"
-                  }`}
-                >
-                  {credits} <span className="text-xs text-slate-500">{t('premium.statusBadge.remaining')}</span>
-                </span>
-              </div>
-            )}
-            {!isPremium && (
-              <button
-                onClick={handleUpgrade}
-                disabled={isPending}
-                className="ml-4 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-white font-black px-6 py-2 rounded-full hover:scale-105 transition-all shadow-[0_0_20px_rgba(245,158,11,0.5)] border border-amber-300/50 flex items-center gap-2 group disabled:opacity-50 disabled:grayscale"
-              >
-                <span className="text-lg group-hover:rotate-12 transition-transform">👑</span>
-                {isPending ? t('premium.statusBadge.upgrading') : t('premium.statusBadge.upgradeToPremium')}
-              </button>
-            )}
+            <Link
+              href="/pricing"
+              className="ml-4 text-sm text-slate-400 hover:text-white transition"
+            >
+              {t('premium.statusBadge.viewPlans', '料金プラン')}
+            </Link>
         </div>
     );
 }

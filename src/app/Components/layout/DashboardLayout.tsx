@@ -40,12 +40,13 @@ export default function DashboardLayout({children}: DashboardLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen flex bg-slate-950 text-slate-200 selection:bg-blue-500/30 selection:text-blue-200">
+    <div className="min-h-screen flex bg-[#0a0a0f] text-slate-200 selection:bg-cyan-500/30 selection:text-cyan-200">
       {/* 左ナビゲーション */}
       <SidebarNav />
         <main className="flex-1 flex flex-col overflow-y-auto custom-scrollbar relative">
              {/* Global Background Glow */}
-             <div className="fixed top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/10 via-slate-950 to-slate-950 pointer-events-none -z-10"></div>
+             <div className="fixed top-[5%] right-[5%] w-[400px] h-[400px] bg-cyan-500/5 rounded-full blur-[150px] pointer-events-none -z-10" />
+             <div className="fixed bottom-[10%] left-[30%] w-[300px] h-[300px] bg-purple-500/5 rounded-full blur-[120px] pointer-events-none -z-10" />
              
              {/* Top Header with Language Switcher */}
              <header className="flex justify-end items-center px-8 py-4 border-b border-slate-800/50">

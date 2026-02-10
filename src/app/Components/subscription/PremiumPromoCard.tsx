@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useTransition, useEffect } from "react";
+import React, { useState, useTransition, useEffect, useRef } from "react";
 import { downgradeToFree, getAnalysisStatus, syncSubscriptionStatus } from "@/app/actions/analysis";
 import { type AnalysisStatus } from "@/app/actions/constants";
 import { triggerStripeCheckout, triggerStripePortal } from "@/lib/checkout";
@@ -16,28 +16,31 @@ export default function PremiumPromoCard({ initialStatus, onStatusUpdate }: Prop
     const [isPending, startTransition] = useTransition();
     const [isLoading, setIsLoading] = useState(false); // Local loading state for checkout redirect
     const { t } = useTranslation();
-
+    const hasSynced = useRef(false);
 
     // Sync state with prop updates (e.g. initial fetch from parent)
     useEffect(() => {
         setStatus(initialStatus);
-        
-        // Auto-fix out of sync data (Frontend-initiated consistency check)
-        if (initialStatus?.is_premium) {
-            syncSubscriptionStatus().then((res: any) => {
-                 if(res?.success) {
-                     console.log("Subscription Synced: AutoRenew =", res.AutoRenew);
-                     setStatus((prev: AnalysisStatus | null) => {
-                         if (!prev) return null;
-                         console.log("Setting Status AutoRenew to:", res.AutoRenew);
-                         return { ...prev, auto_renew: res.AutoRenew };
-                     });
-                 } else {
-                     console.error("Sync Failed:", res?.error);
-                 }
-            });
-        }
     }, [initialStatus]);
+
+    // Auto-fix out of sync data (Frontend-initiated consistency check) - runs only once
+    useEffect(() => {
+        if (hasSynced.current) return;
+        if (!initialStatus?.is_premium) return;
+
+        hasSynced.current = true;
+        syncSubscriptionStatus().then((res: any) => {
+            if (res?.success) {
+                console.log("Subscription Synced: AutoRenew =", res.AutoRenew);
+                setStatus((prev: AnalysisStatus | null) => {
+                    if (!prev) return null;
+                    return { ...prev, auto_renew: res.AutoRenew };
+                });
+            } else {
+                console.error("Sync Failed:", res?.error);
+            }
+        });
+    }, [initialStatus?.is_premium]);
 
     const isPremium = status?.is_premium;
 

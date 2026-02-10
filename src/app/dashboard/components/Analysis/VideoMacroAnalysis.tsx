@@ -1,8 +1,11 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { FaPlay, FaClock, FaMapMarkerAlt, FaDragon, FaSkull, FaBolt, FaChevronDown, FaChevronUp, FaLightbulb, FaShoppingCart } from "react-icons/fa";
-import { selectAnalysisSegments, analyzeVideoMacro, detectGameTimeFromFrame, type VideoMacroSegment, type SegmentAnalysis, type VideoMacroAnalysisResult } from "@/app/actions/videoMacroAnalysis";
+import { selectAnalysisSegments, detectGameTimeFromFrame, type VideoMacroSegment, type VideoMacroAnalysisResult } from "@/app/actions/videoMacroAnalysis";
+import { useTranslation } from "@/contexts/LanguageContext";
+import { getAnalysisStatus } from "@/app/actions/analysis";
+import { useVideoMacroAnalysis } from "@/app/Providers/VideoMacroAnalysisProvider";
 
 type Props = {
     matchId: string;
@@ -11,18 +14,51 @@ type Props = {
     videoElement: HTMLVideoElement | null;
     onAnalysisComplete?: (result: VideoMacroAnalysisResult) => void;
     disabled?: boolean;
+    isPremium?: boolean;  // Premium users get 5 segments, free users get 2
+    weeklyRemaining?: number;  // Remaining weekly analysis count
+    weeklyLimit?: number;  // Weekly analysis limit for the user's plan
 };
 
-export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoElement, onAnalysisComplete, disabled }: Props) {
-    // State
+// Segment limits by plan
+const FREE_SEGMENT_LIMIT = 3;
+const PREMIUM_SEGMENT_LIMIT = 5;
+
+export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoElement, onAnalysisComplete, disabled, isPremium = false, weeklyRemaining, weeklyLimit }: Props) {
+    const maxSegments = isPremium ? PREMIUM_SEGMENT_LIMIT : FREE_SEGMENT_LIMIT;
+    const { t, language } = useTranslation();
+
+    // Provider state (for async background analysis)
+    const {
+        isAnalyzing: providerAnalyzing,
+        asyncStatus,
+        progress: providerProgress,
+        statusMessage: providerStatusMsg,
+        error: providerError,
+        result: providerResult,
+        currentMatchId,
+        startAnalysis,
+        resetAnalysis,
+        clearError,
+        restoreResultForMatch
+    } = useVideoMacroAnalysis();
+
+    // Local UI state
     const [segments, setSegments] = useState<VideoMacroSegment[]>([]);
     const [loadingSegments, setLoadingSegments] = useState(false);
-    const [analyzing, setAnalyzing] = useState(false);
-    const [progress, setProgress] = useState(0);
-    const [progressMsg, setProgressMsg] = useState("");
-    const [result, setResult] = useState<VideoMacroAnalysisResult | null>(null);
-    const [error, setError] = useState<string | null>(null);
+    const [extractingFrames, setExtractingFrames] = useState(false);
+    const [localProgress, setLocalProgress] = useState(0);
+    const [localProgressMsg, setLocalProgressMsg] = useState("");
+    const [localError, setLocalError] = useState<string | null>(null);
     const [expandedSegment, setExpandedSegment] = useState<number | null>(null);
+
+    // Combined state: local frame extraction + provider async analysis
+    const analyzing = extractingFrames || providerAnalyzing;
+    const progress = extractingFrames ? localProgress : providerProgress;
+    const progressMsg = extractingFrames ? localProgressMsg : providerStatusMsg;
+    const error = localError || providerError;
+
+    // Use provider result if it's for this match
+    const result = (providerResult && currentMatchId === matchId) ? providerResult : null;
 
     // Time offset: videoTime = gameTime + timeOffset
     // Auto-detected from first frame analysis
@@ -30,25 +66,28 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
     const [isCalibrated, setIsCalibrated] = useState(false);
     const [calibrationStatus, setCalibrationStatus] = useState<string>("");
 
-    // Load segments when match changes
+    // Load segments and try to restore results when match changes or plan changes
     useEffect(() => {
         if (matchId && puuid) {
             loadSegments();
+            // Try to restore previous analysis result for this match
+            restoreResultForMatch(matchId);
         }
-    }, [matchId, puuid]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [matchId, puuid, maxSegments]); // Intentionally exclude restoreResultForMatch to prevent infinite loop
 
     const loadSegments = async () => {
         setLoadingSegments(true);
-        setError(null);
+        setLocalError(null);
         try {
-            const res = await selectAnalysisSegments(matchId, puuid);
+            const res = await selectAnalysisSegments(matchId, puuid, language as 'ja' | 'en' | 'ko', maxSegments);
             if (res.success && res.segments) {
                 setSegments(res.segments);
             } else {
-                setError(res.error || "セグメントの取得に失敗しました");
+                setLocalError(res.error || t('coachPage.videoMacro.errors.segmentFetchFailed', 'Failed to fetch segments'));
             }
         } catch (e: any) {
-            setError(e.message);
+            setLocalError(e.message);
         }
         setLoadingSegments(false);
     };
@@ -108,24 +147,40 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
         return frames;
     }, []);
 
-    // Run analysis
+    // Run analysis (async background processing)
     const runAnalysis = async () => {
         if (!videoFile || !videoElement || segments.length === 0) {
-            setError("動画またはセグメントが選択されていません");
+            setLocalError(t('coachPage.videoMacro.errors.noVideoOrSegments', 'No video or segments selected'));
             return;
         }
 
-        setAnalyzing(true);
-        setProgress(0);
-        setError(null);
-        setResult(null);
+        setExtractingFrames(true);
+        setLocalProgress(0);
+        setLocalError(null);
+        clearError();
 
         try {
+            // Step 0: Re-check premium/credit status before starting
+            setLocalProgressMsg(t('coachPage.videoMacro.progress.checkingStatus', 'Checking account status...'));
+            const freshStatus = await getAnalysisStatus();
+            if (!freshStatus) {
+                setLocalError(t('coachPage.videoMacro.errors.noProfile', 'User profile not found'));
+                setExtractingFrames(false);
+                return;
+            }
+
+            // Check if user can analyze (premium or has credits)
+            if (!freshStatus.is_premium && freshStatus.analysis_credits <= 0) {
+                setLocalError(t('coachPage.videoMacro.errors.noCredits', 'クレジットが不足しています。プレミアムプランにアップグレードするか、クレジットを追加してください。'));
+                setExtractingFrames(false);
+                return;
+            }
+
             // Step 1: Auto-detect time offset if not calibrated
             let currentOffset = timeOffset;
             if (!isCalibrated) {
-                setProgressMsg("時間同期を自動検出中...");
-                setProgress(5);
+                setLocalProgressMsg(t('coachPage.videoMacro.progress.detectingTimeSync', 'Auto-detecting time sync...'));
+                setLocalProgress(5);
 
                 // Seek to a position where game time should be visible (e.g., 2 minutes into video)
                 const testVideoTime = Math.min(120, videoElement.duration * 0.1); // 2min or 10% of video
@@ -153,24 +208,23 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
                 }
             }
 
-            setProgress(10);
+            setLocalProgress(10);
 
-            // Step 2: Extract frames for each segment
+            // Step 2: Extract frames for each segment (client-side)
             const allFrames: { segmentId: number; frameIndex: number; gameTime: number; base64Data: string }[] = [];
 
             for (let i = 0; i < segments.length; i++) {
                 const segment = segments[i];
-                setProgressMsg(`セグメント ${i + 1}/${segments.length} のフレーム抽出中...`);
-                setProgress(10 + (i / segments.length) * 40);
+                setLocalProgressMsg(t('coachPage.videoMacro.progress.extractingFrames', 'Extracting frames...') + ` ${i + 1}/${segments.length}`);
+                setLocalProgress(10 + (i / segments.length) * 40);
 
                 // Use 0.2fps (1 frame per 5 seconds) = 6 frames per 30sec segment
-                // This significantly reduces payload size while maintaining analysis quality
                 const frames = await extractFrames(videoElement, segment, 0.2, currentOffset);
                 allFrames.push(...frames);
             }
 
-            setProgressMsg("AIが分析中...");
-            setProgress(60);
+            setLocalProgressMsg(t('coachPage.videoMacro.progress.preparingUpload', 'Preparing upload...'));
+            setLocalProgress(55);
 
             // Check payload size (rough estimate)
             const payloadSize = allFrames.reduce((acc, f) => acc + f.base64Data.length, 0);
@@ -179,39 +233,59 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
             // If payload is too large (>8MB), warn and reduce quality further
             if (payloadSize > 8 * 1024 * 1024) {
                 console.warn("[VideoMacro] Payload too large, analysis may fail");
-                setError(`フレームデータが大きすぎます (${(payloadSize / 1024 / 1024).toFixed(1)}MB)。動画の解像度を下げてください。`);
-                setAnalyzing(false);
+                setLocalError(t('coachPage.videoMacro.errors.payloadTooLarge', 'Frame data too large') + ` (${(payloadSize / 1024 / 1024).toFixed(1)}MB)`);
+                setExtractingFrames(false);
                 return;
             }
 
-            // Call API
-            const analysisResult = await analyzeVideoMacro({
+            // Step 3: Start async background analysis via provider
+            setLocalProgressMsg(t('coachPage.videoMacro.progress.startingAnalysis', 'Starting analysis...'));
+            setLocalProgress(60);
+
+            const startResult = await startAnalysis({
                 matchId,
                 puuid,
                 segments,
-                frames: allFrames
+                frames: allFrames,
+                language: language as 'ja' | 'en' | 'ko',
+                timeOffset: currentOffset
             });
 
-            setProgress(100);
-            setResult(analysisResult);
+            // Frame extraction complete, provider will handle the rest
+            setExtractingFrames(false);
 
-            if (analysisResult.success) {
-                const completedMsg = `分析完了! (${analysisResult.completedSegments}/${analysisResult.requestedSegments} セグメント)`;
-                setProgressMsg(completedMsg);
-                console.log(`[VideoMacro] ${completedMsg}`);
-                if (analysisResult.warnings && analysisResult.warnings.length > 0) {
-                    console.warn('[VideoMacro] Warnings:', analysisResult.warnings);
-                }
-                onAnalysisComplete?.(analysisResult);
-            } else {
-                setError(analysisResult.error || "分析に失敗しました");
+            if (!startResult.success) {
+                setLocalError(startResult.error || t('coachPage.videoMacro.errors.analysisFailed', 'Analysis failed'));
             }
-        } catch (e: any) {
-            setError(e.message);
-        }
+            // If successful, provider will poll for results and update state
 
-        setAnalyzing(false);
+        } catch (e: any) {
+            setLocalError(e.message);
+            setExtractingFrames(false);
+        }
     };
+
+    // Handle analysis completion (call onAnalysisComplete when result is ready)
+    // Store callback in ref to avoid dependency issues
+    const onAnalysisCompleteRef = useRef(onAnalysisComplete);
+    onAnalysisCompleteRef.current = onAnalysisComplete;
+
+    const prevResultRef = useRef<VideoMacroAnalysisResult | null>(null);
+    useEffect(() => {
+        // Only call callback when result changes from null/different to a new successful result
+        if (result && result.success && result !== prevResultRef.current) {
+            prevResultRef.current = result;
+            onAnalysisCompleteRef.current?.(result);
+        }
+    }, [result]);
+
+    // Restore timeOffset from result when loaded (for video seek functionality)
+    useEffect(() => {
+        if (result?.timeOffset !== undefined) {
+            setTimeOffset(result.timeOffset);
+            setIsCalibrated(true);
+        }
+    }, [result]);
 
     // Segment type icon
     const getSegmentIcon = (type: string) => {
@@ -225,9 +299,9 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
 
     const getSegmentTypeName = (type: string) => {
         switch (type) {
-            case 'OBJECTIVE': return 'オブジェクト';
-            case 'DEATH': return 'デス';
-            case 'TURNING_POINT': return 'ターニングポイント';
+            case 'OBJECTIVE': return t('coachPage.videoMacro.segmentTypes.objective', 'Objective');
+            case 'DEATH': return t('coachPage.videoMacro.segmentTypes.death', 'Death');
+            case 'TURNING_POINT': return t('coachPage.videoMacro.segmentTypes.turningPoint', 'Turning Point');
             default: return type;
         }
     };
@@ -245,22 +319,22 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
 
     // Auto-detect time offset from a frame
     const autoDetectTimeOffset = async (videoTimeSec: number, frameBase64: string): Promise<number | null> => {
-        setCalibrationStatus("ゲーム内時間を検出中...");
+        setCalibrationStatus(t('coachPage.videoMacro.calibration.detecting', 'Detecting game time...'));
         try {
             const result = await detectGameTimeFromFrame(frameBase64);
             if (result.success && result.gameTimeSeconds !== undefined) {
                 // offset = videoTime - gameTime
                 const offset = videoTimeSec - result.gameTimeSeconds;
                 console.log(`[VideoMacro] Auto-detected: videoTime=${videoTimeSec}s, gameTime=${result.gameTimeStr}(${result.gameTimeSeconds}s), offset=${offset}s`);
-                setCalibrationStatus(`検出成功: ${result.gameTimeStr}`);
+                setCalibrationStatus(`${t('coachPage.videoMacro.calibration.detected', 'Detected')}: ${result.gameTimeStr}`);
                 return offset;
             } else {
-                setCalibrationStatus("時間検出失敗 - 手動設定が必要");
+                setCalibrationStatus(t('coachPage.videoMacro.calibration.failed', 'Detection failed'));
                 return null;
             }
         } catch (e: any) {
             console.error("[VideoMacro] Time detection error:", e);
-            setCalibrationStatus("検出エラー");
+            setCalibrationStatus(t('coachPage.videoMacro.calibration.error', 'Detection error'));
             return null;
         }
     };
@@ -297,18 +371,31 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
             {/* Header */}
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
             <h3 className="font-bold text-emerald-400 text-lg mb-2 flex items-center gap-2">
-                <FaMapMarkerAlt /> 動画マクロ分析
+                <FaMapMarkerAlt /> {t('coachPage.videoMacro.title', 'Video Macro Analysis')}
                 <span className="text-xs bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">NEW</span>
             </h3>
-            <p className="text-xs text-slate-400 mb-4">
-                動画から5つの重要シーンを抽出し、「どう動けば勝てたか」を分析します
+            <p className="text-xs text-slate-400 mb-2">
+                {t('coachPage.videoMacro.description', 'Extracts key scenes from video and analyzes how you could have won')}
             </p>
+
+            {/* Segment Limit Indicator */}
+            {!result && (
+                <div className="mb-4 flex items-center gap-2">
+                    <span className={`text-xs px-2 py-1 rounded-full ${isPremium ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-slate-700 text-slate-400 border border-slate-600'}`}>
+                        {isPremium ? (
+                            <>✨ {t('coachPage.videoMacro.premium', 'Premium')}: {maxSegments}{t('coachPage.videoMacro.segments', 'segments')}</>
+                        ) : (
+                            <>{t('coachPage.videoMacro.free', 'Free')}: {maxSegments}{t('coachPage.videoMacro.segments', 'segments')} <span className="text-emerald-400">({t('coachPage.videoMacro.upgradeTo5', 'Upgrade to 5')})</span></>
+                        )}
+                    </span>
+                </div>
+            )}
 
             {/* Error Display */}
             {error && (
                 <div className="mb-4 p-3 bg-red-900/20 border border-red-500/30 rounded-lg text-red-300 text-sm">
                     {error}
-                    <button onClick={() => setError(null)} className="ml-2 text-red-400 hover:text-red-300">✕</button>
+                    <button onClick={() => { setLocalError(null); clearError(); }} className="ml-2 text-red-400 hover:text-red-300">✕</button>
                 </div>
             )}
 
@@ -317,22 +404,22 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
                 <div className="mb-4 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
                     <div className="flex items-center gap-2">
                         <FaClock className="text-slate-400" />
-                        <span className="text-sm text-slate-300">時間同期</span>
+                        <span className="text-sm text-slate-300">{t('coachPage.videoMacro.timeSync.label', 'Time Sync')}</span>
                         {isCalibrated ? (
                             <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                ✓ 自動検出済み
+                                ✓ {t('coachPage.videoMacro.timeSync.autoDetected', 'Auto-detected')}
                             </span>
                         ) : (
                             <span className="text-xs bg-slate-600/50 text-slate-400 px-2 py-0.5 rounded-full">
-                                分析開始時に自動検出
+                                {t('coachPage.videoMacro.timeSync.onAnalysisStart', 'Detected on analysis start')}
                             </span>
                         )}
                     </div>
                     {isCalibrated && timeOffset !== 0 && (
                         <div className="mt-2 text-xs text-slate-400">
-                            オフセット: <span className="text-emerald-300 font-mono">{formatTime(timeOffset)}</span>
+                            {t('coachPage.videoMacro.timeSync.offset', 'Offset')}: <span className="text-emerald-300 font-mono">{formatTime(timeOffset)}</span>
                             <span className="text-slate-500 ml-2">
-                                (動画が{timeOffset > 0 ? `${formatTime(timeOffset)}早い` : `${formatTime(Math.abs(timeOffset))}遅い`})
+                                ({t('coachPage.videoMacro.timeSync.video', 'Video')} {timeOffset > 0 ? `+${formatTime(timeOffset)}` : formatTime(timeOffset)})
                             </span>
                         </div>
                     )}
@@ -342,59 +429,11 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
                 </div>
             )}
 
-            {/* Segment Selection */}
-            {!result && (
-                <div className="space-y-3 mb-4">
-                    <div className="flex items-center justify-between">
-                        <span className="text-sm font-bold text-slate-300">分析対象シーン (5箇所)</span>
-                        <button
-                            onClick={loadSegments}
-                            disabled={loadingSegments}
-                            className="text-xs text-emerald-400 hover:text-emerald-300 disabled:opacity-50"
-                        >
-                            {loadingSegments ? "読込中..." : "再読込"}
-                        </button>
-                    </div>
-
-                    {loadingSegments ? (
-                        <div className="flex items-center justify-center py-8">
-                            <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-emerald-500"></div>
-                        </div>
-                    ) : segments.length === 0 ? (
-                        <div className="text-center py-8 text-slate-500 text-sm">
-                            セグメントが見つかりません
-                        </div>
-                    ) : (
-                        <div className="space-y-2">
-                            {segments.map((seg, idx) => (
-                                <div
-                                    key={seg.segmentId}
-                                    className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700 hover:border-emerald-500/50 transition cursor-pointer"
-                                    onClick={() => seekToTimestamp(seg.analysisStartTime)}
-                                >
-                                    <div className="w-8 h-8 flex items-center justify-center bg-slate-700 rounded-full text-lg">
-                                        {getSegmentIcon(seg.type)}
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm font-bold text-white">
-                                                {formatTimeMs(seg.analysisStartTime)} → {seg.targetTimestampStr}
-                                            </span>
-                                            <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-                                                seg.type === 'OBJECTIVE' ? 'bg-purple-500/20 text-purple-300' :
-                                                seg.type === 'DEATH' ? 'bg-red-500/20 text-red-300' :
-                                                'bg-yellow-500/20 text-yellow-300'
-                                            }`}>
-                                                {getSegmentTypeName(seg.type)}
-                                            </span>
-                                        </div>
-                                        <p className="text-xs text-slate-400 truncate">{seg.eventDescription}</p>
-                                    </div>
-                                    <FaPlay className="text-slate-500 text-xs" />
-                                </div>
-                            ))}
-                        </div>
-                    )}
+            {/* Segment Loading Indicator (hidden, but shows status) */}
+            {!result && !analyzing && loadingSegments && (
+                <div className="mb-4 flex items-center gap-2 text-xs text-slate-400">
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-emerald-500"></div>
+                    {t('coachPage.videoMacro.segments.loading', 'Loading segments...')}
                 </div>
             )}
 
@@ -416,20 +455,32 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
 
             {/* Analysis Button */}
             {!result && !analyzing && (
-                <button
-                    onClick={runAnalysis}
-                    disabled={disabled || !videoFile || segments.length === 0}
-                    className={`w-full py-3 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 ${
-                        disabled || !videoFile || segments.length === 0
-                            ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                            : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
-                    }`}
-                >
-                    <FaMapMarkerAlt />
-                    {!videoFile ? '動画を選択してください' :
-                     segments.length === 0 ? 'セグメントを読み込み中...' :
-                     'マクロ分析を開始'}
-                </button>
+                <div className="space-y-2">
+                    <button
+                        onClick={runAnalysis}
+                        disabled={disabled || !videoFile || segments.length === 0 || loadingSegments}
+                        className={`w-full py-3 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 ${
+                            disabled || !videoFile || segments.length === 0 || loadingSegments
+                                ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                                : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                        }`}
+                    >
+                        <FaMapMarkerAlt />
+                        {disabled && weeklyRemaining === 0 ? t('coachPage.videoMacro.buttons.weeklyLimitReached', 'Weekly limit reached') :
+                         !videoFile ? t('coachPage.videoMacro.buttons.selectVideo', 'Please select a video') :
+                         loadingSegments ? t('coachPage.videoMacro.buttons.loadingSegments', 'Loading segments...') :
+                         segments.length === 0 ? t('coachPage.videoMacro.errors.segmentFetchFailed', 'Failed to load segments') :
+                         weeklyRemaining !== undefined && weeklyLimit !== undefined
+                            ? `${t('coachPage.videoMacro.buttons.startAnalysis', 'Start Macro Analysis')} (${weeklyRemaining}/${weeklyLimit})`
+                            : t('coachPage.videoMacro.buttons.startAnalysis', 'Start Macro Analysis')}
+                    </button>
+                    {/* Upgrade prompt when limit reached */}
+                    {disabled && weeklyRemaining === 0 && !isPremium && (
+                        <div className="text-center text-xs text-slate-400">
+                            {t('coachPage.videoMacro.buttons.upgradePrompt', 'Upgrade to Premium for 20 analyses/week')}
+                        </div>
+                    )}
+                </div>
             )}
 
             {/* Results Display */}
@@ -439,10 +490,10 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
                     {result.requestedSegments && result.completedSegments !== undefined && result.completedSegments < result.requestedSegments && (
                         <div className="p-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
                             <div className="text-xs text-yellow-400">
-                                ⚠️ {result.requestedSegments}個中{result.completedSegments}個のセグメントを分析しました
+                                ⚠️ {result.completedSegments}/{result.requestedSegments} {t('coachPage.videoMacro.results.segmentsAnalyzed', 'segments analyzed')}
                                 {result.warnings && result.warnings.length > 0 && (
                                     <details className="mt-1">
-                                        <summary className="cursor-pointer text-yellow-500 hover:text-yellow-400">詳細を表示</summary>
+                                        <summary className="cursor-pointer text-yellow-500 hover:text-yellow-400">{t('coachPage.videoMacro.results.showDetails', 'Show details')}</summary>
                                         <ul className="mt-1 text-[10px] text-yellow-300/70 list-disc list-inside">
                                             {result.warnings.map((w, i) => <li key={i}>{w}</li>)}
                                         </ul>
@@ -455,14 +506,14 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
                     {/* Overall Summary */}
                     <div className="bg-gradient-to-br from-emerald-900/30 to-cyan-900/30 border border-emerald-500/50 rounded-xl p-4">
                         <h4 className="font-bold text-emerald-400 mb-3 flex items-center gap-2">
-                            <FaLightbulb /> 分析サマリー
+                            <FaLightbulb /> {t('coachPage.videoMacro.results.summary', 'Analysis Summary')}
                         </h4>
                         <div className="mb-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-                            <div className="text-xs text-red-400 font-bold mb-1">最大の課題</div>
+                            <div className="text-xs text-red-400 font-bold mb-1">{t('coachPage.videoMacro.results.mainIssue', 'Main Issue')}</div>
                             <p className="text-sm text-white font-semibold">{result.overallSummary.mainIssue}</p>
                         </div>
                         <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                            <div className="text-xs text-blue-400 font-bold mb-1">📝 今日の宿題</div>
+                            <div className="text-xs text-blue-400 font-bold mb-1">📝 {t('coachPage.videoMacro.results.homework', "Today's Homework")}</div>
                             <h5 className="text-white font-bold mb-1">{result.overallSummary.homework.title}</h5>
                             <p className="text-sm text-slate-300 mb-2">{result.overallSummary.homework.description}</p>
                             <div className="text-xs text-cyan-400 mb-2">
@@ -470,14 +521,14 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
                             </div>
                             {result.overallSummary.homework.relatedTimestamps && result.overallSummary.homework.relatedTimestamps.length > 0 && (
                                 <div className="mt-3 pt-3 border-t border-blue-500/20">
-                                    <div className="text-xs text-slate-400 font-bold mb-2">📌 関連シーン</div>
+                                    <div className="text-xs text-slate-400 font-bold mb-2">📌 {t('coachPage.videoMacro.results.relatedScenes', 'Related Scenes')}</div>
                                     <div className="flex flex-wrap gap-2">
                                         {result.overallSummary.homework.relatedTimestamps.map((ts, idx) => (
                                             <button
                                                 key={idx}
                                                 onClick={() => {
                                                     const [min, sec] = ts.split(':').map(Number);
-                                                    seekToTimestamp((min * 60 + sec - 30) * 1000);
+                                                    seekToTimestamp((min * 60 + sec) * 1000);
                                                 }}
                                                 className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded border border-slate-600 transition flex items-center gap-1"
                                             >
@@ -494,12 +545,12 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
                     {result.buildRecommendation && (
                         <div className="bg-gradient-to-br from-purple-900/30 to-pink-900/30 border border-purple-500/50 rounded-xl p-4">
                             <h4 className="font-bold text-purple-400 mb-3 flex items-center gap-2">
-                                <FaShoppingCart /> ビルド推奨
+                                <FaShoppingCart /> {t('coachPage.videoMacro.build.title', 'Build Recommendation')}
                             </h4>
                             <div className="space-y-3">
                                 {/* User Build Info */}
                                 <div className="flex items-center gap-2 text-sm">
-                                    <span className="text-slate-400">あなた:</span>
+                                    <span className="text-slate-400">{t('coachPage.videoMacro.build.you', 'You')}:</span>
                                     <span className="text-white font-bold">{result.buildRecommendation.userChampionName}</span>
                                     <span className="text-slate-500">vs</span>
                                     <span className="text-red-400 font-bold">{result.buildRecommendation.opponentChampionName}</span>
@@ -515,7 +566,7 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
                                 {/* Item IDs (simplified display - can be enhanced with Data Dragon images later) */}
                                 {result.buildRecommendation.recommendedItems.length > 0 && (
                                     <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-                                        <div className="text-xs text-purple-400 font-bold mb-2">💎 推奨コアアイテム</div>
+                                        <div className="text-xs text-purple-400 font-bold mb-2">💎 {t('coachPage.videoMacro.build.recommendedCore', 'Recommended Core Items')}</div>
                                         <div className="flex flex-wrap gap-2">
                                             {result.buildRecommendation.recommendedItems.map((item, idx) => (
                                                 <div
@@ -535,7 +586,7 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
 
                     {/* Segment Results */}
                     <div className="space-y-2">
-                        <h4 className="font-bold text-slate-300 text-sm">シーン別分析</h4>
+                        <h4 className="font-bold text-slate-300 text-sm">{t('coachPage.videoMacro.results.sceneAnalysis', 'Scene Analysis')}</h4>
                         {result.segments.map((seg, idx) => (
                             <div
                                 key={seg.segmentId}
@@ -576,22 +627,22 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
                                     <div className="p-4 border-t border-slate-700 space-y-4 animate-in slide-in-from-top-2">
                                         {/* Observation */}
                                         <div>
-                                            <div className="text-xs font-bold text-slate-400 mb-2">📍 状況観察</div>
+                                            <div className="text-xs font-bold text-slate-400 mb-2">📍 {t('coachPage.videoMacro.scene.observation', 'Observation')}</div>
                                             <div className="grid grid-cols-2 gap-2 text-xs">
                                                 <div className="p-2 bg-slate-900/50 rounded">
-                                                    <span className="text-slate-500">自分の位置:</span>
+                                                    <span className="text-slate-500">{t('coachPage.videoMacro.scene.yourPosition', 'Your Position')}:</span>
                                                     <p className="text-slate-300">{seg.observation.userPosition}</p>
                                                 </div>
                                                 <div className="p-2 bg-slate-900/50 rounded">
-                                                    <span className="text-slate-500">味方の位置:</span>
+                                                    <span className="text-slate-500">{t('coachPage.videoMacro.scene.allyPositions', 'Ally Positions')}:</span>
                                                     <p className="text-slate-300">{seg.observation.allyPositions}</p>
                                                 </div>
                                                 <div className="p-2 bg-slate-900/50 rounded">
-                                                    <span className="text-slate-500">ウェーブ状態:</span>
+                                                    <span className="text-slate-500">{t('coachPage.videoMacro.scene.waveState', 'Wave State')}:</span>
                                                     <p className="text-slate-300">{seg.observation.waveState}</p>
                                                 </div>
                                                 <div className="p-2 bg-slate-900/50 rounded">
-                                                    <span className="text-slate-500">オブジェクト:</span>
+                                                    <span className="text-slate-500">{t('coachPage.videoMacro.scene.objective', 'Objective')}:</span>
                                                     <p className="text-slate-300">{seg.observation.objectiveState}</p>
                                                 </div>
                                             </div>
@@ -599,7 +650,7 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
 
                                         {/* Winning Pattern */}
                                         <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
-                                            <div className="text-xs font-bold text-emerald-400 mb-2">✨ 勝ちパターン: {seg.winningPattern.title}</div>
+                                            <div className="text-xs font-bold text-emerald-400 mb-2">✨ {t('coachPage.videoMacro.scene.winningPattern', 'Winning Pattern')}: {seg.winningPattern.title}</div>
                                             <ol className="space-y-1">
                                                 {seg.winningPattern.steps.map((step, i) => (
                                                     <li key={i} className="text-sm text-slate-300 flex items-start gap-2">
@@ -612,11 +663,11 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
 
                                         {/* Gap Analysis */}
                                         <div className="p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">
-                                            <div className="text-xs font-bold text-orange-400 mb-2">⚡ 実際との差</div>
+                                            <div className="text-xs font-bold text-orange-400 mb-2">⚡ {t('coachPage.videoMacro.scene.gap', 'Gap with Reality')}</div>
                                             <p className="text-sm text-slate-300 mb-2">{seg.gap.description}</p>
-                                            <div className="text-xs text-yellow-400 mb-1">決定的なタイミング: {seg.gap.criticalMoment}</div>
+                                            <div className="text-xs text-yellow-400 mb-1">{t('coachPage.videoMacro.scene.criticalMoment', 'Critical Moment')}: {seg.gap.criticalMoment}</div>
                                             <div className="mt-2 p-2 bg-green-500/10 border border-green-500/30 rounded">
-                                                <div className="text-xs text-green-400 font-bold">💡 こうすべきだった</div>
+                                                <div className="text-xs text-green-400 font-bold">💡 {t('coachPage.videoMacro.scene.shouldHaveDone', 'What should have been done')}</div>
                                                 <p className="text-sm text-white">{seg.gap.whatShouldHaveDone}</p>
                                             </div>
                                         </div>
@@ -629,7 +680,7 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
                                             }}
                                             className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
                                         >
-                                            <FaPlay /> このシーンを動画で確認
+                                            <FaPlay /> {t('coachPage.videoMacro.scene.checkInVideo', 'Check in video')}
                                         </button>
                                     </div>
                                 )}
@@ -640,12 +691,12 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
                     {/* Re-analyze Button */}
                     <button
                         onClick={() => {
-                            setResult(null);
+                            resetAnalysis();
                             loadSegments();
                         }}
                         className="w-full py-2 text-sm text-slate-400 hover:text-white border border-slate-700 rounded-lg hover:border-slate-600 transition"
                     >
-                        別のセグメントで再分析
+                        {t('coachPage.videoMacro.buttons.reanalyze', 'Re-analyze with different segments')}
                     </button>
                 </div>
             )}

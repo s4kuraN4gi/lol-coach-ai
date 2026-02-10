@@ -58,7 +58,10 @@ function createClientServiceRole() {
     const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const sbServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+    console.log(`[Webhook] Creating Service Role Client. URL present: ${!!sbUrl}, Service Key present: ${!!sbServiceKey}`);
+
     if (!sbUrl || !sbServiceKey) {
+        console.error("[Webhook] Missing Supabase Environment Variables for Service Role");
         throw new Error("Missing Supabase Environment Variables for Service Role");
     }
 
@@ -72,56 +75,114 @@ function createClientServiceRole() {
 
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, supabase: any) {
     // Retrieve the subscription details
-    if(!session.subscription) return;
-    
+    if(!session.subscription) {
+        console.log("[Webhook] No subscription in session, skipping");
+        return;
+    }
+
     // session.client_reference_id contains user.id
     const userId = session.client_reference_id;
     const subscriptionId = session.subscription as string;
     const customerId = session.customer as string;
 
-    console.log(`[Webhook] Checkout Completed. User: ${userId}, Customer: ${customerId}`);
+    console.log(`[Webhook] Checkout Completed. User: ${userId}, Customer: ${customerId}, Subscription: ${subscriptionId}`);
 
     if (!userId) {
         console.error("[Webhook] Missing userId in session metadata/client_reference_id");
         return;
     }
 
+    // First, verify the user exists in profiles
+    const { data: existingProfile, error: selectError } = await supabase
+        .from('profiles')
+        .select('id, is_premium')
+        .eq('id', userId)
+        .single();
+
+    if (selectError || !existingProfile) {
+        console.error(`[Webhook] User not found in profiles: ${userId}, Error: ${selectError?.message}`);
+        return;
+    }
+    console.log(`[Webhook] Found user profile: ${existingProfile.id}, current is_premium: ${existingProfile.is_premium}`);
+
     // We can fetch the full subscription object if we need end date immediately
     const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-    
-    // Use Service Role to update
-    const { error, count } = await supabase.from('profiles').update({
+    const periodEnd = (subscription.items?.data?.[0] as any)?.current_period_end as number | undefined
+      ?? (subscription as any).current_period_end as number | undefined;
+    console.log(`[Webhook] Subscription status: ${subscription.status}, period_end: ${periodEnd}, cancel_at_period_end: ${subscription.cancel_at_period_end}`);
+
+    // Handle case where period_end might be undefined
+    let subscriptionEndDate: string | null = null;
+    if (periodEnd && typeof periodEnd === 'number') {
+        subscriptionEndDate = new Date(periodEnd * 1000).toISOString();
+    } else {
+        console.warn(`[Webhook] period_end is undefined or invalid, setting subscription_end_date to null`);
+    }
+
+    // Determine subscription tier from the Price ID
+    const EXTRA_PRICE_ID = process.env.NEXT_PUBLIC_STRIPE_EXTRA_PRICE_ID;
+    const lineItems = subscription.items?.data || [];
+    const subscribedPriceId = lineItems[0]?.price?.id;
+    const subscriptionTier = (EXTRA_PRICE_ID && subscribedPriceId === EXTRA_PRICE_ID) ? 'extra' : 'premium';
+
+    console.log(`[Webhook] Determined tier: ${subscriptionTier} (priceId: ${subscribedPriceId}, extraPriceId: ${EXTRA_PRICE_ID})`);
+
+    const updateData = {
         stripe_customer_id: customerId,
         stripe_subscription_id: subscriptionId,
         subscription_status: subscription.status,
         is_premium: subscription.status === 'active' || subscription.status === 'trialing',
-        subscription_end_date: new Date((subscription as any).current_period_end * 1000).toISOString(),
+        subscription_tier: subscriptionTier,
+        subscription_end_date: subscriptionEndDate,
         auto_renew: !subscription.cancel_at_period_end,
-    }).eq('id', userId);
+    };
+
+    console.log(`[Webhook] Updating profile with:`, JSON.stringify(updateData, null, 2));
+
+    // Use Service Role to update with select to verify
+    const { data: updatedData, error } = await supabase
+        .from('profiles')
+        .update(updateData)
+        .eq('id', userId)
+        .select();
 
     if (error) {
-        console.error(`[Webhook] DB Update Failed: ${error.message}`);
+        console.error(`[Webhook] DB Update Failed: ${error.message}`, error);
+    } else if (!updatedData || updatedData.length === 0) {
+        console.error(`[Webhook] DB Update returned no data - possible RLS issue or no matching row`);
     } else {
-        console.log(`[Webhook] DB Updated Successfully. Rows affected: ${count}`);
+        console.log(`[Webhook] DB Updated Successfully. Updated data:`, JSON.stringify(updatedData[0], null, 2));
+    }
+
+    // Cancel old subscription if this was a plan switch
+    const oldSubscriptionId = session.metadata?.oldSubscriptionId;
+    if (oldSubscriptionId && oldSubscriptionId !== subscriptionId) {
+        try {
+            await stripe.subscriptions.cancel(oldSubscriptionId);
+            console.log(`[Webhook] Cancelled old subscription: ${oldSubscriptionId}`);
+        } catch (cancelErr: any) {
+            console.error(`[Webhook] Failed to cancel old subscription ${oldSubscriptionId}: ${cancelErr.message}`);
+        }
     }
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription, supabase: any) {
     console.log(`[Webhook] Subscription Updated: ${subscription.id}, Status: ${subscription.status}, CancelAtEnd: ${subscription.cancel_at_period_end}`);
-    
+
     // Find user by stripe_customer_id
     const { data: profile } = await supabase
         .from('profiles')
         .select('id')
         .eq('stripe_customer_id', subscription.customer)
         .single();
-    
+
     if(!profile) {
         console.warn(`[Webhook] No profile found for customer: ${subscription.customer}`);
         return;
     }
 
-    const periodEnd = (subscription as any).current_period_end;
+    const periodEnd = (subscription.items?.data?.[0] as any)?.current_period_end
+      ?? (subscription as any).current_period_end;
     console.log(`[Webhook] Period End TS: ${periodEnd}`);
 
     let endDate = null;
@@ -129,9 +190,18 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription, supa
         endDate = new Date(periodEnd * 1000).toISOString();
     }
 
+    // Determine subscription tier from the Price ID
+    const EXTRA_PRICE_ID = process.env.NEXT_PUBLIC_STRIPE_EXTRA_PRICE_ID;
+    const lineItems = subscription.items?.data || [];
+    const subscribedPriceId = lineItems[0]?.price?.id;
+    const subscriptionTier = (EXTRA_PRICE_ID && subscribedPriceId === EXTRA_PRICE_ID) ? 'extra' : 'premium';
+
+    console.log(`[Webhook] Determined tier: ${subscriptionTier} (priceId: ${subscribedPriceId}, extraPriceId: ${EXTRA_PRICE_ID})`);
+
     const updateData = {
         subscription_status: subscription.status,
         is_premium: subscription.status === 'active' || subscription.status === 'trialing',
+        subscription_tier: subscriptionTier,
         subscription_end_date: endDate,
         auto_renew: !subscription.cancel_at_period_end,
     };
@@ -157,6 +227,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription, supa
     await supabase.from('profiles').update({
         subscription_status: 'canceled',
         is_premium: false,
+        subscription_tier: 'free',
         subscription_end_date: null,
         auto_renew: false, // Ensure false on delete
     }).eq('id', profile.id);

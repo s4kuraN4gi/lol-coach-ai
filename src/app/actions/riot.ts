@@ -101,7 +101,34 @@ export async function fetchSummonerByPuuid(puuid: string, noCache = false): Prom
     }
 }
 
-// 3. Get League Entries (Rank) by SummonerID
+// 3a. Get League Entries (Rank) by PUUID (Recommended - newer API)
+export async function fetchRankByPuuid(puuid: string): Promise<LeagueEntryDTO[]> {
+    if (!RIOT_API_KEY) return [];
+
+    const url = `https://${PLATFORM_ROUTING}.api.riotgames.com/lol/league/v4/entries/by-puuid/${puuid}`;
+    console.log(`[RiotAPI] Fetching Rank by PUUID: ${url}`);
+
+    try {
+        const res = await fetch(url, {
+            headers: { "X-Riot-Token": RIOT_API_KEY },
+            cache: 'no-store'
+        });
+
+        if (!res.ok) {
+            console.error(`[RiotAPI] League by PUUID Error: ${res.status} ${res.statusText}`);
+            return [];
+        }
+
+        const data = await res.json();
+        console.log(`[RiotAPI] Rank by PUUID Result: ${JSON.stringify(data)}`);
+        return data;
+    } catch (e) {
+        console.error("[RiotAPI] fetchRankByPuuid exception:", e);
+        return [];
+    }
+}
+
+// 3b. Get League Entries (Rank) by SummonerID (Legacy - may not work if ID unavailable)
 export async function fetchRank(summonerId: string): Promise<LeagueEntryDTO[]> {
     if (!RIOT_API_KEY) return [];
     
@@ -674,34 +701,111 @@ Key Points: ${wc.key_points?.slice(0, 2).join('; ') || 'N/A'}
     }
 }
 
-// 10. Get DDragon Item Data (Cached)
-let _itemCache: Record<string, any> | null = null;
-let _itemNameCache: Record<string, string> | null = null; // Name -> ID
+// 10. Get DDragon Item Data (Cached per language)
+const _itemCacheByLang: Record<string, Record<string, any>> = {};
+const _itemNameCacheByLang: Record<string, Record<string, string>> = {}; // Name -> ID
 
-export async function fetchDDItemData(): Promise<{ idMap: Record<string, any>, nameMap: Record<string, string> } | null> {
-    if (_itemCache && _itemNameCache) return { idMap: _itemCache, nameMap: _itemNameCache };
+export async function fetchDDItemData(language: 'ja' | 'en' | 'ko' = 'ja'): Promise<{ idMap: Record<string, any>, nameMap: Record<string, string> } | null> {
+    // Map language code to Data Dragon locale
+    const localeMap: Record<string, string> = {
+        'ja': 'ja_JP',
+        'en': 'en_US',
+        'ko': 'ko_KR'
+    };
+    const locale = localeMap[language] || 'ja_JP';
+
+    if (_itemCacheByLang[locale] && _itemNameCacheByLang[locale]) {
+        return { idMap: _itemCacheByLang[locale], nameMap: _itemNameCacheByLang[locale] };
+    }
 
     // Fetch latest version dynamically
     const version = await fetchLatestVersion();
-    const url = `https://ddragon.leagueoflegends.com/cdn/${version}/data/ja_JP/item.json`;
+    const url = `https://ddragon.leagueoflegends.com/cdn/${version}/data/${locale}/item.json`;
 
     try {
         const res = await fetch(url, { next: { revalidate: 86400 } });
         if (!res.ok) return null;
 
         const data = await res.json();
-        _itemCache = data.data;
-        
-        _itemNameCache = {};
+        _itemCacheByLang[locale] = data.data;
+
+        _itemNameCacheByLang[locale] = {};
         // Build Name -> ID Map (Normalize names to lower case for loose matching)
         for (const [id, item] of Object.entries(data.data as Record<string, any>)) {
-            _itemNameCache[item.name.toLowerCase()] = id;
+            _itemNameCacheByLang[locale][item.name.toLowerCase()] = id;
             // Also map colloquials if we want later
         }
 
-        return { idMap: _itemCache!, nameMap: _itemNameCache! };
+        return { idMap: _itemCacheByLang[locale]!, nameMap: _itemNameCacheByLang[locale]! };
     } catch (e) {
         console.error("fetchDDItemData error:", e);
+        return null;
+    }
+}
+
+// 10b. Get DDragon Champion Detail (Stats + Spells) for Damage Calculator
+const _championDetailCache: Record<string, any> = {};
+
+export async function fetchChampionDetail(championName: string, language: 'ja' | 'en' | 'ko' = 'ja'): Promise<any | null> {
+    const localeMap: Record<string, string> = {
+        'ja': 'ja_JP',
+        'en': 'en_US',
+        'ko': 'ko_KR'
+    };
+    const locale = localeMap[language] || 'ja_JP';
+    const cacheKey = `${championName}_${locale}`;
+
+    if (_championDetailCache[cacheKey]) {
+        return _championDetailCache[cacheKey];
+    }
+
+    const version = await fetchLatestVersion();
+    // Fix known DDragon naming inconsistencies
+    const nameMap: Record<string, string> = {
+        "FiddleSticks": "Fiddlesticks",
+    };
+    const cName = nameMap[championName] || championName;
+    const url = `https://ddragon.leagueoflegends.com/cdn/${version}/data/${locale}/champion/${cName}.json`;
+
+    try {
+        const res = await fetch(url, { next: { revalidate: 86400 } });
+        if (!res.ok) return null;
+
+        const data = await res.json();
+        const detail = data.data?.[cName] || null;
+        if (detail) {
+            _championDetailCache[cacheKey] = detail;
+        }
+        return detail;
+    } catch (e) {
+        console.error("fetchChampionDetail error:", e);
+        return null;
+    }
+}
+
+// 10c. Get CommunityDragon bin.json for champion spell data
+const _championBinCache: Record<string, Record<string, any>> = {};
+
+export async function fetchChampionBinData(championName: string): Promise<Record<string, any> | null> {
+    const champLower = championName.toLowerCase();
+    if (_championBinCache[champLower]) {
+        return _championBinCache[champLower];
+    }
+
+    const url = `https://raw.communitydragon.org/latest/game/data/characters/${champLower}/${champLower}.bin.json`;
+
+    try {
+        const res = await fetch(url, { next: { revalidate: 86400 } });
+        if (!res.ok) {
+            console.error(`fetchChampionBinData error: ${res.status} for ${championName}`);
+            return null;
+        }
+
+        const data = await res.json();
+        _championBinCache[champLower] = data;
+        return data;
+    } catch (e) {
+        console.error("fetchChampionBinData error:", e);
         return null;
     }
 }
@@ -895,9 +999,63 @@ export async function extractMatchEvents(
     puuid: string,
     range?: { startMs: number, endMs: number },
     opponentPid?: number,  // Optional: opponent's participant ID for context
-    roleMap?: ParticipantRoleMap  // NEW: Role mapping for accurate kill type detection
+    roleMap?: ParticipantRoleMap,  // NEW: Role mapping for accurate kill type detection
+    language: 'ja' | 'en' | 'ko' = 'en'  // Language for event descriptions
 ): Promise<TruthEvent[]> {
     if (!timeline || !timeline.info || !timeline.info.frames) return [];
+
+    // Translation templates for event details
+    const eventTexts = {
+        ja: {
+            youKilled: (victim: string) => `あなたが${victim}をキル`,
+            assists: (count: number) => `(+${count}アシスト)`,
+            killedBy: (victim: string, killer: string) => `${victim}が${killer}にキルされた`,
+            allySecured: (type: string, subType?: string) => `[味方獲得] ${type}${subType ? ` (${subType})` : ''}`,
+            enemyTook: (type: string, subType?: string) => `[敵獲得] ${type}${subType ? ` (${subType})` : ''} - なぜ取られたか分析`,
+            allyDestroyed: (structure: string) => `[味方破壊] ${structure}`,
+            enemyDestroyed: (structure: string) => `[敵破壊] ${structure} - なぜ破壊されたか分析`,
+            wardPlaced: (wardType: string) => `ワード設置: ${wardType}`,
+            wardDestroyed: 'ワード破壊',
+            itemPurchased: (itemName: string) => `アイテム購入: ${itemName}`,
+            levelUp: (level: number) => `レベル${level}に到達`,
+            skillLevelUp: (slot: number) => `スキル${slot}をレベルアップ`,
+            turret: 'タワー',
+            player: 'プレイヤー'
+        },
+        en: {
+            youKilled: (victim: string) => `YOU killed ${victim}`,
+            assists: (count: number) => `(+${count} assists)`,
+            killedBy: (victim: string, killer: string) => `${victim} killed by ${killer}`,
+            allySecured: (type: string, subType?: string) => `[ALLY SECURED] ${type}${subType ? ` (${subType})` : ''}`,
+            enemyTook: (type: string, subType?: string) => `[ENEMY TOOK] ${type}${subType ? ` (${subType})` : ''} - Analyze: Why did YOUR team lose this objective?`,
+            allyDestroyed: (structure: string) => `[ALLY DESTROYED] ${structure}`,
+            enemyDestroyed: (structure: string) => `[ENEMY DESTROYED] Your ${structure} - Analyze: Why was this tower lost?`,
+            wardPlaced: (wardType: string) => `Ward placed: ${wardType}`,
+            wardDestroyed: 'Ward destroyed',
+            itemPurchased: (itemName: string) => `Item purchased: ${itemName}`,
+            levelUp: (level: number) => `Reached level ${level}`,
+            skillLevelUp: (slot: number) => `Leveled up skill ${slot}`,
+            turret: 'Turret',
+            player: 'Player'
+        },
+        ko: {
+            youKilled: (victim: string) => `당신이 ${victim}을(를) 처치`,
+            assists: (count: number) => `(+${count} 어시스트)`,
+            killedBy: (victim: string, killer: string) => `${victim}이(가) ${killer}에게 처치됨`,
+            allySecured: (type: string, subType?: string) => `[아군 획득] ${type}${subType ? ` (${subType})` : ''}`,
+            enemyTook: (type: string, subType?: string) => `[적 획득] ${type}${subType ? ` (${subType})` : ''} - 왜 빼앗겼는지 분석`,
+            allyDestroyed: (structure: string) => `[아군 파괴] ${structure}`,
+            enemyDestroyed: (structure: string) => `[적 파괴] ${structure} - 왜 파괴되었는지 분석`,
+            wardPlaced: (wardType: string) => `와드 설치: ${wardType}`,
+            wardDestroyed: '와드 파괴됨',
+            itemPurchased: (itemName: string) => `아이템 구매: ${itemName}`,
+            levelUp: (level: number) => `레벨 ${level} 도달`,
+            skillLevelUp: (slot: number) => `스킬 ${slot} 레벨업`,
+            turret: '타워',
+            player: '플레이어'
+        }
+    };
+    const txt = eventTexts[language];
 
     const frames = timeline.info.frames;
     const extracted: TruthEvent[] = [];
@@ -1027,12 +1185,12 @@ export async function extractMatchEvents(
                 } else if (isUserKill) {
                     const victimDesc = victimInfo
                         ? `${victimInfo.championName}(${victimInfo.role})`
-                        : `Player ${victim}`;
-                    ctx = `YOU killed ${victimDesc}`;
-                    if (assisters.length > 0) ctx += ` (+${assisters.length} assists)`;
+                        : `${txt.player} ${victim}`;
+                    ctx = txt.youKilled(victimDesc);
+                    if (assisters.length > 0) ctx += ` ${txt.assists(assisters.length)}`;
                     ctx += ` [${killType}]`;
                 } else {
-                    ctx = `Player ${victim} killed by Player ${killer}`;
+                    ctx = txt.killedBy(`${txt.player} ${victim}`, `${txt.player} ${killer}`);
                 }
 
                 eventObj = {
@@ -1061,15 +1219,12 @@ export async function extractMatchEvents(
                 const myTeam = myPid <= 5 ? 100 : 200;
                 const isAllyObjective = killerTeam === myTeam;
 
-                // Create clear, unambiguous detail
+                // Create clear, unambiguous detail (translated)
                 let detail = "";
                 if (isAllyObjective) {
-                    detail = `[ALLY SECURED] ${monsterType}`;
-                    if (monsterSubType) detail += ` (${monsterSubType})`;
+                    detail = txt.allySecured(monsterType, monsterSubType || undefined);
                 } else {
-                    detail = `[ENEMY TOOK] ${monsterType}`;
-                    if (monsterSubType) detail += ` (${monsterSubType})`;
-                    detail += ` - Analyze: Why did YOUR team lose this objective?`;
+                    detail = txt.enemyTook(monsterType, monsterSubType || undefined);
                 }
 
                 eventObj = {
@@ -1088,20 +1243,20 @@ export async function extractMatchEvents(
             }
             // === BUILDING_KILL (Turret, Inhibitor) ===
             else if (e.type === 'BUILDING_KILL') {
-                const buildingType = e.buildingType || 'TOWER';
+                const buildingType = e.buildingType || txt.turret;
                 const laneType = e.laneType || '';
                 const towerType = e.towerType || '';
                 const killerTeam = e.teamId === 100 ? 200 : 100; // Building's team is opposite of destroyer
                 const myTeam = myPid <= 5 ? 100 : 200;
                 const isAllyObjective = killerTeam !== myTeam; // true = YOUR team destroyed enemy tower
 
-                // Create clear, unambiguous detail
+                // Create clear, unambiguous detail (translated)
                 let detail = "";
                 const structureName = `${laneType} ${towerType || buildingType}`.trim();
                 if (isAllyObjective) {
-                    detail = `[ALLY DESTROYED] ${structureName}`;
+                    detail = txt.allyDestroyed(structureName);
                 } else {
-                    detail = `[ENEMY DESTROYED] Your ${structureName} - Analyze: Why was this tower lost?`;
+                    detail = txt.enemyDestroyed(structureName);
                 }
 
                 eventObj = {
@@ -1124,7 +1279,7 @@ export async function extractMatchEvents(
                     timestamp: e.timestamp,
                     timestampStr: formatTime(e.timestamp),
                     type: 'WARD',
-                    detail: `YOU placed ${e.wardType || 'WARD'}`,
+                    detail: txt.wardPlaced(e.wardType || 'WARD'),
                     position: { x: 0, y: 0 }, // Ward position not in event
                     participants: [myPid],
                     context: {
@@ -1138,7 +1293,7 @@ export async function extractMatchEvents(
                     timestamp: e.timestamp,
                     timestampStr: formatTime(e.timestamp),
                     type: 'WARD',
-                    detail: `YOU destroyed enemy ${e.wardType || 'WARD'}`,
+                    detail: txt.wardDestroyed,
                     position: e.position || { x: 0, y: 0 },
                     participants: [myPid],
                     context: {
@@ -1157,7 +1312,7 @@ export async function extractMatchEvents(
                         timestamp: e.timestamp,
                         timestampStr: formatTime(e.timestamp),
                         type: 'ITEM',
-                        detail: `YOU purchased item #${itemId}`,
+                        detail: txt.itemPurchased(`#${itemId}`),
                         position: { x: 0, y: 0 },
                         participants: [myPid],
                         context: {
@@ -1175,7 +1330,7 @@ export async function extractMatchEvents(
                         timestamp: e.timestamp,
                         timestampStr: formatTime(e.timestamp),
                         type: 'LEVEL',
-                        detail: `YOU reached level ${e.level} (ULT upgrade)`,
+                        detail: txt.levelUp(e.level),
                         position: { x: 0, y: 0 },
                         participants: [myPid],
                         context: {

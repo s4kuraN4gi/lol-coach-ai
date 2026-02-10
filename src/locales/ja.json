@@ -1,5 +1,6 @@
 {
   "common": {
+    "backToHome": "← ホームに戻る",
     "backToOverview": "← 概要に戻る",
     "backToList": "← 一覧に戻る",
     "readMore": "解説を読む →",
@@ -143,6 +144,11 @@
       "spikesDesc": "ゲーム中いつ最も強いかを確認できます",
       "unlockMatchup": "マッチアップ分析をアンロック",
       "matchupDesc": "特定のチャンピオンに対するパフォーマンスを詳細分析"
+    },
+    "noSummoner": {
+      "title": "サモナー情報が見つかりません",
+      "desc": "アカウント設定からサモナーを連携してください。",
+      "link": "アカウント連携へ"
     }
   },
   "matchDetail": {
@@ -166,6 +172,84 @@
       "preparing": "準備中...",
       "analyzeButton": "マッチ情報分析"
     }
+  },
+  "damageCalculator": {
+    "title": "ダメージ計算シミュレーター",
+    "yourChampion": "自チャンピオン",
+    "enemyChampion": "敵チャンピオン",
+    "stats": "ステータス",
+    "loading": "チャンピオンデータを読み込み中...",
+    "autoAttack": "通常攻撃",
+    "fullCombo": "フルコンボ合計",
+    "physical": "物理",
+    "magic": "魔法",
+    "true": "確定",
+    "selectItem": "アイテム選択",
+    "selectChampion": "チャンピオン選択",
+    "searchItems": "アイテム名で検索...",
+    "searchChampions": "チャンピオン名で検索...",
+    "noItems": "アイテムが見つかりません",
+    "noChampions": "チャンピオンが見つかりません",
+    "dataNa": "データ不完全",
+    "none": "なし",
+    "comboMode": "瞬間コンボ",
+    "comboBuilderMode": "コンボビルダー",
+    "simulationMode": "戦闘シミュレーション",
+    "comboBuilder": {
+      "addAction": "アクション追加",
+      "sequence": "コンボ順序",
+      "clearAll": "全削除",
+      "results": "結果",
+      "action": "アクション",
+      "time": "時間",
+      "damage": "ダメージ",
+      "procs": "プロック",
+      "cumulative": "累計",
+      "targetHP": "対象HP",
+      "totalDamage": "総ダメージ",
+      "comboTime": "コンボ時間",
+      "hpPercent": "HP%",
+      "emptyHint": "上のボタンをクリックしてコンボを構築",
+      "passive": "パッシブ"
+    },
+    "aiAnalysisMode": "AI分析",
+    "aiAnalysis": {
+      "title": "AIダメージ分析",
+      "analyzeButton": "AIでコンボ分析",
+      "analyzing": "AI分析中...",
+      "error": "分析に失敗しました。再度お試しください。",
+      "extraRequired": "Extraプランにアップグレードして、AIダメージ分析を利用しましょう",
+      "upgradeToExtra": "Extraプランを見る",
+      "optimalCombo": "最適コンボ",
+      "comboReasoning": "コンボの理由",
+      "comboBreakdown": "コンボ詳細",
+      "step": "ステップ",
+      "action": "アクション",
+      "damage": "ダメージ",
+      "type": "タイプ",
+      "notes": "備考",
+      "cumulative": "累計",
+      "totalDamage": "総合ダメージ",
+      "killPotential": "キルポテンシャル",
+      "canKill": "キル可能",
+      "cannotKill": "キル不可",
+      "hpRemaining": "残りHP",
+      "extendedTrade": "延長戦DPS",
+      "dps": "DPS",
+      "strategicAdvice": "戦略アドバイス"
+    }
+  },
+  "simulation": {
+    "duration": "戦闘時間",
+    "draw": "引き分け",
+    "wins": "WIN",
+    "totalDamage": "総ダメージ",
+    "aaCount": "AA回数",
+    "abilityCasts": "スキル使用",
+    "showTimeline": "タイムライン表示",
+    "hideTimeline": "タイムライン非表示",
+    "loadMore": "もっと表示",
+    "remaining": "件"
   },
   "accountPage": {
     "title": "アカウント設定",
@@ -243,7 +327,9 @@
       "defaultDesc": "この機能を利用するにはプレミアムプランへのアップグレードが必要です。",
       "unlockNow": "今すぐアンロック",
       "checkoutFailed": "決済の開始に失敗しました。",
-      "error": "エラーが発生しました。"
+      "error": "エラーが発生しました。",
+      "extraOnly": "Extraプラン限定機能",
+      "viewPlans": "料金プランを見る"
     },
     "promoCard": {
       "title": "プレミアムをアンロック",
@@ -265,7 +351,9 @@
       "credits": "クレジット",
       "remaining": "残り",
       "upgrading": "アップグレード中...",
-      "upgradeToPremium": "プレミアムにアップグレード"
+      "upgradeToPremium": "プレミアムにアップグレード",
+      "viewPlans": "料金プラン",
+      "extra": "EXTRA"
     }
   },
   "coachPage": {
@@ -309,7 +397,76 @@
       "finalAdvice": "総評",
       "analyzeAnother": "別の場面を解析する",
       "visionError": "Vision解析エラー",
-      "youtubeNotSupported": "YouTube動画のVision解析は現在準備中です。ローカルファイルを使用してください。"
+      "youtubeNotSupported": "YouTube動画のVision解析は現在準備中です。ローカルファイルを使用してください。",
+      "situationSnapshot": "状況スナップショット",
+      "myStatus": "自分",
+      "enemyStatus": "相手",
+      "environment": "環境",
+      "tradeAnalysis": "トレード分析",
+      "damageGiven": "与ダメージ",
+      "damageTaken": "被ダメージ",
+      "reason": "理由",
+      "cooldownContext": "CD状況",
+      "optimalAction": "最適な行動",
+      "noTrade": "このクリップではトレードが発生していません",
+      "mechanicsEvaluation": "メカニクス評価",
+      "skillsUsed": "スキル使用",
+      "skillsDodged": "スキル回避",
+      "improvements": "改善ポイント",
+      "tips": "Tips",
+      "keyCombo": "キーコンボ",
+      "current": "現在",
+      "ideal": "理想",
+      "practice": "練習",
+      "aaWeaving": "AA連携",
+      "positioning": "ポジショニング",
+      "combo": "コンボ",
+      "enums": {
+        "timing": {
+          "perfect": "完璧",
+          "good": "良好",
+          "early": "早い",
+          "late": "遅い",
+          "missed": "逃した"
+        },
+        "difficulty": {
+          "easy": "簡単",
+          "medium": "普通",
+          "hard": "難しい"
+        },
+        "outcome": {
+          "win": "勝ち",
+          "lose": "負け",
+          "even": "互角",
+          "noTrade": "トレードなし"
+        },
+        "priority": {
+          "high": "高",
+          "medium": "中",
+          "low": "低"
+        },
+        "category": {
+          "trading": "トレード",
+          "dodging": "回避",
+          "cooldownTracking": "CD管理",
+          "positioning": "ポジショニング",
+          "combo": "コンボ",
+          "resourceManagement": "リソース管理",
+          "waveControl": "ウェーブ管理"
+        },
+        "score": {
+          "excellent": "優秀",
+          "good": "良好",
+          "needsWork": "要改善",
+          "risky": "危険",
+          "poor": "不足"
+        },
+        "skillLevel": {
+          "beginner": "初心者",
+          "intermediate": "中級者",
+          "advanced": "上級者"
+        }
+      }
     },
     "macro": {
       "modeLabel": "分析モード (Analysis Mode)",
@@ -327,7 +484,9 @@
       "noCredits": "クレジット不足",
       "premiumUnlimited": "💎 PREMIUM UNLIMITED",
       "verificationFailed": "動画の照合に失敗しました。\n選択した試合と動画の内容が一致しません。",
-      "launchFailed": "解析を開始できませんでした。"
+      "launchFailed": "解析を開始できませんでした。",
+      "weeklyLimitReached": "週間上限に達しました",
+      "weeklyRemaining": "🧠 分析 (残り{remaining}回)"
     },
     "results": {
       "matchVerificationError": "動画の照合に失敗しました",
@@ -373,6 +532,95 @@
         "label": "集団戦",
         "desc": "立ち位置、スキル使用、ターゲット選定"
       }
+    },
+    "videoMacro": {
+      "title": "動画マクロ分析",
+      "description": "動画から5つの重要シーンを抽出し、「どう動けば勝てたか」を分析します",
+      "errors": {
+        "segmentFetchFailed": "セグメントの取得に失敗しました",
+        "noVideoOrSegments": "動画またはセグメントが選択されていません",
+        "payloadTooLarge": "フレームデータが大きすぎます",
+        "analysisFailed": "分析に失敗しました",
+        "noProfile": "ユーザープロファイルが見つかりません",
+        "noCredits": "クレジットが不足しています。プレミアムプランにアップグレードするか、クレジットを追加してください。"
+      },
+      "progress": {
+        "checkingStatus": "アカウント状態を確認中...",
+        "detectingTimeSync": "時間同期を自動検出中...",
+        "extractingFrames": "フレーム抽出中...",
+        "preparingUpload": "アップロード準備中...",
+        "startingAnalysis": "分析を開始中...",
+        "aiAnalyzing": "AIが分析中...",
+        "analysisComplete": "分析完了！"
+      },
+      "segmentTypes": {
+        "objective": "オブジェクト",
+        "death": "デス",
+        "turningPoint": "ターニングポイント"
+      },
+      "calibration": {
+        "detecting": "ゲーム内時間を検出中...",
+        "detected": "検出成功",
+        "failed": "時間検出失敗",
+        "error": "検出エラー"
+      },
+      "timeSync": {
+        "label": "時間同期",
+        "autoDetected": "自動検出済み",
+        "onAnalysisStart": "分析開始時に自動検出",
+        "offset": "オフセット",
+        "video": "動画"
+      },
+      "segments": {
+        "title": "分析対象シーン (5箇所)",
+        "loading": "読込中...",
+        "reload": "再読込",
+        "noSegments": "セグメントが見つかりません"
+      },
+      "buttons": {
+        "selectVideo": "動画を選択してください",
+        "loadingSegments": "セグメントを読み込み中...",
+        "startAnalysis": "マクロ分析を開始",
+        "reanalyze": "別のセグメントで再分析",
+        "weeklyLimitReached": "週間上限に達しました",
+        "upgradePrompt": "プレミアムで週20回まで分析可能"
+      },
+      "results": {
+        "segmentsAnalyzed": "セグメントを分析しました",
+        "showDetails": "詳細を表示",
+        "summary": "分析サマリー",
+        "mainIssue": "最大の課題",
+        "homework": "今日の宿題",
+        "relatedScenes": "関連シーン",
+        "sceneAnalysis": "シーン別分析"
+      },
+      "build": {
+        "title": "ビルド推奨",
+        "you": "あなた",
+        "recommendedCore": "推奨コアアイテム"
+      },
+      "scene": {
+        "observation": "状況観察",
+        "yourPosition": "自分の位置",
+        "allyPositions": "味方の位置",
+        "waveState": "ウェーブ状態",
+        "objective": "オブジェクト",
+        "winningPattern": "勝ちパターン",
+        "gap": "実際との差",
+        "criticalMoment": "決定的なタイミング",
+        "shouldHaveDone": "こうすべきだった",
+        "checkInVideo": "このシーンを動画で確認"
+      }
+    },
+    "verification": {
+      "aiVerifying": "AIが動画を照合中",
+      "checkingConsistency": "動画と試合データに不整合がないか確認しています..."
+    },
+    "tips": {
+      "title": "使い方",
+      "step1": "分析したい試合を選択",
+      "step2": "動画ファイルをアップロード",
+      "step3": "AIが重要シーンを自動分析"
     }
   },
   "widgets": {
@@ -466,6 +714,91 @@
       "daysCollected": "{current}日 / 2日以上でグラフ表示",
       "howItWorks": "毎日「データを更新」でランクが記録されます",
       "noMatchData": "試合データを取得するとプレイスタイルが表示されます"
+    },
+    "profileCard": {
+      "recentForm": "直近10試合",
+      "totalRecord": "総合戦績",
+      "mostPlayed": "最多プレイ",
+      "noData": "-",
+      "monthlyStats": "今月のランク戦",
+      "games": "試合",
+      "noMonthlyData": "今月のランク戦データなし",
+      "coachInsight": "AIコーチからの指摘",
+      "topFocus": "改善ポイント",
+      "analysesCompleted": "回の解析完了",
+      "noCoachData": "解析履歴がありません",
+      "macro": "マクロ",
+      "micro": "ミクロ",
+      "roleDistribution": "ロール分布",
+      "topChampions": "お気に入りチャンプ"
+    },
+    "rankGoal": {
+      "title": "ランク目標",
+      "subtitle": "目標を設定してモチベーションを維持",
+      "edit": "編集",
+      "setGoal": "目標を設定",
+      "cancel": "キャンセル",
+      "current": "現在",
+      "target": "目標",
+      "unranked": "未ランク",
+      "progress": "進捗",
+      "achieved": "達成!",
+      "remaining": "あと約{lp}LP",
+      "setNewGoal": "新しい目標を設定する",
+      "achievementTitle": "目標達成!",
+      "achievementMessage": "おめでとうございます！設定した目標ランクに到達しました。",
+      "close": "閉じる"
+    },
+    "nextFocus": {
+      "title": "次の試合で意識すること",
+      "subtitle": "あなたのデータに基づくアドバイス",
+      "noTips": "素晴らしいパフォーマンスです！",
+      "keepPlaying": "この調子で続けましょう",
+      "priority": {
+        "high": "重要",
+        "medium": "推奨",
+        "low": "参考"
+      },
+      "tips": {
+        "vision": {
+          "title": "視界管理を改善",
+          "desc": "ワードの設置数が少なめです。リコール前にワードを置く習慣をつけましょう。"
+        },
+        "farming": {
+          "title": "CS精度を向上",
+          "desc": "ミニオンの取りこぼしが多いです。ラストヒットの練習をしましょう。"
+        },
+        "survival": {
+          "title": "デス数を減らす",
+          "desc": "デス数が多めです。ミニマップを確認してから仕掛けましょう。"
+        },
+        "objective": {
+          "title": "オブジェクトに参加",
+          "desc": "オブジェクトへの貢献が少なめです。ドラゴン・バロンに積極的に参加しましょう。"
+        },
+        "macro": {
+          "title": "マクロ改善",
+          "desc": "AIコーチの解析で指摘されたポイントです。意識して改善しましょう。"
+        },
+        "micro": {
+          "title": "メカニクス改善",
+          "desc": "トレードやスキル精度に改善の余地があります。"
+        },
+        "mental": {
+          "title": "メンタルリセット",
+          "desc": "連敗中です。休憩を取るか、ノーマルでリフレッシュしましょう。"
+        }
+      }
+    },
+    "quickStats": {
+      "title": "クイックスタッツ",
+      "subtitle": "直近{games}試合の平均",
+      "noData": "データを収集中...",
+      "kda": "KDA",
+      "killParticipation": "キル関与",
+      "csPerMin": "CS/分",
+      "visionPerMin": "視界/分",
+      "avgDamage": "平均ダメージ"
     }
   },
   "tooltip": {
@@ -581,5 +914,355 @@
       "billing": "プレミアムプラン・お支払いに関するお問い合わせ",
       "general": "その他サービスに関する全般的なお問い合わせ"
     }
+  },
+  "landingPage": {
+    "nav": {
+      "pricing": "料金プラン",
+      "login": "ログイン",
+      "getStarted": "無料で始める"
+    },
+    "hero": {
+      "subtitlePrefix": "AIが",
+      "subtitle": "Riot APIからリアルタイムでデータを取得。",
+      "subtitleHighlight": "あなた専用",
+      "subtitleEnd": "の改善点を分析し、最短でランクアップへ導きます。",
+      "ctaStart": "今すぐ始める →",
+      "ctaAnalyze": "🎥 無料で動画分析を試す",
+      "freeBadge": "ログイン不要・3回まで無料で分析"
+    },
+    "bento": {
+      "skillAnalysis": "あなたのスキルを可視化",
+      "skillDesc": "CS、視界スコア、ダメージ効率などをTier平均と比較。強みと弱みが一目でわかります。",
+      "csAccuracy": "CS精度",
+      "visionScore": "視界スコア",
+      "totalDamage": "総ダメージ",
+      "aiChatPreview": "対面のYasuoはLv2先行が強いです。ウェーブコントロールを意識しましょう。",
+      "matchupTitle": "マッチアップ攻略",
+      "matchupDesc": "苦手な対面の対策、ビルドパス、立ち回りをAIが提案します。",
+      "macroTitle": "マクロ分析",
+      "macroDesc": "動画からマップ全体の動きを分析し改善点を提示。",
+      "microTitle": "ミクロ分析",
+      "microDesc": "操作精度、コンボ、ポジショニングを詳細に分析。",
+      "winRateChange": "+12% 今週",
+      "aiCoachLabel": "AIコーチ",
+      "activeNow": "オンライン"
+    },
+    "features": {
+      "sectionTitlePrefix": "データで",
+      "sectionTitle": "勝つ",
+      "sectionDesc": "感覚に頼らない、データドリブンな上達を実現します。",
+      "statsTitle": "リアルタイム戦績分析",
+      "statsDesc": "Riot APIから直接データを取得。CS、視界、ダメージ効率など20以上の指標をTier平均と比較し、あなたの強みと改善点を明確にします。",
+      "statsFeature1": "自動データ同期",
+      "statsFeature2": "Tier別ベンチマーク",
+      "statsFeature3": "トレンド分析",
+      "chatTitle": "AIコーチとの対話",
+      "chatQuestion1": "このマッチアップどう動けばいい？",
+      "chatQuestion2": "なぜ負けた？",
+      "chatDesc": "試合ごとの具体的な悩みをAIコーチに相談。対話形式で疑問を解決します。",
+      "chatFeature1": "24時間対応",
+      "chatFeature2": "試合データ連携",
+      "chatFeature3": "個別最適化アドバイス"
+    },
+    "cta": {
+      "titlePrefix": "今すぐ、",
+      "title": "次のランク",
+      "titleEnd": "へ。",
+      "desc": "クレジットカード不要。Riot ID連携のみで今すぐ始められます。",
+      "button": "無料でアカウント作成",
+      "trustRiot": "Riot公式API連携",
+      "trustNoCc": "クレジットカード不要",
+      "trustJa": "日本語対応"
+    }
+  },
+  "loginPage": {
+    "emptyFields": "ログインIDとパスワードを入力してください",
+    "loginFailed": "ログイン失敗：",
+    "emailNotVerified": "メール認証が完了していません。\n届いたメール内のリンクをクリックしてください。",
+    "welcomeBack": "おかえりなさい",
+    "initializing": "初期化中...",
+    "loginButton": "ログイン",
+    "noAccount": "アカウントをお持ちでない方は",
+    "register": "新規登録",
+    "forgotPassword": "パスワードを忘れた方",
+    "emailLabel": "メールアドレス",
+    "passwordLabel": "パスワード"
+  },
+  "signupPage": {
+    "allFieldsRequired": "全ての項目を入力してください",
+    "passwordMismatch": "パスワードが一致しません。",
+    "alreadyRegistered": "このメールアドレスは既に登録されています。ログインしてください。",
+    "registrationFailed": "登録失敗：",
+    "emailSent": "確認メールを送信しました。",
+    "checkEmail": "メール内のリンクをクリックして登録を完了してください。",
+    "alreadyRegisteredNote": "※ メールが届かない場合は、既に登録済みの可能性があります。\nその場合はログイン画面へお進みください。",
+    "goToLogin": "ログイン画面へ",
+    "title": "参戦する",
+    "registerButton": "アカウント登録",
+    "alreadyHaveAccount": "既にアカウントをお持ちの方は",
+    "login": "ログイン",
+    "emailLabel": "メールアドレス",
+    "passwordLabel": "パスワード",
+    "confirmPasswordLabel": "パスワード確認"
+  },
+  "onboardingPage": {
+    "welcome": "まずは、あなたのアカウントを連携して分析を開始しましょう。",
+    "riotIdFormat": "Riot IDは 'Name#Tag' の形式で入力してください (例: Hide on bush#KR1)",
+    "error": "エラー: ",
+    "jpOnly": "※ JPサーバーのみ対応しています",
+    "startLink": "連携を開始する",
+    "verifyTitle": "本人確認 (アイコン認証)",
+    "verifyInstruction": "LoLクライアントで、プロフィールアイコンを\n以下に変更してください。",
+    "cancel": "キャンセル",
+    "checking": "確認中...",
+    "changed": "変更しました",
+    "verifySuccess": "認証成功！ダッシュボードへ移動します...",
+    "logout": "ログアウトして戻る",
+    "timeRemaining": "残り時間:"
+  },
+  "pricingPage": {
+    "header": {
+      "back": "戻る",
+      "tryFree": "無料で試す",
+      "login": "ログイン",
+      "dashboard": "ダッシュボード"
+    },
+    "title": "プラン",
+    "subtitle": "あなたに合ったプランを選択してください",
+    "features": {
+      "analysisCount": "動画分析回数",
+      "segmentCount": "分析セグメント数",
+      "segmentMethod": "セグメント選択方法",
+      "riotApi": "Riot API連携",
+      "matchHistory": "試合履歴の閲覧",
+      "analysisSave": "分析履歴の保存",
+      "buildAdvice": "ビルドアドバイス",
+      "championStats": "チャンピオン統計",
+      "detailedStats": "詳細戦績分析",
+      "ads": "広告",
+      "adsYes": "あり",
+      "adsNo": "なし",
+      "aiDamageAnalysis": "AIダメージ分析"
+    },
+    "guest": {
+      "name": "ゲスト",
+      "price": "/永久",
+      "desc": "登録不要で今すぐ試せる",
+      "analysisFreq": "3日に1回（最大3回分）",
+      "analysisFreqShort": "3日に1回の分析（最大3回分保持）",
+      "fixedSegments": "固定3個",
+      "fixedSegmentsDesc": "固定3セグメント分析",
+      "fixedMethod": "時間固定（3分/8分/15分）",
+      "autoMethod": "試合データから自動選択",
+      "aiMacro": "AIマクロ分析",
+      "noMatchData": "試合データ連携なし",
+      "noSaveHistory": "分析履歴の保存なし",
+      "tryNow": "今すぐ試す"
+    },
+    "free": {
+      "name": "無料会員",
+      "badge": "おすすめ",
+      "price": "/永久",
+      "desc": "全機能を無料で体験",
+      "weeklyAnalysis": "週3回",
+      "weeklyAnalysisDesc": "週3回の分析",
+      "autoSelect": "自動選択",
+      "threeSegments": "3セグメント",
+      "autoSegments": "自動選択3個",
+      "riotApi": "Riot API連携",
+      "matchHistoryView": "試合履歴・統計閲覧",
+      "saveHistory": "分析履歴の保存",
+      "noBuildAdvice": "ビルドアドバイスなし",
+      "currentPlan": "現在のプラン",
+      "register": "無料で登録"
+    },
+    "premium": {
+      "name": "プレミアム",
+      "priceUnit": "/月",
+      "desc": "本気で上達したい方へ",
+      "weeklyAnalysis": "週20回",
+      "fiveSegments": "5セグメント",
+      "autoSegments": "自動選択5個",
+      "buildAdvice": "ビルドアドバイス",
+      "noAds": "広告なし",
+      "processing": "処理中...",
+      "subscribe": "プレミアムに登録",
+      "unsubscribe": "登録解除"
+    },
+    "extra": {
+      "name": "Extra",
+      "priceUnit": "/月",
+      "desc": "AIダメージ分析で差をつける",
+      "weeklyAnalysis": "週50回",
+      "eightSegments": "8セグメント",
+      "autoSegments": "自動選択8個",
+      "aiDamageAnalysis": "AIダメージ分析",
+      "subscribe": "Extraに登録",
+      "processing": "処理中...",
+      "unsubscribe": "登録解除"
+    },
+    "comparison": {
+      "title": "機能比較表",
+      "feature": "機能"
+    },
+    "faq": {
+      "title": "よくある質問",
+      "q1": "ゲストと無料会員の違いは？",
+      "a1": "ゲストは登録不要ですぐに試せますが、分析は固定の3シーンのみです。無料会員になると、Riot API連携により試合データから重要なシーンを自動選択し、より的確な分析が受けられます。また、分析履歴も保存されます。",
+      "q2": "プレミアムの解約はいつでもできますか？",
+      "a2": "はい、いつでも解約できます。解約後も期間終了まではプレミアム機能をご利用いただけます。解約後は自動的に無料会員として継続できます。",
+      "q3": "分析回数はいつリセットされますか？",
+      "a3": "無料会員・プレミアムの週間回数は毎週月曜日にリセットされます。ゲストのクレジットは最後の使用から3日後に1回分回復します（最大3回分まで）。",
+      "q4": "支払い方法は何がありますか？",
+      "a4": "クレジットカード（Visa, Mastercard, JCB, American Express）に対応しています。Stripeによる安全な決済処理を行っています。"
+    },
+    "ctaPremium": {
+      "title": "プレミアムプランをご利用中です",
+      "desc": "全機能をお楽しみください",
+      "button": "ダッシュボードへ"
+    },
+    "ctaExtra": {
+      "title": "Extraプランをご利用中です",
+      "desc": "AIダメージ分析を含む全機能をお楽しみください",
+      "button": "ダッシュボードへ"
+    },
+    "ctaUpgrade": {
+      "title": "プレミアムプランでさらに上達",
+      "desc": "週20回の分析と5セグメント自動選択で効率的に改善"
+    },
+    "ctaGuest": {
+      "title": "まずは無料で試してみませんか？",
+      "desc": "登録不要でAI動画分析を体験できます",
+      "tryGuest": "ゲストとして試す",
+      "registerFree": "無料会員登録"
+    }
+  },
+  "analyzePage": {
+    "tabs": {
+      "macro": "マクロ分析",
+      "micro": "ミクロ分析"
+    },
+    "micro": {
+      "clipSelector": "分析する30秒を選択",
+      "clipFrom": "開始位置",
+      "clipDescription": "指定位置から30秒間のプレイを詳細分析します",
+      "analyzing": "AI分析中...",
+      "polling": "サーバーで処理中...",
+      "overallGrade": "総合評価",
+      "situationSnapshot": "状況スナップショット",
+      "tradeAnalysis": "トレード分析",
+      "mechanics": "メカニクス評価",
+      "improvements": "改善ポイント"
+    },
+    "rewardAd": {
+      "title": "広告を視聴して分析を開始",
+      "description": "短い広告の後、分析が開始されます",
+      "skip": "スキップ",
+      "watching": "広告視聴中...",
+      "complete": "分析を開始"
+    },
+    "selectVideo": "動画を選択してください",
+    "noCredits": "クレジットが不足しています",
+    "detectingTime": "ゲーム内時間を検出中...",
+    "extractingFrames": "フレーム抽出中...",
+    "startingAnalysis": "分析を開始...",
+    "analysisFailed": "分析に失敗しました",
+    "verifying": "動画と試合データを照合中...",
+    "aiVerifying": "AI照合実行中...",
+    "verifyFetchFailed": "試合データの取得に失敗しました",
+    "verifyServerError": "照合サーバーエラーが発生しました",
+    "videoMismatch": "選択した試合と動画の内容が一致しません。正しい動画を選択してください。",
+    "championMismatch": "操作しているチャンピオンが試合データと一致しません。正しい試合の動画を選択してください。",
+    "teamMismatch": "チーム構成が試合データと一致しません。別の試合の動画が選択されている可能性があります。",
+    "loading": "読み込み中...",
+    "header": {
+      "top": "トップへ",
+      "dashboard": "ダッシュボード",
+      "matchSelect": "試合選択",
+      "guest": "ゲスト",
+      "freeMember": "無料会員",
+      "perWeek": "回/週",
+      "pricing": "料金プラン",
+      "login": "ログイン"
+    },
+    "hero": {
+      "free": "無料",
+      "desc": "LoLのプレイ動画をアップロードして、AIがマクロ戦術をアドバイス"
+    },
+    "upload": {
+      "title": "動画をアップロード",
+      "dragDrop": "クリックまたはドラッグ&ドロップ",
+      "formats": "MP4, MOV, WebM (最大500MB)",
+      "changeVideo": "別の動画を選択"
+    },
+    "segments": {
+      "titleAuto": "分析対象のシーン（試合データから自動選択）",
+      "titleFixed": "分析対象のシーン（固定）",
+      "loading": "試合データを読み込み中...",
+      "autoNote": "※ 試合データを基に重要シーンを自動選択しています",
+      "registerNote": "※ 無料会員登録で試合データに基づく重要シーンを自動選択",
+      "close": "閉じる"
+    },
+    "analysis": {
+      "macroTitle": "マクロ分析",
+      "guestNoCredits": "ゲストのクレジットを使い切りました。次の回復まで少々お待ちください。",
+      "weeklyLimit": "今週の分析回数に達しました。月曜日にリセットされます。",
+      "freeRegister": "無料会員登録で週3回",
+      "comparePlans": "プラン比較",
+      "viewPlans": "他のプランを見る →"
+    },
+    "buttons": {
+      "loading": "読み込み中...",
+      "analyzing": "分析中...",
+      "selectVideo": "動画を選択してください",
+      "noCredits": "クレジット不足",
+      "startAnalysis": "分析開始 (残り {credits}回)"
+    },
+    "matchInfo": {
+      "victory": "勝利",
+      "defeat": "敗北"
+    },
+    "results": {
+      "warning": "⚠️ 分析中に問題が発生しました",
+      "completed": "分析完了: {completed}/{requested} セグメント",
+      "summary": "分析サマリー",
+      "homework": "今日の宿題",
+      "sceneAnalysis": "シーン別分析",
+      "position": "位置:",
+      "wave": "ウェーブ:",
+      "winPattern": "勝ちパターン:",
+      "improvement": "改善ポイント",
+      "checkVideo": "動画で確認",
+      "reanalyze": "再分析する",
+      "remainingCredits": "残りクレジット: {remaining}回",
+      "viewPlans": "料金プランを見る →"
+    }
+  },
+  "visionAnalysis": {
+    "restoringBackground": "バックグラウンド解析を復元中...",
+    "resultCorrupted": "分析結果が破損していました。再度分析してください。",
+    "completedCreatingReport": "完了！レポート作成中...",
+    "analysisFailed": "解析に失敗しました。",
+    "aiAnalyzingServer": "AI解析中... (サーバー処理中)",
+    "verifyingVideo": "動画の整合性を確認中...",
+    "matchDataFetchFailed": "試合データの取得に失敗しました",
+    "playerNotFound": "指定されたPUUIDのプレイヤーが見つかりません",
+    "extractingVerificationFrames": "照合用フレームを抽出中...",
+    "aiVerifying": "AI照合実行中...",
+    "verificationServerError": "検証サーバーエラー: {error}",
+    "unknownError": "不明",
+    "videoMismatch": "選択した試合とは異なる動画が選択されています。",
+    "championMismatch": "操作しているチャンピオンが試合データと一致しません。正しい試合の動画を選択してください。",
+    "teamMismatch": "チーム構成が試合データと一致しません。別の試合の動画が選択されている可能性があります。",
+    "preparing": "準備中...",
+    "verifyingVideoMatch": "動画と試合データの照合中...",
+    "cannotSkipVerification": "試合情報の取得に失敗したため、検証をスキップできません。",
+    "extractingFromPosition": "指定位置({startTime}s)からフレームを抽出中...",
+    "extractingFromVideo": "動画からフレームを抽出中...",
+    "frameExtractionFailed": "フレーム抽出に失敗しました (0枚)",
+    "aiAnalyzingFrames": "AI解析中... ({frameCount}枚の画像を送信)",
+    "jobStartFailed": "解析ジョブの開始に失敗しました",
+    "unexpectedError": "予期せぬエラーが発生しました",
+    "error": "エラー"
   }
 }

@@ -4,7 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { fetchMatchTimeline, fetchMatchDetail, fetchDDItemData, fetchRank, fetchLatestVersion, extractMatchEvents, extractFrameStats, getChampionAttributes, ChampionAttributes, TruthEvent, FrameStats, buildParticipantRoleMap, ParticipantRoleMap, getRelevantMacroAdvice, getEnhancedMacroAdvice, MacroAdviceContext } from "./riot";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { AnalysisMode, getPersonaPrompt } from './promptUtils';
-import { WEEKLY_ANALYSIS_LIMIT } from './constants';
+import { FREE_WEEKLY_ANALYSIS_LIMIT, PREMIUM_WEEKLY_ANALYSIS_LIMIT } from './constants';
 
 const GEMINI_API_KEY_ENV = process.env.GEMINI_API_KEY;
 
@@ -16,6 +16,31 @@ export type MatchSummary = {
     timestamp: number;
     queueId: number;
 };
+
+export async function getMatchSummary(matchId: string, puuid: string): Promise<MatchSummary | null> {
+    const supabase = await createClient();
+
+    const { data: matchData } = await supabase
+        .from('match_cache')
+        .select('data, match_id')
+        .eq('match_id', matchId)
+        .single();
+
+    if (!matchData) return null;
+
+    const info = matchData.data.info;
+    const participant = info.participants.find((p: any) => p.puuid === puuid);
+    if (!participant) return null;
+
+    return {
+        matchId: matchData.match_id,
+        championName: participant.championName,
+        win: participant.win,
+        kda: `${participant.kills}/${participant.deaths}/${participant.assists}`,
+        timestamp: info.gameStartTimestamp,
+        queueId: info.queueId
+    };
+}
 
 export async function getCoachMatches(puuid: string): Promise<MatchSummary[]> {
     const supabase = await createClient();
@@ -144,7 +169,7 @@ export type AnalysisResult = {
 };
 
 // Fallback sequence: Stable 2.0 -> New 2.5 -> Legacy Standard
-const MODELS_TO_TRY = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-flash-latest"];
+const MODELS_TO_TRY = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
 
 export type AnalysisFocus = {
     focusArea: string; // e.g., "LANING", "TEAMFIGHT", "MACRO", "BUILD", "VISION" or "LANING_PHASE"
@@ -181,29 +206,28 @@ export async function analyzeMatchTimeline(
     let useEnvKey = false;
     let shouldIncrementCount = false;
 
-    if (status.is_premium) {
-        // 1. Premium User - Weekly Limit (100/week)
-        const weeklyCount = status.weekly_analysis_count || 0;
+    const weeklyCount = status.weekly_analysis_count || 0;
 
-        if (weeklyCount >= WEEKLY_ANALYSIS_LIMIT) {
+    if (status.is_premium) {
+        // 1. Premium User - 20 analyses per week
+        if (weeklyCount >= PREMIUM_WEEKLY_ANALYSIS_LIMIT) {
             const resetDate = status.weekly_reset_date ? new Date(status.weekly_reset_date).toLocaleDateString('ja-JP') : '月曜日';
-            return { success: false, error: `週間制限に達しました (${weeklyCount}/${WEEKLY_ANALYSIS_LIMIT})。${resetDate}にリセットされます。` };
+            return { success: false, error: `週間制限に達しました (${weeklyCount}/${PREMIUM_WEEKLY_ANALYSIS_LIMIT})。${resetDate}にリセットされます。` };
         }
 
         useEnvKey = true;
         shouldIncrementCount = true;
     } else {
-        // 2. Free User
+        // 2. Free User - 3 analyses per week (unless using own API key)
         if (userApiKey) {
             useEnvKey = false; // Use provided key
         } else {
-            // Fallback: Check for legacy credits or deny
-            if (status.analysis_credits > 0) {
-                useEnvKey = true;
-                // Will decrement later
-            } else {
-                return { success: false, error: "Upgrade required. Please upgrade to Premium or enter your API Key." };
+            if (weeklyCount >= FREE_WEEKLY_ANALYSIS_LIMIT) {
+                const resetDate = status.weekly_reset_date ? new Date(status.weekly_reset_date).toLocaleDateString('ja-JP') : '月曜日';
+                return { success: false, error: `無料プランの週間制限に達しました (${weeklyCount}/${FREE_WEEKLY_ANALYSIS_LIMIT})。${resetDate}にリセットされます。プレミアムプランへのアップグレードで週20回まで分析できます。` };
             }
+            useEnvKey = true;
+            shouldIncrementCount = true;
         }
     }
 
@@ -565,13 +589,10 @@ export async function analyzeMatchTimeline(
 
 
         // --- Update Usage Limits (DB) ---
+        // Both premium and free users increment weekly count when using env key
         if (shouldIncrementCount) {
-            // Premium user: increment weekly count
             const newWeeklyCount = (status.weekly_analysis_count || 0) + 1;
             await supabase.from("profiles").update({ weekly_analysis_count: newWeeklyCount }).eq("id", user.id);
-        } else if (!userApiKey && useEnvKey && !status.is_premium) {
-            // Free user: Consume Credit
-            await supabase.from("profiles").update({ analysis_credits: status.analysis_credits - 1 }).eq("id", user.id);
         }
         // -------------------------------
 
