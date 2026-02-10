@@ -3,7 +3,6 @@ import { createClient, createServiceRoleClient } from '@/utils/supabase/server';
 import { stripe } from '@/lib/stripe';
 
 export async function POST(req: NextRequest) {
-  console.log('[Checkout] === POST /api/checkout called ===');
   try {
     const supabase = await createClient();
     const {
@@ -11,16 +10,13 @@ export async function POST(req: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      console.log('[Checkout] ERROR: Unauthorized (no user session)');
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
     const body = await req.json();
     const priceId = body?.priceId;
-    console.log(`[Checkout] Received body: ${JSON.stringify(body)}`);
 
     if (!priceId) {
-      console.log('[Checkout] ERROR: Price ID is missing from request body');
       return new NextResponse('Price ID is required', { status: 400 });
     }
 
@@ -32,9 +28,6 @@ export async function POST(req: NextRequest) {
       .single();
 
     let customerId = profile?.stripe_customer_id;
-
-    console.log(`[Checkout] Request for user=${user.id}, email=${user.email}, price=${priceId}`);
-    console.log(`[Checkout] Profile from DB: customerId=${customerId}, subId=${profile?.stripe_subscription_id}`);
 
     if(!process.env.STRIPE_SECRET_KEY) {
          throw new Error("STRIPE_SECRET_KEY is missing");
@@ -63,11 +56,9 @@ export async function POST(req: NextRequest) {
 
     // If no customer ID in DB, search Stripe by email
     if (!customerId && user.email) {
-      console.log(`[Checkout] No customer ID in DB, searching Stripe by email: ${user.email}`);
       const customers = await stripe.customers.list({ email: user.email, limit: 1 });
       if (customers.data.length > 0) {
         customerId = customers.data[0].id;
-        console.log(`[Checkout] Found Stripe customer by email: ${customerId}`);
       }
     }
 
@@ -75,7 +66,6 @@ export async function POST(req: NextRequest) {
     let existingSubscriptionId = profile?.stripe_subscription_id;
 
     if (!existingSubscriptionId && customerId) {
-      console.log(`[Checkout] No subscription ID in DB, listing active subs for customer: ${customerId}`);
       const subs = await stripe.subscriptions.list({
         customer: customerId,
         status: 'active',
@@ -83,7 +73,6 @@ export async function POST(req: NextRequest) {
       });
       if (subs.data.length > 0) {
         existingSubscriptionId = subs.data[0].id;
-        console.log(`[Checkout] Found active subscription from Stripe: ${existingSubscriptionId}`);
       }
     }
 
@@ -91,13 +80,9 @@ export async function POST(req: NextRequest) {
     let discounts: { coupon: string }[] | undefined;
     let oldSubscriptionId: string | undefined;
 
-    console.log(`[Checkout] existingSubscriptionId=${existingSubscriptionId}`);
-
     if (existingSubscriptionId) {
       try {
         const existingSub = await stripe.subscriptions.retrieve(existingSubscriptionId);
-
-        console.log(`[Checkout] Existing sub status=${existingSub.status}, priceId=${existingSub.items.data[0]?.price?.id}, requestedPrice=${sanitizedPriceId}`);
 
         if (existingSub.status === 'active' || existingSub.status === 'trialing') {
           const currentPriceId = existingSub.items.data[0]?.price?.id;
@@ -106,17 +91,14 @@ export async function POST(req: NextRequest) {
           if (currentPriceId === sanitizedPriceId) {
             const EXTRA_PRICE_ID_CHECK = process.env.NEXT_PUBLIC_STRIPE_EXTRA_PRICE_ID;
             const tier = (EXTRA_PRICE_ID_CHECK && currentPriceId === EXTRA_PRICE_ID_CHECK) ? 'extra' : 'premium';
-            console.log(`[Checkout] Already on requested plan. currentPriceId=${currentPriceId}, EXTRA_PRICE_ID=${EXTRA_PRICE_ID_CHECK}, determined tier=${tier}`);
             // Use service role client to bypass RLS for subscription_tier update
             const adminDb = createServiceRoleClient();
-            const { data: updated, error: updateErr } = await adminDb.from('profiles').update({
+            const { error: updateErr } = await adminDb.from('profiles').update({
               subscription_tier: tier,
               is_premium: true,
-            }).eq('id', user.id).select('subscription_tier, is_premium');
+            }).eq('id', user.id);
             if (updateErr) {
-              console.error(`[Checkout] DB update FAILED: ${updateErr.message} (code: ${updateErr.code}, details: ${updateErr.details})`);
-            } else {
-              console.log(`[Checkout] DB update result:`, JSON.stringify(updated));
+              console.error(`[Checkout] DB update failed: ${updateErr.message}`);
             }
             return NextResponse.json({ url: `${baseUrl}/dashboard?checkout=success` });
           }
@@ -130,8 +112,6 @@ export async function POST(req: NextRequest) {
             ?? (existingSub as any).current_period_start as number | undefined;
           const now = Math.floor(Date.now() / 1000);
 
-          console.log(`[Checkout] Proration check: periodEnd=${periodEnd}, periodStart=${periodStart}, now=${now}, unit_amount=${currentPrice?.unit_amount}, currency=${currentPrice?.currency}`);
-
           if (periodEnd && periodStart && periodEnd > now && currentPrice?.unit_amount) {
             const totalSeconds = periodEnd - periodStart;
             const remainingSeconds = periodEnd - now;
@@ -141,7 +121,6 @@ export async function POST(req: NextRequest) {
 
             if (creditAmount > 0) {
               const remainingDays = Math.ceil(remainingSeconds / 86400);
-              console.log(`[Checkout] Proration: ${remainingDays} days remaining, credit ¥${creditAmount}`);
 
               const coupon = await stripe.coupons.create({
                 amount_off: creditAmount,
@@ -155,16 +134,11 @@ export async function POST(req: NextRequest) {
           }
 
           oldSubscriptionId = existingSub.id;
-          console.log(`[Checkout] Will cancel old subscription ${oldSubscriptionId} after successful checkout`);
         }
       } catch (e: any) {
-        console.log(`[Checkout] Could not retrieve existing subscription: ${e.message}`);
+        console.error(`[Checkout] Could not retrieve existing subscription: ${e.message}`);
       }
-    } else {
-      console.log(`[Checkout] No existing subscription found, skipping proration`);
     }
-
-    console.log(`[Checkout] Creating session: customerId=${customerId}, discounts=${JSON.stringify(discounts)}, oldSub=${oldSubscriptionId}`);
 
     // Create Stripe Checkout Session (always show payment page)
     const sessionParams: any = {
@@ -193,7 +167,6 @@ export async function POST(req: NextRequest) {
 
     const session = await stripe.checkout.sessions.create(sessionParams);
 
-    console.log("Session created:", session.id, oldSubscriptionId ? `(will cancel ${oldSubscriptionId})` : '');
     return NextResponse.json({ url: session.url });
   } catch (error: any) {
     console.error('Stripe Checkout Error:', error);

@@ -42,14 +42,8 @@ export default function DashboardContent({ summoner }: Props) {
     useEffect(() => {
         if (searchParams.get('checkout') === 'success' && !syncCalledRef.current) {
             syncCalledRef.current = true;
-            console.log('[Dashboard] Detected checkout=success, calling syncSubscriptionStatus...');
             import('@/app/actions/analysis').then(({ syncSubscriptionStatus }) => {
-                syncSubscriptionStatus().then((result) => {
-                    console.log('[Dashboard] Post-checkout sync result:', JSON.stringify(result, null, 2));
-                    if (result && 'debug' in result) {
-                        console.log('[Dashboard] Sync debug info:', JSON.stringify(result.debug, null, 2));
-                    }
-                    // Clean up URL and refresh page to reflect new tier
+                syncSubscriptionStatus().then(() => {
                     router.replace('/dashboard');
                 }).catch((err) => {
                     console.error('[Dashboard] Sync failed:', err);

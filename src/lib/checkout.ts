@@ -4,8 +4,6 @@ export async function triggerStripeCheckout(tier: 'premium' | 'extra' = 'premium
             ? process.env.NEXT_PUBLIC_STRIPE_EXTRA_PRICE_ID
             : process.env.NEXT_PUBLIC_STRIPE_PRICE_ID;
 
-        console.log(`[CheckoutClient] tier=${tier}, priceId=${priceId}, envExtra=${process.env.NEXT_PUBLIC_STRIPE_EXTRA_PRICE_ID}, envPremium=${process.env.NEXT_PUBLIC_STRIPE_PRICE_ID}`);
-
         const response = await fetch('/api/checkout', {
             method: 'POST',
             headers: {

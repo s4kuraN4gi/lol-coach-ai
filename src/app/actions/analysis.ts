@@ -970,35 +970,20 @@ export async function syncSubscriptionStatus() {
     .eq("id", user.id)
     .single();
 
-  // Diagnostic info for debugging
-  const debug: Record<string, any> = {
-    userId: user.id,
-    email: user.email,
-    currentTierInDB: profile?.subscription_tier,
-    customerId: profile?.stripe_customer_id,
-    storedSubId: profile?.stripe_subscription_id,
-  };
-
   try {
       const EXTRA_PRICE_ID = process.env.NEXT_PUBLIC_STRIPE_EXTRA_PRICE_ID;
-      const hasServiceKey = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
-      debug.EXTRA_PRICE_ID = EXTRA_PRICE_ID || '(NOT SET)';
-      debug.hasServiceRoleKey = hasServiceKey;
 
       // If no customer ID in DB, search Stripe by email to find the customer
       let customerId = profile?.stripe_customer_id;
       if (!customerId && user.email) {
-        console.log(`[Sync] No customer ID in DB, searching Stripe by email: ${user.email}`);
         const customers = await stripe.customers.list({ email: user.email, limit: 1 });
         if (customers.data.length > 0) {
           customerId = customers.data[0].id;
-          debug.customerFoundByEmail = true;
-          console.log(`[Sync] Found Stripe customer by email: ${customerId}`);
         }
       }
 
       if (!customerId && !profile?.stripe_subscription_id) {
-        return { error: "No subscription info found (no Stripe customer for this email)", debug };
+        return { error: "No subscription info found" };
       }
 
       let bestSubscription: any = null;
@@ -1013,13 +998,6 @@ export async function syncSubscriptionStatus() {
           limit: 10,
         });
         allActiveSubs.push(...subs.data);
-
-        debug.activeSubCount = subs.data.length;
-        debug.activeSubs = subs.data.map(s => ({
-          id: s.id,
-          priceId: s.items.data[0]?.price?.id,
-          status: s.status,
-        }));
 
         for (const sub of subs.data) {
           const priceId = sub.items.data[0]?.price?.id;
@@ -1053,9 +1031,8 @@ export async function syncSubscriptionStatus() {
             if (sub.id !== bestSubscription.id) {
               try {
                 await stripe.subscriptions.cancel(sub.id);
-                console.log(`[Sync] Cancelled duplicate subscription: ${sub.id}`);
               } catch (cancelErr: any) {
-                console.warn(`[Sync] Failed to cancel duplicate ${sub.id}: ${cancelErr.message}`);
+                console.error(`[Sync] Failed to cancel duplicate ${sub.id}: ${cancelErr.message}`);
               }
             }
           }
@@ -1070,13 +1047,8 @@ export async function syncSubscriptionStatus() {
       }
 
       if (!bestSubscription) {
-        return { error: "No active subscription found on Stripe", debug };
+        return { error: "No active subscription found on Stripe" };
       }
-
-      debug.bestSubId = bestSubscription.id;
-      debug.bestSubPriceId = bestSubscription.items.data[0]?.price?.id;
-      debug.determinedTier = bestTier;
-      debug.priceIdMatch = bestSubscription.items.data[0]?.price?.id === EXTRA_PRICE_ID;
 
       const periodEnd = (bestSubscription.items?.data?.[0] as any)?.current_period_end
         ?? (bestSubscription as any).current_period_end;
@@ -1105,31 +1077,23 @@ export async function syncSubscriptionStatus() {
         updateData.stripe_customer_id = customerId;
       }
 
-      console.log("[Sync] Updating profile with:", JSON.stringify(updateData));
-      console.log("[Sync] Debug:", JSON.stringify(debug));
-
       // Use service role client to bypass RLS for subscription_tier update
       const adminDb = createServiceRoleClient();
-      const { data: updatedRows, error: updateError } = await adminDb
+      const { error: updateError } = await adminDb
         .from("profiles")
         .update(updateData)
-        .eq("id", user.id)
-        .select("subscription_tier, is_premium");
+        .eq("id", user.id);
 
       if (updateError) {
-        console.error("[Sync] DB update FAILED:", updateError.message, updateError.code, updateError.details);
-        debug.dbError = { message: updateError.message, code: updateError.code, details: updateError.details };
-      } else {
-        console.log("[Sync] DB update result:", JSON.stringify(updatedRows));
-        debug.dbUpdateResult = updatedRows;
+        console.error("[Sync] DB update failed:", updateError.message);
       }
 
       revalidatePath("/dashboard", "layout");
 
-      return { success: !updateError, tier: updateData.subscription_tier, debug };
+      return { success: !updateError, tier: updateData.subscription_tier };
   } catch (e: any) {
       console.error("Sync Error:", e);
-      return { error: e.message, debug };
+      return { error: e.message };
   }
 }
 
