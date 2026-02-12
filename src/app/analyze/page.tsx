@@ -12,6 +12,7 @@ import { GUEST_FIXED_SEGMENTS, type GuestSegment } from "@/app/actions/guestCons
 import {
     canPerformGuestAnalysis,
     performGuestAnalysis,
+    performGuestMicroAnalysis,
     type GuestAnalysisResult,
     type GuestSegmentAnalysis
 } from "@/app/actions/guestAnalysis";
@@ -524,56 +525,80 @@ export default function AnalyzePage() {
             console.log(`[Analyze:Micro] Extracted ${frameDataUrls.length} frames from ${startSec}s`);
 
             setProgress(55);
-
-            // Step 4: Start vision analysis job
             setProgressMsg(t('analyzePage.startingAnalysis'));
-            const startResult = await startVisionAnalysis({
-                frames: frameDataUrls,
-                matchId: matchIdParam || undefined,
-                puuid: puuidParam || undefined,
-                language: language as 'ja' | 'en' | 'ko',
-                analysisStartGameTime: startSec,
-                analysisEndGameTime: startSec + 30,
-            });
 
-            if (!startResult.success || !startResult.jobId) {
-                throw new Error(startResult.error || t('analyzePage.analysisFailed'));
-            }
+            // Branch: Guest/Free member → synchronous, Authenticated → async job + polling
+            const isGuestOrFreeMember = creditInfo?.isGuest || !creditInfo?.isPremium;
 
-            setJobId(startResult.jobId);
-            setProgress(60);
+            if (isGuestOrFreeMember) {
+                // Guest / Free member: synchronous micro analysis (no DB job)
+                setProgress(60);
+                setProgressMsg(t('analyzePage.micro.polling'));
 
-            // Step 5: Poll for job completion
-            setIsPolling(true);
-            setProgressMsg(t('analyzePage.micro.polling'));
+                const guestResult = await performGuestMicroAnalysis({
+                    frames: frameDataUrls,
+                    language: language as 'ja' | 'en' | 'ko',
+                    matchId: matchIdParam || undefined,
+                    puuid: puuidParam || undefined,
+                    analysisStartGameTime: startSec,
+                    analysisEndGameTime: startSec + 30,
+                });
 
-            const pollInterval = 3000;
-            const maxPolls = 60; // 3 minutes max
-            let polls = 0;
+                if (!guestResult.success || !guestResult.result) {
+                    throw new Error(guestResult.error || t('analyzePage.analysisFailed'));
+                }
 
-            while (polls < maxPolls) {
-                await new Promise(resolve => setTimeout(resolve, pollInterval));
-                polls++;
+                setMicroResult(guestResult.result);
+                setProgress(100);
+                await checkCredits();
+            } else {
+                // Authenticated (premium): async job + polling
+                const startResult = await startVisionAnalysis({
+                    frames: frameDataUrls,
+                    matchId: matchIdParam || undefined,
+                    puuid: puuidParam || undefined,
+                    language: language as 'ja' | 'en' | 'ko',
+                    analysisStartGameTime: startSec,
+                    analysisEndGameTime: startSec + 30,
+                });
 
-                const status = await getAnalysisJobStatus(startResult.jobId);
-                setProgress(60 + Math.min(35, (polls / maxPolls) * 35));
+                if (!startResult.success || !startResult.jobId) {
+                    throw new Error(startResult.error || t('analyzePage.analysisFailed'));
+                }
 
-                if (status.status === 'completed' && status.result) {
-                    setMicroResult(status.result as VisionAnalysisResult);
-                    setProgress(100);
-                    // Refresh credit info
-                    await checkCredits();
-                    break;
-                } else if (status.status === 'failed') {
-                    throw new Error(status.error || t('analyzePage.analysisFailed'));
-                } else if (status.status === 'not_found') {
+                setJobId(startResult.jobId);
+                setProgress(60);
+
+                // Poll for job completion
+                setIsPolling(true);
+                setProgressMsg(t('analyzePage.micro.polling'));
+
+                const pollInterval = 3000;
+                const maxPolls = 60; // 3 minutes max
+                let polls = 0;
+
+                while (polls < maxPolls) {
+                    await new Promise(resolve => setTimeout(resolve, pollInterval));
+                    polls++;
+
+                    const status = await getAnalysisJobStatus(startResult.jobId);
+                    setProgress(60 + Math.min(35, (polls / maxPolls) * 35));
+
+                    if (status.status === 'completed' && status.result) {
+                        setMicroResult(status.result as VisionAnalysisResult);
+                        setProgress(100);
+                        await checkCredits();
+                        break;
+                    } else if (status.status === 'failed') {
+                        throw new Error(status.error || t('analyzePage.analysisFailed'));
+                    } else if (status.status === 'not_found') {
+                        throw new Error(t('analyzePage.analysisFailed'));
+                    }
+                }
+
+                if (polls >= maxPolls) {
                     throw new Error(t('analyzePage.analysisFailed'));
                 }
-                // else: still processing, continue polling
-            }
-
-            if (polls >= maxPolls) {
-                throw new Error(t('analyzePage.analysisFailed'));
             }
 
         } catch (e: any) {
