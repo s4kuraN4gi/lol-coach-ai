@@ -1,6 +1,7 @@
 {
   "common": {
     "backToHome": "← 홈으로 돌아가기",
+    "backToDashboard": "← 대시보드로 돌아가기",
     "backToOverview": "← 개요로 돌아가기",
     "backToList": "← 목록으로 돌아가기",
     "readMore": "가이드 보기 →",
@@ -22,7 +23,10 @@
       "economy": "골드 경제학",
       "coach": "AI 코치",
       "analysis": "소환사 분석",
-      "account": "계정"
+      "account": "계정",
+      "champions": "챔피언 도감",
+      "items": "아이템 도감",
+      "runeGuide": "룬 가이드"
     },
     "footer": {
       "terms": "이용약관",
@@ -1264,5 +1268,92 @@
     "jobStartFailed": "분석 작업 시작에 실패했습니다",
     "unexpectedError": "예기치 않은 오류가 발생했습니다",
     "error": "오류"
+  },
+  "publicNav": {
+    "champions": "챔피언",
+    "items": "아이템",
+    "pricing": "요금",
+    "login": "로그인",
+    "getStarted": "무료로 시작",
+    "guideGold": "골드 가이드",
+    "guideRunes": "룬 가이드",
+    "dashboard": "대시보드"
+  },
+  "runeGuide": {
+    "title": "룬 가이드",
+    "subtitle": "리그 오브 레전드의 모든 룬 확인",
+    "keystones": "핵심 룬",
+    "secondaryRunes": "보조 룬",
+    "trees": {
+      "Precision": "정밀",
+      "Domination": "지배",
+      "Sorcery": "마법",
+      "Resolve": "결의",
+      "Inspiration": "영감"
+    },
+    "slot": "슬롯 {n}",
+    "viewDetails": "상세 보기",
+    "hideDetails": "닫기"
+  },
+  "championDb": {
+    "title": "챔피언 도감",
+    "subtitle": "리그 오브 레전드의 모든 챔피언을 검색하고 확인하세요",
+    "searchPlaceholder": "챔피언 이름 검색...",
+    "roles": {
+      "all": "전체",
+      "Fighter": "전사",
+      "Tank": "탱커",
+      "Mage": "마법사",
+      "Assassin": "암살자",
+      "Marksman": "원딜",
+      "Support": "서포터"
+    },
+    "stats": "기본 스탯",
+    "abilities": "스킬",
+    "passive": "패시브",
+    "lore": "스토리",
+    "tips": "팁",
+    "allyTips": "아군일 때",
+    "enemyTips": "적군일 때",
+    "ctaTitle": "이 챔피언의 AI 코칭 받기",
+    "ctaButton": "무료 분석하기",
+    "perLevel": "/Lv",
+    "statsTable": {
+      "hp": "체력",
+      "mp": "마나",
+      "armor": "방어력",
+      "spellblock": "마법 저항력",
+      "attackdamage": "공격력",
+      "attackspeed": "공격 속도",
+      "attackrange": "사거리",
+      "movespeed": "이동 속도",
+      "crit": "치명타 확률",
+      "hpregen": "체력 재생",
+      "mpregen": "마나 재생"
+    },
+    "cooldown": "쿨다운",
+    "cost": "비용",
+    "noResults": "해당 챔피언을 찾을 수 없습니다",
+    "champCount": "{count}명의 챔피언"
+  },
+  "itemDb": {
+    "title": "아이템 도감",
+    "subtitle": "리그 오브 레전드의 모든 아이템을 검색하고 확인하세요",
+    "searchPlaceholder": "아이템 이름 검색...",
+    "categories": {
+      "all": "전체",
+      "damage": "AD",
+      "ap": "AP",
+      "defense": "방어",
+      "boots": "신발"
+    },
+    "gold": "골드",
+    "stats": "스탯",
+    "passive": "패시브",
+    "buildsFrom": "조합 재료",
+    "noResults": "해당 아이템을 찾을 수 없습니다",
+    "itemCount": "{count}개 아이템",
+    "details": "상세",
+    "close": "닫기"
   }
 }

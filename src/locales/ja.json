@@ -1,6 +1,7 @@
 {
   "common": {
     "backToHome": "← ホームに戻る",
+    "backToDashboard": "← ダッシュボードに戻る",
     "backToOverview": "← 概要に戻る",
     "backToList": "← 一覧に戻る",
     "readMore": "解説を読む →",
@@ -22,7 +23,10 @@
       "economy": "ゴールド経済学",
       "coach": "AIコーチ",
       "analysis": "サモナー解析",
-      "account": "アカウント"
+      "account": "アカウント",
+      "champions": "チャンピオン図鑑",
+      "items": "アイテム図鑑",
+      "runeGuide": "ルーンガイド"
     },
     "footer": {
       "terms": "利用規約",
@@ -1264,5 +1268,92 @@
     "jobStartFailed": "解析ジョブの開始に失敗しました",
     "unexpectedError": "予期せぬエラーが発生しました",
     "error": "エラー"
+  },
+  "publicNav": {
+    "champions": "チャンピオン",
+    "items": "アイテム",
+    "pricing": "料金",
+    "login": "ログイン",
+    "getStarted": "無料で始める",
+    "guideGold": "ゴールドガイド",
+    "guideRunes": "ルーンガイド",
+    "dashboard": "ダッシュボード"
+  },
+  "runeGuide": {
+    "title": "ルーンガイド",
+    "subtitle": "League of Legendsの全ルーンを確認",
+    "keystones": "キーストーン",
+    "secondaryRunes": "サブルーン",
+    "trees": {
+      "Precision": "栄華",
+      "Domination": "覇道",
+      "Sorcery": "魔道",
+      "Resolve": "不滅",
+      "Inspiration": "天啓"
+    },
+    "slot": "スロット {n}",
+    "viewDetails": "詳細を見る",
+    "hideDetails": "閉じる"
+  },
+  "championDb": {
+    "title": "チャンピオン一覧",
+    "subtitle": "League of Legendsの全チャンピオンを検索・閲覧",
+    "searchPlaceholder": "チャンピオン名で検索...",
+    "roles": {
+      "all": "全て",
+      "Fighter": "ファイター",
+      "Tank": "タンク",
+      "Mage": "メイジ",
+      "Assassin": "アサシン",
+      "Marksman": "マークスマン",
+      "Support": "サポート"
+    },
+    "stats": "基本ステータス",
+    "abilities": "アビリティ",
+    "passive": "パッシブ",
+    "lore": "ストーリー",
+    "tips": "Tips",
+    "allyTips": "味方の場合",
+    "enemyTips": "敵の場合",
+    "ctaTitle": "このチャンピオンのAIコーチングを受ける",
+    "ctaButton": "無料で分析する",
+    "perLevel": "/Lv",
+    "statsTable": {
+      "hp": "体力",
+      "mp": "マナ",
+      "armor": "物理防御",
+      "spellblock": "魔法防御",
+      "attackdamage": "攻撃力",
+      "attackspeed": "攻撃速度",
+      "attackrange": "攻撃射程",
+      "movespeed": "移動速度",
+      "crit": "クリティカル率",
+      "hpregen": "体力自動回復",
+      "mpregen": "マナ自動回復"
+    },
+    "cooldown": "クールダウン",
+    "cost": "コスト",
+    "noResults": "該当するチャンピオンが見つかりません",
+    "champCount": "{count}体のチャンピオン"
+  },
+  "itemDb": {
+    "title": "アイテム一覧",
+    "subtitle": "League of Legendsの全アイテムを検索・閲覧",
+    "searchPlaceholder": "アイテム名で検索...",
+    "categories": {
+      "all": "全て",
+      "damage": "AD",
+      "ap": "AP",
+      "defense": "防御",
+      "boots": "靴"
+    },
+    "gold": "ゴールド",
+    "stats": "ステータス",
+    "passive": "パッシブ効果",
+    "buildsFrom": "合成元",
+    "noResults": "該当するアイテムが見つかりません",
+    "itemCount": "{count}個のアイテム",
+    "details": "詳細",
+    "close": "閉じる"
   }
 }

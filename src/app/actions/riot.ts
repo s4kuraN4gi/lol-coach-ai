@@ -701,6 +701,39 @@ Key Points: ${wc.key_points?.slice(0, 2).join('; ') || 'N/A'}
     }
 }
 
+// 10r. Get Runes Reforged (for public rune guide)
+export async function fetchRunesReforged(language: 'ja' | 'en' | 'ko' = 'ja') {
+    const localeMap: Record<string, string> = { ja: 'ja_JP', en: 'en_US', ko: 'ko_KR' };
+    const locale = localeMap[language] || 'ja_JP';
+    const version = await fetchLatestVersion();
+    const url = `https://ddragon.leagueoflegends.com/cdn/${version}/data/${locale}/runesReforged.json`;
+    try {
+        const res = await fetch(url, { next: { revalidate: 86400 } });
+        if (!res.ok) return null;
+        return { version, runes: await res.json() as any[] };
+    } catch (e) {
+        console.error("fetchRunesReforged error:", e);
+        return null;
+    }
+}
+
+// 10a. Get All Champions (for public champion DB)
+export async function fetchAllChampions(language: 'ja' | 'en' | 'ko' = 'ja') {
+    const localeMap: Record<string, string> = { ja: 'ja_JP', en: 'en_US', ko: 'ko_KR' };
+    const locale = localeMap[language] || 'ja_JP';
+    const version = await fetchLatestVersion();
+    const url = `https://ddragon.leagueoflegends.com/cdn/${version}/data/${locale}/champion.json`;
+    try {
+        const res = await fetch(url, { next: { revalidate: 86400 } });
+        if (!res.ok) return null;
+        const data = await res.json();
+        return { version, champions: Object.values(data.data) as any[] };
+    } catch (e) {
+        console.error("fetchAllChampions error:", e);
+        return null;
+    }
+}
+
 // 10. Get DDragon Item Data (Cached per language)
 const _itemCacheByLang: Record<string, Record<string, any>> = {};
 const _itemNameCacheByLang: Record<string, Record<string, string>> = {}; // Name -> ID

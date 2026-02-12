@@ -1,6 +1,7 @@
 {
   "common": {
     "backToHome": "← Back to Home",
+    "backToDashboard": "← Back to Dashboard",
     "backToOverview": "← Back to Overview",
     "backToList": "← Back to List",
     "readMore": "Read Guide →",
@@ -22,7 +23,10 @@
       "economy": "Gold Economy",
       "coach": "AI Coach",
       "analysis": "Summoner Analysis",
-      "account": "Account"
+      "account": "Account",
+      "champions": "Champions",
+      "items": "Items",
+      "runeGuide": "Rune Guide"
     },
     "footer": {
       "terms": "Terms of Service",
@@ -1264,5 +1268,92 @@
     "jobStartFailed": "Failed to start analysis job",
     "unexpectedError": "An unexpected error occurred",
     "error": "Error"
+  },
+  "publicNav": {
+    "champions": "Champions",
+    "items": "Items",
+    "pricing": "Pricing",
+    "login": "Login",
+    "getStarted": "Get Started",
+    "guideGold": "Gold Guide",
+    "guideRunes": "Rune Guide",
+    "dashboard": "Dashboard"
+  },
+  "runeGuide": {
+    "title": "Rune Guide",
+    "subtitle": "Browse all League of Legends runes",
+    "keystones": "Keystones",
+    "secondaryRunes": "Secondary Runes",
+    "trees": {
+      "Precision": "Precision",
+      "Domination": "Domination",
+      "Sorcery": "Sorcery",
+      "Resolve": "Resolve",
+      "Inspiration": "Inspiration"
+    },
+    "slot": "Slot {n}",
+    "viewDetails": "View Details",
+    "hideDetails": "Close"
+  },
+  "championDb": {
+    "title": "Champion Database",
+    "subtitle": "Browse and search all League of Legends champions",
+    "searchPlaceholder": "Search champions...",
+    "roles": {
+      "all": "All",
+      "Fighter": "Fighter",
+      "Tank": "Tank",
+      "Mage": "Mage",
+      "Assassin": "Assassin",
+      "Marksman": "Marksman",
+      "Support": "Support"
+    },
+    "stats": "Base Stats",
+    "abilities": "Abilities",
+    "passive": "Passive",
+    "lore": "Lore",
+    "tips": "Tips",
+    "allyTips": "Playing As",
+    "enemyTips": "Playing Against",
+    "ctaTitle": "Get AI Coaching for this Champion",
+    "ctaButton": "Analyze for Free",
+    "perLevel": "/Lv",
+    "statsTable": {
+      "hp": "Health",
+      "mp": "Mana",
+      "armor": "Armor",
+      "spellblock": "Magic Resist",
+      "attackdamage": "Attack Damage",
+      "attackspeed": "Attack Speed",
+      "attackrange": "Attack Range",
+      "movespeed": "Move Speed",
+      "crit": "Critical Rate",
+      "hpregen": "HP Regen",
+      "mpregen": "MP Regen"
+    },
+    "cooldown": "Cooldown",
+    "cost": "Cost",
+    "noResults": "No champions found",
+    "champCount": "{count} Champions"
+  },
+  "itemDb": {
+    "title": "Item Database",
+    "subtitle": "Browse and search all League of Legends items",
+    "searchPlaceholder": "Search items...",
+    "categories": {
+      "all": "All",
+      "damage": "AD",
+      "ap": "AP",
+      "defense": "Defense",
+      "boots": "Boots"
+    },
+    "gold": "Gold",
+    "stats": "Stats",
+    "passive": "Passive",
+    "buildsFrom": "Builds From",
+    "noResults": "No items found",
+    "itemCount": "{count} Items",
+    "details": "Details",
+    "close": "Close"
   }
 }

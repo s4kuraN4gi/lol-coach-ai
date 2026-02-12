@@ -373,6 +373,30 @@ export default function LandingPage() {
           <div className="flex gap-4 items-center">
             <LanguageSwitcher />
             <Link
+              href="/champions"
+              className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition hidden md:block"
+            >
+              {t('publicNav.champions')}
+            </Link>
+            <Link
+              href="/items"
+              className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition hidden md:block"
+            >
+              {t('publicNav.items')}
+            </Link>
+            <Link
+              href="/guide/gold"
+              className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition hidden md:block"
+            >
+              {t('publicNav.guideGold')}
+            </Link>
+            <Link
+              href="/guide/runes"
+              className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition hidden md:block"
+            >
+              {t('publicNav.guideRunes')}
+            </Link>
+            <Link
               href="/pricing"
               className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition"
             >
