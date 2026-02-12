@@ -324,13 +324,14 @@ export function VisionAnalysisProvider({ children }: { children: React.ReactNode
             let matchDetail: any;
             try {
                 matchDetail = await fetchMatchDetail(match.matchId);
-                console.log("[GlobalProvider] fetchMatchDetail returned:", matchDetail.success);
+                console.log("[GlobalProvider] fetchMatchDetail returned:", matchDetail.success, matchDetail.error || '');
             } catch (fetchError: any) {
                 console.error("[GlobalProvider] FETCH ERROR (fetchMatchDetail):", fetchError.message);
                 throw new Error(`[FETCH] ${fetchError.message}`);
             }
             if (!matchDetail.success || !matchDetail.data) {
-                throw new Error(t('visionAnalysis.cannotSkipVerification'));
+                console.error("[GlobalProvider] matchDetail failed:", matchDetail.error);
+                throw new Error(t('visionAnalysis.cannotSkipVerification') + ` (${matchDetail.error || 'unknown'})`);
             }
             const parts = matchDetail.data.info.participants;
             const me = parts.find((p: any) => p.puuid === puuid);

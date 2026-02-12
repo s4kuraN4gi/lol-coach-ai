@@ -210,9 +210,9 @@ const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
 export async function fetchMatchDetail(matchId: string, retries = 3): Promise<{ success: boolean, data?: any, error?: string }> {
     if (!RIOT_API_KEY) return { success: false, error: "RIOT_API_KEY is missing" };
-    
+
     const url = `https://${REGION_ROUTING}.api.riotgames.com/lol/match/v5/matches/${matchId}`;
-    
+
     try {
         const res = await fetch(url, {
             headers: { "X-Riot-Token": RIOT_API_KEY },
@@ -222,15 +222,22 @@ export async function fetchMatchDetail(matchId: string, retries = 3): Promise<{ 
         if (res.status === 429 && retries > 0) {
             const retryAfter = parseInt(res.headers.get("Retry-After") || "1");
             console.log(`[RiotAPI] 429 Hit. Waiting ${retryAfter}s...`);
-            await delay((retryAfter + 1) * 1000); // Wait +1s buffer
+            await delay((retryAfter + 1) * 1000);
             return fetchMatchDetail(matchId, retries - 1);
         }
-        
+
+        if (res.status >= 500 && retries > 0) {
+            const errorBody = await res.text().catch(() => '');
+            console.warn(`[RiotAPI] ${res.status} for ${matchId}: ${errorBody}. Retrying in 2s... (${retries} left)`);
+            await delay(2000);
+            return fetchMatchDetail(matchId, retries - 1);
+        }
+
         if (!res.ok) {
             console.error(`MatchDetail Error (${res.status}) for ${matchId}`);
            return { success: false, error: `Match Detail Error (${res.status})` };
         }
-        
+
         const data = await res.json();
         return { success: true, data };
     } catch (e: any) {
@@ -239,23 +246,37 @@ export async function fetchMatchDetail(matchId: string, retries = 3): Promise<{ 
     }
 }
 // 6. Get Match Timeline by MatchID
-export async function fetchMatchTimeline(matchId: string): Promise<{ success: boolean, data?: any, error?: string }> {
+export async function fetchMatchTimeline(matchId: string, retries = 3): Promise<{ success: boolean, data?: any, error?: string }> {
     if (!RIOT_API_KEY) return { success: false, error: "RIOT_API_KEY is missing" };
-    
+
     // Timeline endpoint: /lol/match/v5/matches/{matchId}/timeline
     const url = `https://${REGION_ROUTING}.api.riotgames.com/lol/match/v5/matches/${matchId}/timeline`;
-    
+
     try {
         const res = await fetch(url, {
             headers: { "X-Riot-Token": RIOT_API_KEY },
             next: { revalidate: 86400 } // Cache for 24 hours (Immutable data)
         });
-        
+
+        if (res.status === 429 && retries > 0) {
+            const retryAfter = parseInt(res.headers.get("Retry-After") || "1");
+            console.log(`[RiotAPI] Timeline 429 Hit. Waiting ${retryAfter}s...`);
+            await delay((retryAfter + 1) * 1000);
+            return fetchMatchTimeline(matchId, retries - 1);
+        }
+
+        if (res.status >= 500 && retries > 0) {
+            const errorBody = await res.text().catch(() => '');
+            console.warn(`[RiotAPI] Timeline ${res.status} for ${matchId}: ${errorBody}. Retrying in 2s... (${retries} left)`);
+            await delay(2000);
+            return fetchMatchTimeline(matchId, retries - 1);
+        }
+
         if (!res.ok) {
             console.error(`MatchTimeline Error (${res.status}) for ${matchId}`);
            return { success: false, error: `Match Timeline Error (${res.status})` };
         }
-        
+
         const data = await res.json();
         return { success: true, data };
     } catch (e: any) {
