@@ -5,6 +5,7 @@ import { FaPlay, FaClock, FaMapMarkerAlt, FaDragon, FaSkull, FaBolt, FaChevronDo
 import { selectAnalysisSegments, detectGameTimeFromFrame, type VideoMacroSegment, type VideoMacroAnalysisResult } from "@/app/actions/videoMacroAnalysis";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { getAnalysisStatus } from "@/app/actions/analysis";
+import { FREE_MAX_SEGMENTS, PREMIUM_MAX_SEGMENTS, EXTRA_MAX_SEGMENTS, FRAMES_PER_SEGMENT } from "@/app/actions/constants";
 import { useVideoMacroAnalysis } from "@/app/Providers/VideoMacroAnalysisProvider";
 
 type Props = {
@@ -14,17 +15,17 @@ type Props = {
     videoElement: HTMLVideoElement | null;
     onAnalysisComplete?: (result: VideoMacroAnalysisResult) => void;
     disabled?: boolean;
-    isPremium?: boolean;  // Premium users get 5 segments, free users get 2
+    isPremium?: boolean;
+    subscriptionTier?: string;  // 'free' | 'premium' | 'extra'
     weeklyRemaining?: number;  // Remaining weekly analysis count
     weeklyLimit?: number;  // Weekly analysis limit for the user's plan
 };
 
-// Segment limits by plan
-const FREE_SEGMENT_LIMIT = 3;
-const PREMIUM_SEGMENT_LIMIT = 5;
+// Segment limits imported from constants: FREE_MAX_SEGMENTS=3, PREMIUM_MAX_SEGMENTS=4, EXTRA_MAX_SEGMENTS=5
 
-export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoElement, onAnalysisComplete, disabled, isPremium = false, weeklyRemaining, weeklyLimit }: Props) {
-    const maxSegments = isPremium ? PREMIUM_SEGMENT_LIMIT : FREE_SEGMENT_LIMIT;
+export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoElement, onAnalysisComplete, disabled, isPremium = false, subscriptionTier = 'free', weeklyRemaining, weeklyLimit }: Props) {
+    const isExtra = subscriptionTier === 'extra';
+    const maxSegments = isExtra ? EXTRA_MAX_SEGMENTS : isPremium ? PREMIUM_MAX_SEGMENTS : FREE_MAX_SEGMENTS;
     const { t, language } = useTranslation();
 
     // Provider state (for async background analysis)
@@ -97,12 +98,12 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
     const extractFrames = useCallback(async (
         video: HTMLVideoElement,
         segment: VideoMacroSegment,
-        fps: number = 0.5,
+        framesPerSegment: number = FRAMES_PER_SEGMENT,
         offset: number = 0  // Time offset: videoTime = gameTime + offset
     ): Promise<{ segmentId: number; frameIndex: number; gameTime: number; base64Data: string }[]> => {
         const frames: { segmentId: number; frameIndex: number; gameTime: number; base64Data: string }[] = [];
         const duration = (segment.analysisEndTime - segment.analysisStartTime) / 1000; // seconds
-        const frameCount = Math.ceil(duration * fps);
+        const frameCount = framesPerSegment;
         const interval = duration / frameCount;
 
         // Resize to 1280x720 (720p) for better minimap visibility
@@ -218,8 +219,8 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
                 setLocalProgressMsg(t('coachPage.videoMacro.progress.extractingFrames', 'Extracting frames...') + ` ${i + 1}/${segments.length}`);
                 setLocalProgress(10 + (i / segments.length) * 40);
 
-                // Use 0.2fps (1 frame per 5 seconds) = 6 frames per 30sec segment
-                const frames = await extractFrames(videoElement, segment, 0.2, currentOffset);
+                // Extract frames (4 frames per 30sec segment ≈ 7.5s interval)
+                const frames = await extractFrames(videoElement, segment, FRAMES_PER_SEGMENT, currentOffset);
                 allFrames.push(...frames);
             }
 
@@ -375,17 +376,23 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
                 <span className="text-xs bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">NEW</span>
             </h3>
             <p className="text-xs text-slate-400 mb-2">
-                {t('coachPage.videoMacro.description', 'Extracts key scenes from video and analyzes how you could have won')}
+                {t('coachPage.videoMacro.description', 'Extracts key scenes from video and analyzes how you could have won').replace('{count}', String(maxSegments))}
             </p>
 
             {/* Segment Limit Indicator */}
             {!result && (
                 <div className="mb-4 flex items-center gap-2">
-                    <span className={`text-xs px-2 py-1 rounded-full ${isPremium ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-slate-700 text-slate-400 border border-slate-600'}`}>
-                        {isPremium ? (
+                    <span className={`text-xs px-2 py-1 rounded-full ${
+                        isExtra ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' :
+                        isPremium ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
+                        'bg-slate-700 text-slate-400 border border-slate-600'
+                    }`}>
+                        {isExtra ? (
+                            <>💎 Extra: {maxSegments}{t('coachPage.videoMacro.segments', 'segments')}</>
+                        ) : isPremium ? (
                             <>✨ {t('coachPage.videoMacro.premium', 'Premium')}: {maxSegments}{t('coachPage.videoMacro.segments', 'segments')}</>
                         ) : (
-                            <>{t('coachPage.videoMacro.free', 'Free')}: {maxSegments}{t('coachPage.videoMacro.segments', 'segments')} <span className="text-emerald-400">({t('coachPage.videoMacro.upgradeTo5', 'Upgrade to 5')})</span></>
+                            <>{t('coachPage.videoMacro.free', 'Free')}: {maxSegments}{t('coachPage.videoMacro.segments', 'segments')} <span className="text-emerald-400">({t('coachPage.videoMacro.upgradeForMore', 'Upgrade for more')})</span></>
                         )}
                     </span>
                 </div>

@@ -7,7 +7,12 @@ export const PREMIUM_WEEKLY_ANALYSIS_LIMIT = 20;  // Premium users: 20 analyses 
 export const EXTRA_WEEKLY_ANALYSIS_LIMIT = 50;    // Extra users: 50 analyses per week
 
 // Max segments by plan
-export const EXTRA_MAX_SEGMENTS = 8;
+export const FREE_MAX_SEGMENTS = 2;
+export const PREMIUM_MAX_SEGMENTS = 4;
+export const EXTRA_MAX_SEGMENTS = 5;
+
+// Frames per segment (balance between analysis quality and API cost/speed)
+export const FRAMES_PER_SEGMENT = 4;
 
 // Legacy constant (kept for backwards compatibility, use plan-specific limits instead)
 export const WEEKLY_ANALYSIS_LIMIT = PREMIUM_WEEKLY_ANALYSIS_LIMIT;

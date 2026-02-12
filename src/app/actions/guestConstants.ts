@@ -19,15 +19,6 @@ export const GUEST_FIXED_SEGMENTS = [
         analysisStartTime: 450000,    // 7:30
         analysisEndTime: 480000,
         eventDescription: "First objective window - Dragon/Rift Herald timing"
-    },
-    {
-        segmentId: 2,
-        type: 'MID_GAME' as const,
-        targetTimestamp: 900000,      // 15:00 - Mid game transition
-        targetTimestampStr: "15:00",
-        analysisStartTime: 870000,    // 14:30
-        analysisEndTime: 900000,
-        eventDescription: "Mid game transition - Tower plates falling"
     }
 ] as const;
 

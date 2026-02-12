@@ -21,9 +21,7 @@ import { fetchLatestVersion, fetchMatchDetail } from "@/app/actions/riot";
 import { startVisionAnalysis, verifyMatchVideo, type VisionAnalysisResult } from "@/app/actions/vision";
 import { getAnalysisJobStatus } from "@/app/actions/analysis";
 import { VideoProcessor } from "@/lib/videoProcessor";
-
-// Free member segment limit (same as FREE_SEGMENT_LIMIT in VideoMacroAnalysis)
-const FREE_SEGMENT_LIMIT = 3;
+import { FREE_MAX_SEGMENTS, FRAMES_PER_SEGMENT } from "@/app/actions/constants";
 
 export default function AnalyzePage() {
     const { t, language } = useTranslation();
@@ -132,7 +130,7 @@ export default function AnalyzePage() {
                             matchIdParam,
                             puuidParam,
                             language as 'ja' | 'en' | 'ko',
-                            FREE_SEGMENT_LIMIT
+                            FREE_MAX_SEGMENTS
                         ),
                         getMatchSummary(matchIdParam, puuidParam),
                         fetchLatestVersion()
@@ -202,12 +200,12 @@ export default function AnalyzePage() {
     const extractFrames = async (
         video: HTMLVideoElement,
         segment: GuestSegment | VideoMacroSegment,
-        fps: number = 0.2,
+        framesPerSegment: number = FRAMES_PER_SEGMENT,
         offset: number = 0
     ): Promise<{ segmentId: number; frameIndex: number; gameTime: number; base64Data: string }[]> => {
         const frames: { segmentId: number; frameIndex: number; gameTime: number; base64Data: string }[] = [];
         const duration = (segment.analysisEndTime - segment.analysisStartTime) / 1000;
-        const frameCount = Math.ceil(duration * fps);
+        const frameCount = framesPerSegment;
         const interval = duration / frameCount;
 
         const canvas = document.createElement("canvas");
@@ -407,7 +405,7 @@ export default function AnalyzePage() {
                     console.warn(`[Analyze] Segment ${segment.segmentId} out of video range: video=${video.duration}s, required=${videoStartTime}-${videoEndTime}s`);
                 }
 
-                const frames = await extractFrames(video, segment, 0.2, currentOffset);
+                const frames = await extractFrames(video, segment, FRAMES_PER_SEGMENT, currentOffset);
                 console.log(`[Analyze] Segment ${segment.segmentId}: extracted ${frames.length} frames`);
                 allFrames.push(...frames);
             }

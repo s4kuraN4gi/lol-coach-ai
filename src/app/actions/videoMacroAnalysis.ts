@@ -4,7 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { fetchMatchDetail, fetchMatchTimeline, fetchLatestVersion, extractMatchEvents, TruthEvent, fetchDDItemData } from "./riot";
 import { getAnalysisStatus } from "./analysis";
-import { FREE_WEEKLY_ANALYSIS_LIMIT, PREMIUM_WEEKLY_ANALYSIS_LIMIT } from "./constants";
+import { getWeeklyLimit } from "./constants";
 import macroKnowledge from "@/data/macro_knowledge.json";
 
 const GEMINI_API_KEY_ENV = process.env.GEMINI_API_KEY;
@@ -207,7 +207,7 @@ export async function selectAnalysisSegments(
     matchId: string,
     puuid: string,
     language: 'ja' | 'en' | 'ko' = 'ja',
-    maxSegments: number = 5  // Free: 2, Premium: 5
+    maxSegments: number = 2  // Free: 2, Premium: 4, Extra: 5
 ): Promise<{ success: boolean; segments?: VideoMacroSegment[]; error?: string }> {
     // Translation templates for event descriptions
     const eventDescriptions = {
@@ -235,10 +235,12 @@ export async function selectAnalysisSegments(
         ]);
 
         if (!matchRes.success || !matchRes.data) {
-            return { success: false, error: "Failed to fetch match data" };
+            console.error("[selectAnalysisSegments] fetchMatchDetail failed:", matchRes.error);
+            return { success: false, error: `Failed to fetch match data: ${matchRes.error || 'unknown'}` };
         }
         if (!timelineRes.success || !timelineRes.data) {
-            return { success: false, error: "Failed to fetch timeline" };
+            console.error("[selectAnalysisSegments] fetchMatchTimeline failed:", timelineRes.error);
+            return { success: false, error: `Failed to fetch timeline: ${timelineRes.error || 'unknown'}` };
         }
 
         // Extract events (pass language for i18n)
@@ -583,21 +585,20 @@ export async function analyzeVideoMacro(
     let useEnvKey = false;
     let shouldIncrementCount = false;
     const weeklyCount = status.weekly_analysis_count || 0;
+    const weeklyLimit = getWeeklyLimit(status);
 
     if (status.is_premium) {
-        // Premium user: 20 analyses per week
-        if (weeklyCount >= PREMIUM_WEEKLY_ANALYSIS_LIMIT) {
-            return { success: false, matchId: request.matchId, analyzedAt: '', segments: [], overallSummary: { mainIssue: '', homework: { title: '', description: '', howToCheck: '', relatedTimestamps: [] } }, error: `週間制限に達しました (${weeklyCount}/${PREMIUM_WEEKLY_ANALYSIS_LIMIT})。月曜日にリセットされます。` };
+        if (weeklyCount >= weeklyLimit) {
+            return { success: false, matchId: request.matchId, analyzedAt: '', segments: [], overallSummary: { mainIssue: '', homework: { title: '', description: '', howToCheck: '', relatedTimestamps: [] } }, error: `週間制限に達しました (${weeklyCount}/${weeklyLimit})。月曜日にリセットされます。` };
         }
         useEnvKey = true;
         shouldIncrementCount = true;
     } else {
-        // Free user: 3 analyses per week (unless using own API key)
         if (userApiKey) {
             useEnvKey = false;
         } else {
-            if (weeklyCount >= FREE_WEEKLY_ANALYSIS_LIMIT) {
-                return { success: false, matchId: request.matchId, analyzedAt: '', segments: [], overallSummary: { mainIssue: '', homework: { title: '', description: '', howToCheck: '', relatedTimestamps: [] } }, error: `無料プランの週間制限に達しました (${weeklyCount}/${FREE_WEEKLY_ANALYSIS_LIMIT})。月曜日にリセットされます。プレミアムプランへのアップグレードで週20回まで分析できます。` };
+            if (weeklyCount >= weeklyLimit) {
+                return { success: false, matchId: request.matchId, analyzedAt: '', segments: [], overallSummary: { mainIssue: '', homework: { title: '', description: '', howToCheck: '', relatedTimestamps: [] } }, error: `無料プランの週間制限に達しました (${weeklyCount}/${weeklyLimit})。月曜日にリセットされます。プレミアムプランへのアップグレードで週20回まで分析できます。` };
             }
             useEnvKey = true;
             shouldIncrementCount = true;
@@ -613,7 +614,8 @@ export async function analyzeVideoMacro(
         // Fetch match context
         const matchRes = await fetchMatchDetail(request.matchId);
         if (!matchRes.success || !matchRes.data) {
-            return { success: false, matchId: request.matchId, analyzedAt: '', segments: [], overallSummary: { mainIssue: '', homework: { title: '', description: '', howToCheck: '', relatedTimestamps: [] } }, error: "Failed to fetch match data" };
+            console.error("[MacroAnalysis] fetchMatchDetail failed:", matchRes.error);
+            return { success: false, matchId: request.matchId, analyzedAt: '', segments: [], overallSummary: { mainIssue: '', homework: { title: '', description: '', howToCheck: '', relatedTimestamps: [] } }, error: `Failed to fetch match data: ${matchRes.error || 'unknown'}` };
         }
 
         const participants = matchRes.data.info.participants;
@@ -690,8 +692,8 @@ export async function analyzeVideoMacro(
         // Helper function for delay
         const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-        // Helper function to call Gemini with retry logic
-        const callGeminiWithRetry = async (parts: any[], maxRetries: number = 3): Promise<string> => {
+        // Helper function to call Gemini with retry logic (exponential backoff + jitter)
+        const callGeminiWithRetry = async (parts: any[], maxRetries: number = 5): Promise<string> => {
             for (let attempt = 1; attempt <= maxRetries; attempt++) {
                 try {
                     const result = await model.generateContent(parts);
@@ -700,9 +702,11 @@ export async function analyzeVideoMacro(
                     const is429 = error.message?.includes('429') || error.message?.includes('Too Many Requests') || error.message?.includes('Resource exhausted');
 
                     if (is429 && attempt < maxRetries) {
-                        // Exponential backoff: 2s, 4s, 8s
-                        const waitTime = Math.pow(2, attempt) * 1000;
-                        console.log(`[VideoMacro] Rate limited, waiting ${waitTime}ms before retry (attempt ${attempt}/${maxRetries})`);
+                        // Exponential backoff: 3s, 6s, 12s, 24s + random jitter (0-2s)
+                        const baseWait = Math.pow(2, attempt) * 1500;
+                        const jitter = Math.random() * 2000;
+                        const waitTime = baseWait + jitter;
+                        console.log(`[VideoMacro] Rate limited, waiting ${Math.round(waitTime)}ms before retry (attempt ${attempt}/${maxRetries})`);
                         await delay(waitTime);
                         continue;
                     }
@@ -710,6 +714,29 @@ export async function analyzeVideoMacro(
                 }
             }
             throw new Error('Max retries exceeded');
+        };
+
+        // Helper: process tasks with limited concurrency
+        const processWithConcurrency = async <T>(
+            tasks: (() => Promise<T>)[],
+            concurrency: number
+        ): Promise<T[]> => {
+            const results: T[] = new Array(tasks.length);
+            let nextIndex = 0;
+
+            const worker = async () => {
+                while (nextIndex < tasks.length) {
+                    const index = nextIndex++;
+                    results[index] = await tasks[index]();
+                    // Small stagger between requests from the same worker
+                    if (nextIndex < tasks.length) await delay(300);
+                }
+            };
+
+            await Promise.all(
+                Array.from({ length: Math.min(concurrency, tasks.length) }, () => worker())
+            );
+            return results;
         };
 
         // Function to analyze a single segment
@@ -770,14 +797,13 @@ export async function analyzeVideoMacro(
             }
         };
 
-        // Process segments: Parallel for Premium, Sequential for Free
+        // Process segments: Limited parallel for Premium, Sequential for Free
         if (isPremium) {
-            // PREMIUM: Process all segments in parallel for faster analysis
-            console.log('[VideoMacro] Premium user - using parallel processing for faster analysis');
-            const results = await Promise.all(
-                request.segments.map((segment, index) => analyzeSegment(segment, index))
-            );
-            // Filter out null results and add to segmentResults
+            // PREMIUM/EXTRA: Process with limited concurrency (max 2 parallel) to avoid 429
+            const concurrency = 3;
+            console.log(`[VideoMacro] Premium user - using parallel processing (concurrency=${concurrency})`);
+            const tasks = request.segments.map((segment, index) => () => analyzeSegment(segment, index));
+            const results = await processWithConcurrency(tasks, concurrency);
             results.forEach(result => {
                 if (result) segmentResults.push(result);
             });
@@ -785,9 +811,8 @@ export async function analyzeVideoMacro(
             // FREE: Process segments sequentially with delay to avoid rate limiting
             console.log('[VideoMacro] Free user - using sequential processing with rate limiting');
             for (let i = 0; i < request.segments.length; i++) {
-                // Add delay between segments to avoid rate limiting (except for first segment)
                 if (i > 0) {
-                    console.log(`[VideoMacro] Waiting 1.5s before next segment to avoid rate limiting...`);
+                    console.log(`[VideoMacro] Waiting 2s before next segment to avoid rate limiting...`);
                     await delay(1500);
                 }
                 const result = await analyzeSegment(request.segments[i], i);
@@ -1212,21 +1237,22 @@ export async function startVideoMacroAnalysis(
     let useEnvKey = false;
     let shouldIncrementCount = false;
     const weeklyCount = status.weekly_analysis_count || 0;
+    const weeklyLimit = getWeeklyLimit(status);
 
     if (status.is_premium) {
-        if (weeklyCount >= PREMIUM_WEEKLY_ANALYSIS_LIMIT) {
-            return { success: false, error: `週間制限に達しました (${weeklyCount}/${PREMIUM_WEEKLY_ANALYSIS_LIMIT})。月曜日にリセットされます。` };
+        if (weeklyCount >= weeklyLimit) {
+            return { success: false, error: `週間制限に達しました (${weeklyCount}/${weeklyLimit})。月曜日にリセットされます。` };
         }
         useEnvKey = true;
         shouldIncrementCount = true;
     } else {
         if (userApiKey) {
             useEnvKey = false;
-        } else if (weeklyCount < FREE_WEEKLY_ANALYSIS_LIMIT) {
+        } else if (weeklyCount < weeklyLimit) {
             useEnvKey = true;
             shouldIncrementCount = true;
         } else {
-            return { success: false, error: `無料プランの週間制限に達しました (${weeklyCount}/${FREE_WEEKLY_ANALYSIS_LIMIT})。月曜日にリセットされます。プレミアムプランへのアップグレードで週20回まで分析できます。` };
+            return { success: false, error: `無料プランの週間制限に達しました (${weeklyCount}/${weeklyLimit})。月曜日にリセットされます。プレミアムプランへのアップグレードで週20回まで分析できます。` };
         }
     }
 
@@ -1366,8 +1392,8 @@ async function performVideoMacroAnalysisInBackground(
         // Helper function for delay
         const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-        // Helper function to call Gemini with retry logic
-        const callGeminiWithRetry = async (parts: any[], maxRetries: number = 3): Promise<string> => {
+        // Helper function to call Gemini with retry logic (exponential backoff + jitter)
+        const callGeminiWithRetry = async (parts: any[], maxRetries: number = 5): Promise<string> => {
             for (let attempt = 1; attempt <= maxRetries; attempt++) {
                 try {
                     const result = await model.generateContent(parts);
@@ -1376,8 +1402,11 @@ async function performVideoMacroAnalysisInBackground(
                     const is429 = error.message?.includes('429') || error.message?.includes('Too Many Requests') || error.message?.includes('Resource exhausted');
 
                     if (is429 && attempt < maxRetries) {
-                        const waitTime = Math.pow(2, attempt) * 1000;
-                        console.log(`[VideoMacro Job ${jobId}] Rate limited, waiting ${waitTime}ms before retry (attempt ${attempt}/${maxRetries})`);
+                        // Exponential backoff: 3s, 6s, 12s, 24s + random jitter (0-2s)
+                        const baseWait = Math.pow(2, attempt) * 1500;
+                        const jitter = Math.random() * 2000;
+                        const waitTime = baseWait + jitter;
+                        console.log(`[VideoMacro Job ${jobId}] Rate limited, waiting ${Math.round(waitTime)}ms before retry (attempt ${attempt}/${maxRetries})`);
                         await delay(waitTime);
                         continue;
                     }
@@ -1385,6 +1414,28 @@ async function performVideoMacroAnalysisInBackground(
                 }
             }
             throw new Error('Max retries exceeded');
+        };
+
+        // Helper: process tasks with limited concurrency
+        const processWithConcurrency = async <T>(
+            tasks: (() => Promise<T>)[],
+            concurrency: number
+        ): Promise<T[]> => {
+            const results: T[] = new Array(tasks.length);
+            let nextIndex = 0;
+
+            const worker = async () => {
+                while (nextIndex < tasks.length) {
+                    const index = nextIndex++;
+                    results[index] = await tasks[index]();
+                    if (nextIndex < tasks.length) await delay(300);
+                }
+            };
+
+            await Promise.all(
+                Array.from({ length: Math.min(concurrency, tasks.length) }, () => worker())
+            );
+            return results;
         };
 
         // Analyze each segment
@@ -1447,13 +1498,13 @@ async function performVideoMacroAnalysisInBackground(
             }
         };
 
-        // Process segments: Parallel for Premium, Sequential for Free
+        // Process segments: Limited parallel for Premium, Sequential for Free
         if (isPremium) {
-            // PREMIUM: Process all segments in parallel for faster analysis
-            console.log(`[VideoMacro Job ${jobId}] Premium user - using parallel processing`);
-            const results = await Promise.all(
-                request.segments.map((segment, index) => analyzeSegment(segment, index))
-            );
+            // PREMIUM/EXTRA: Process with limited concurrency (max 2 parallel) to avoid 429
+            const concurrency = 3;
+            console.log(`[VideoMacro Job ${jobId}] Premium user - using parallel processing (concurrency=${concurrency})`);
+            const tasks = request.segments.map((segment, index) => () => analyzeSegment(segment, index));
+            const results = await processWithConcurrency(tasks, concurrency);
             results.forEach(result => {
                 if (result) segmentResults.push(result);
             });

@@ -58,9 +58,9 @@ export default function PricingPage() {
         {
             name: t('pricingPage.features.segmentCount'),
             guest: t('pricingPage.guest.fixedSegments'),
-            free: t('pricingPage.free.threeSegments'),
-            premium: t('pricingPage.premium.fiveSegments'),
-            extra: t('pricingPage.extra.eightSegments'),
+            free: t('pricingPage.free.twoSegments'),
+            premium: t('pricingPage.premium.fourSegments'),
+            extra: t('pricingPage.extra.fiveSegments'),
         },
         {
             name: t('pricingPage.features.segmentMethod'),

@@ -6,7 +6,7 @@ import Image from "next/image";
 import DashboardLayout from "@/app/Components/layout/DashboardLayout";
 import { type MatchSummary, type BuildItem } from "@/app/actions/coach";
 import { useSummoner } from "@/app/Providers/SummonerProvider";
-import { type AnalysisStatus, FREE_WEEKLY_ANALYSIS_LIMIT, PREMIUM_WEEKLY_ANALYSIS_LIMIT } from "@/app/actions/constants";
+import { type AnalysisStatus, FREE_WEEKLY_ANALYSIS_LIMIT, PREMIUM_WEEKLY_ANALYSIS_LIMIT, getWeeklyLimit } from "@/app/actions/constants";
 import { triggerStripeCheckout } from "@/lib/checkout";
 import PlanStatusBadge from "@/app/Components/subscription/PlanStatusBadge";
 import VideoMacroAnalysis from "@/app/dashboard/components/Analysis/VideoMacroAnalysis";
@@ -543,12 +543,13 @@ export default function CoachClientPage({ puuid }: CoachClientPageProps) {
                                         }}
                                         disabled={(() => {
                                             const weeklyCount = status?.weekly_analysis_count || 0;
-                                            const limit = status?.is_premium ? PREMIUM_WEEKLY_ANALYSIS_LIMIT : FREE_WEEKLY_ANALYSIS_LIMIT;
+                                            const limit = getWeeklyLimit(status);
                                             return weeklyCount >= limit;
                                         })()}
                                         isPremium={status?.is_premium || false}
-                                        weeklyRemaining={Math.max(0, (status?.is_premium ? PREMIUM_WEEKLY_ANALYSIS_LIMIT : FREE_WEEKLY_ANALYSIS_LIMIT) - (status?.weekly_analysis_count || 0))}
-                                        weeklyLimit={status?.is_premium ? PREMIUM_WEEKLY_ANALYSIS_LIMIT : FREE_WEEKLY_ANALYSIS_LIMIT}
+                                        subscriptionTier={status?.subscription_tier || 'free'}
+                                        weeklyRemaining={Math.max(0, getWeeklyLimit(status) - (status?.weekly_analysis_count || 0))}
+                                        weeklyLimit={getWeeklyLimit(status)}
                                     />
                                 )}
 
@@ -571,7 +572,7 @@ export default function CoachClientPage({ puuid }: CoachClientPageProps) {
                                             (() => {
                                                 const isPremium = status?.is_premium;
                                                 const weeklyCount = status?.weekly_analysis_count || 0;
-                                                const limit = isPremium ? PREMIUM_WEEKLY_ANALYSIS_LIMIT : FREE_WEEKLY_ANALYSIS_LIMIT;
+                                                const limit = getWeeklyLimit(status);
                                                 const remaining = Math.max(0, limit - weeklyCount);
                                                 const canAnalyze = remaining > 0;
 
