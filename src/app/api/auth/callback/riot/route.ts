@@ -66,7 +66,9 @@ export async function GET(request: NextRequest) {
     const RIOT_API_KEY = process.env.RIOT_API_KEY!;
     
     // Fetch Account Data to get Name#Tag
-    const accountRes = await fetch(`https://asia.api.riotgames.com/riot/account/v1/accounts/by-puuid/${puuid}?api_key=${RIOT_API_KEY}`);
+    const accountRes = await fetch(`https://asia.api.riotgames.com/riot/account/v1/accounts/by-puuid/${puuid}`, {
+        headers: { "X-Riot-Token": RIOT_API_KEY }
+    });
     if(!accountRes.ok) {
          throw new Error("Failed to fetch account data from Riot API");
     }
@@ -178,7 +180,9 @@ export async function GET(request: NextRequest) {
         // Create new summoner entry
         // We need profileIconId etc to be perfect. 
         // We fetched minimal account data. We might want SummonerV4 data for icon/level.
-        const summonerRes = await fetch(`https://jp1.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${puuid}?api_key=${RIOT_API_KEY}`);
+        const summonerRes = await fetch(`https://jp1.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${puuid}`, {
+            headers: { "X-Riot-Token": RIOT_API_KEY }
+        });
         if(summonerRes.ok) {
             const sumData = await summonerRes.json();
             await supabase.from('summoners').insert({
