@@ -990,7 +990,9 @@
     "register": "新規登録",
     "forgotPassword": "パスワードを忘れた方",
     "emailLabel": "メールアドレス",
-    "passwordLabel": "パスワード"
+    "passwordLabel": "パスワード",
+    "googleLogin": "Googleでログイン",
+    "orContinueWithEmail": "またはメールで続行"
   },
   "signupPage": {
     "allFieldsRequired": "全ての項目を入力してください",
@@ -1007,7 +1009,9 @@
     "login": "ログイン",
     "emailLabel": "メールアドレス",
     "passwordLabel": "パスワード",
-    "confirmPasswordLabel": "パスワード確認"
+    "confirmPasswordLabel": "パスワード確認",
+    "googleSignup": "Googleで登録",
+    "orRegisterWithEmail": "またはメールで登録"
   },
   "onboardingPage": {
     "welcome": "まずは、あなたのアカウントを連携して分析を開始しましょう。",

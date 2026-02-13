@@ -990,7 +990,9 @@
     "register": "Sign Up",
     "forgotPassword": "Forgot password?",
     "emailLabel": "Email",
-    "passwordLabel": "Password"
+    "passwordLabel": "Password",
+    "googleLogin": "Sign in with Google",
+    "orContinueWithEmail": "Or continue with email"
   },
   "signupPage": {
     "allFieldsRequired": "Please fill in all fields",
@@ -1007,7 +1009,9 @@
     "login": "Log In",
     "emailLabel": "Email",
     "passwordLabel": "Password",
-    "confirmPasswordLabel": "Confirm Password"
+    "confirmPasswordLabel": "Confirm Password",
+    "googleSignup": "Sign up with Google",
+    "orRegisterWithEmail": "Or register with email"
   },
   "onboardingPage": {
     "welcome": "Let's link your account and start analyzing.",

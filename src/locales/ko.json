@@ -990,7 +990,9 @@
     "register": "회원가입",
     "forgotPassword": "비밀번호를 잊으셨나요?",
     "emailLabel": "이메일",
-    "passwordLabel": "비밀번호"
+    "passwordLabel": "비밀번호",
+    "googleLogin": "Google로 로그인",
+    "orContinueWithEmail": "또는 이메일로 계속"
   },
   "signupPage": {
     "allFieldsRequired": "모든 항목을 입력해주세요",
@@ -1007,7 +1009,9 @@
     "login": "로그인",
     "emailLabel": "이메일",
     "passwordLabel": "비밀번호",
-    "confirmPasswordLabel": "비밀번호 확인"
+    "confirmPasswordLabel": "비밀번호 확인",
+    "googleSignup": "Google로 가입",
+    "orRegisterWithEmail": "또는 이메일로 가입"
   },
   "onboardingPage": {
     "welcome": "먼저 계정을 연결하여 분석을 시작하세요.",
