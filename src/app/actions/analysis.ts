@@ -145,35 +145,6 @@ export async function getMatchAnalysis(matchId: string) {
   return data ? data.analysis_text : null;
 }
 
-// プレミアムへアップグレード（モック）
-export async function upgradeToPremium() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
-
-  const now = new Date();
-  const nextMonth = new Date(now);
-  nextMonth.setMonth(nextMonth.getMonth() + 1); // 1ヶ月後
-
-  const { error } = await supabase
-    .from("profiles")
-    .update({
-      is_premium: true,
-      subscription_tier: "premium",
-      analysis_credits: 999,
-      subscription_end_date: nextMonth.toISOString(),
-      auto_renew: true,
-    })
-    .eq("id", user.id);
-
-  if (error) return { error: "Failed to upgrade" };
-
-  revalidatePath("/dashboard", "layout");
-  return { success: true };
-}
-
 // プレミアムプランの自動更新停止（解約予約）
 export async function downgradeToFree() {
   const supabase = await createClient();
@@ -275,8 +246,6 @@ export async function getVideoAnalysisStatus(matchId: string) {
 export async function getAnalysisJobStatus(jobId: string) {
   const supabase = await createClient();
 
-  // Note: We skip auth check inside query for speed, but RLS will handle it if enabled.
-  // However, explicit check is better.
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
@@ -284,6 +253,7 @@ export async function getAnalysisJobStatus(jobId: string) {
     .from("video_analyses")
     .select("*")
     .eq("id", jobId)
+    .eq("user_id", user.id)
     .single();
 
   if (error || !data) return { status: "not_found" };
@@ -1159,23 +1129,27 @@ export async function checkWeeklyLimit(): Promise<{
 export async function incrementAnalysisCount(userId: string, isPremium: boolean): Promise<boolean> {
     const supabase = await createClient();
 
+    // Verify the caller is the actual user (prevent IDOR)
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || user.id !== userId) return false;
+
     if (isPremium) {
         // Premium user: increment weekly count
-        const { error } = await supabase.rpc('increment_weekly_analysis', { user_id: userId });
+        const { error } = await supabase.rpc('increment_weekly_analysis', { user_id: user.id });
 
         if (error) {
             // Fallback: direct update
             const { data: profile } = await supabase
                 .from("profiles")
                 .select("weekly_analysis_count")
-                .eq("id", userId)
+                .eq("id", user.id)
                 .single();
 
             if (profile) {
                 await supabase
                     .from("profiles")
                     .update({ weekly_analysis_count: (profile.weekly_analysis_count || 0) + 1 })
-                    .eq("id", userId);
+                    .eq("id", user.id);
             }
         }
         return true;
@@ -1184,14 +1158,14 @@ export async function incrementAnalysisCount(userId: string, isPremium: boolean)
         const { data: profile } = await supabase
             .from("profiles")
             .select("analysis_credits")
-            .eq("id", userId)
+            .eq("id", user.id)
             .single();
 
         if (profile && profile.analysis_credits > 0) {
             await supabase
                 .from("profiles")
                 .update({ analysis_credits: profile.analysis_credits - 1 })
-                .eq("id", userId);
+                .eq("id", user.id);
             return true;
         }
         return false;

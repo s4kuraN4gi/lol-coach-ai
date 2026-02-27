@@ -43,8 +43,9 @@ export async function fetchRiotAccount(gameName: string, tagLine: string): Promi
     
     // URL Encode
     const encodedName = encodeURIComponent(gameName);
-    
-    const url = `https://${REGION_ROUTING}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodedName}/${tagLine}`;
+    const encodedTag = encodeURIComponent(tagLine);
+
+    const url = `https://${REGION_ROUTING}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodedName}/${encodedTag}`;
     
     try {
         const res = await fetch(url, {

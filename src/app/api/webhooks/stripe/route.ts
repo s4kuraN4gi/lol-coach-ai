@@ -10,15 +10,21 @@ export async function POST(req: Request) {
 
   let event: Stripe.Event;
 
+  if (!process.env.STRIPE_WEBHOOK_SECRET) {
+    console.error('[Webhook] STRIPE_WEBHOOK_SECRET is not configured');
+    return new NextResponse('Webhook secret not configured', { status: 500 });
+  }
+
   try {
     event = stripe.webhooks.constructEvent(
       body,
       signature,
-      process.env.STRIPE_WEBHOOK_SECRET ?? ''
+      process.env.STRIPE_WEBHOOK_SECRET
     );
-  } catch (error: any) {
-    console.error(`[Webhook] Signature Verification Failed: ${error.message}`);
-    return new NextResponse(`Webhook Error: ${error.message}`, { status: 400 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`[Webhook] Signature Verification Failed: ${message}`);
+    return new NextResponse('Webhook signature verification failed', { status: 400 });
   }
 
   const supabase = createClientServiceRole();
