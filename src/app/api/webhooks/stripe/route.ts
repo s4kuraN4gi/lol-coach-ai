@@ -2,7 +2,7 @@ import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import Stripe from 'stripe';
-import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
+import { createServiceRoleClient } from '@/utils/supabase/server';
 
 export async function POST(req: Request) {
   const body = await req.text();
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     return new NextResponse('Webhook signature verification failed', { status: 400 });
   }
 
-  const supabase = createClientServiceRole();
+  const supabase = createServiceRoleClient();
 
   try {
       switch (event.type) {
@@ -50,23 +50,6 @@ export async function POST(req: Request) {
   }
 
   return new NextResponse(null, { status: 200 });
-}
-
-// Service Role Client (Bypass RLS for Webhook updates)
-function createClientServiceRole() {
-    const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const sbServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!sbUrl || !sbServiceKey) {
-        throw new Error("Missing Supabase Environment Variables for Service Role");
-    }
-
-    return createSupabaseAdmin(sbUrl, sbServiceKey, {
-        auth: {
-            autoRefreshToken: false,
-            persistSession: false,
-        }
-    });
 }
 
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, supabase: any) {
