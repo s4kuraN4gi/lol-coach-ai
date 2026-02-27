@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import DOMPurify from "isomorphic-dompurify";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { fetchDDItemData } from "@/app/actions/riot";
 import AdSenseBanner from "@/app/Components/ads/AdSenseBanner";
@@ -241,7 +242,7 @@ export default function ItemDatabaseClient({ itemDataMap: initialItemDataMap, ve
                                 <div
                                     className="text-sm text-gray-400 leading-relaxed [&_br]:hidden [&_stats]:text-cyan-400 [&_attention]:text-amber-400 [&_active]:text-green-400 [&_passive]:text-purple-400 [&_unique]:text-yellow-400"
                                     dangerouslySetInnerHTML={{
-                                        __html: selectedDetail.item.description,
+                                        __html: DOMPurify.sanitize(selectedDetail.item.description),
                                     }}
                                 />
                             </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import DOMPurify from "isomorphic-dompurify";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { fetchChampionDetail } from "@/app/actions/riot";
 import AdSenseBanner from "@/app/Components/ads/AdSenseBanner";
@@ -151,7 +152,7 @@ export default function ChampionDetailContent({ champion: initialChampion, versi
                                     <h3 className="font-bold text-white">{passive.name}</h3>
                                     <p
                                         className="text-sm text-gray-400 mt-1"
-                                        dangerouslySetInnerHTML={{ __html: passive.description }}
+                                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(passive.description) }}
                                     />
                                 </div>
                             </div>
@@ -180,7 +181,7 @@ export default function ChampionDetailContent({ champion: initialChampion, versi
                                     <h3 className="font-bold text-white">{spell.name}</h3>
                                     <p
                                         className="text-sm text-gray-400 mt-1"
-                                        dangerouslySetInnerHTML={{ __html: spell.description }}
+                                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(spell.description) }}
                                     />
                                     <div className="flex gap-4 mt-2 text-xs text-gray-500">
                                         {spell.cooldownBurn && (
