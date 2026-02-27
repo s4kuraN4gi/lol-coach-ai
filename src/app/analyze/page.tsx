@@ -39,6 +39,20 @@ export default function AnalyzePage() {
     const [videoUrl, setVideoUrl] = useState<string | null>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
 
+    // Revoke previous ObjectURL when videoUrl changes or component unmounts
+    const prevVideoUrlRef = useRef<string | null>(null);
+    useEffect(() => {
+        if (prevVideoUrlRef.current && prevVideoUrlRef.current !== videoUrl) {
+            URL.revokeObjectURL(prevVideoUrlRef.current);
+        }
+        prevVideoUrlRef.current = videoUrl;
+        return () => {
+            if (prevVideoUrlRef.current) {
+                URL.revokeObjectURL(prevVideoUrlRef.current);
+            }
+        };
+    }, [videoUrl]);
+
     // Credit state
     const [creditInfo, setCreditInfo] = useState<{
         canAnalyze: boolean;

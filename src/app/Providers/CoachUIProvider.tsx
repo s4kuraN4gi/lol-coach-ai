@@ -95,12 +95,16 @@ export function CoachUIProvider({ children }: { children: React.ReactNode }) {
         }
     }, []);
 
-    // Memoized URL for video preview to prevent reload on re-renders
-    const videoPreviewUrl = useMemo(() => {
-        if (localFile) {
-            return URL.createObjectURL(localFile);
+    // Stable URL for video preview — create/revoke via useEffect to prevent leaks
+    const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | undefined>(undefined);
+    useEffect(() => {
+        if (!localFile) {
+            setVideoPreviewUrl(undefined);
+            return;
         }
-        return undefined;
+        const url = URL.createObjectURL(localFile);
+        setVideoPreviewUrl(url);
+        return () => URL.revokeObjectURL(url);
     }, [localFile]);
 
     const restoreFromLatest = async (matches: MatchSummary[]) => {
