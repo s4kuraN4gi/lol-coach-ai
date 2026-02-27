@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 
-export default function StatsError({
+export default function DashboardError({
     error,
     reset,
 }: {
@@ -11,7 +11,7 @@ export default function StatsError({
     reset: () => void;
 }) {
     useEffect(() => {
-        console.error("[Stats Error]", error);
+        console.error("[Dashboard Error]", error);
     }, [error]);
 
     return (
@@ -22,12 +22,12 @@ export default function StatsError({
                 </div>
 
                 <h2 className="text-xl font-bold text-white mb-2">
-                    統計データの読み込みに失敗しました
+                    エラーが発生しました
                 </h2>
 
                 <p className="text-slate-400 text-sm mb-6">
-                    統計情報の取得中にエラーが発生しました。
-                    もう一度お試しください。
+                    ページの読み込み中に問題が発生しました。
+                    もう一度お試しいただくか、ダッシュボードに戻ってください。
                 </p>
 
                 {process.env.NODE_ENV === "development" && (

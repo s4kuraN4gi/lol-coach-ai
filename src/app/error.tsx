@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 
-export default function StatsError({
+export default function GlobalError({
     error,
     reset,
 }: {
@@ -11,23 +11,22 @@ export default function StatsError({
     reset: () => void;
 }) {
     useEffect(() => {
-        console.error("[Stats Error]", error);
+        console.error("[App Error]", error);
     }, [error]);
 
     return (
-        <div className="max-w-7xl mx-auto h-[calc(100vh-100px)] flex items-center justify-center p-4">
+        <div className="min-h-screen bg-[#0a0e1a] flex items-center justify-center p-4">
             <div className="bg-slate-900/50 border border-red-500/30 rounded-xl p-8 max-w-md text-center">
                 <div className="w-16 h-16 mx-auto mb-4 bg-red-500/10 rounded-full flex items-center justify-center">
-                    <span className="text-3xl text-red-500">!</span>
+                    <span className="text-3xl">!</span>
                 </div>
 
                 <h2 className="text-xl font-bold text-white mb-2">
-                    統計データの読み込みに失敗しました
+                    エラーが発生しました
                 </h2>
 
                 <p className="text-slate-400 text-sm mb-6">
-                    統計情報の取得中にエラーが発生しました。
-                    もう一度お試しください。
+                    予期しないエラーが発生しました。もう一度お試しください。
                 </p>
 
                 {process.env.NODE_ENV === "development" && (
@@ -49,10 +48,10 @@ export default function StatsError({
                         再試行
                     </button>
                     <Link
-                        href="/dashboard"
+                        href="/"
                         className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold text-sm transition"
                     >
-                        ダッシュボード
+                        トップページ
                     </Link>
                 </div>
             </div>
