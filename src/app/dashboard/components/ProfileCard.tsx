@@ -3,6 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { useDDragonVersion } from '@/hooks/useDDragonVersion';
 import { FaChartLine, FaLightbulb, FaMap, FaCrosshairs } from 'react-icons/fa';
 
 type RankInfo = {
@@ -100,7 +101,8 @@ export default function ProfileCard({
     topChampions = []
 }: ProfileCardProps) {
     const { t } = useTranslation();
-    const iconUrl = `https://ddragon.leagueoflegends.com/cdn/14.23.1/img/profileicon/${summoner.profileIconId}.png`;
+    const version = useDDragonVersion();
+    const iconUrl = `https://ddragon.leagueoflegends.com/cdn/${version}/img/profileicon/${summoner.profileIconId}.png`;
 
     // Calculate recent form (last 10 games)
     const last10 = recentMatches.slice(0, 10);
@@ -299,7 +301,7 @@ export default function ProfileCard({
                                 {topChampions.slice(0, 3).map((champ, i) => (
                                     <div key={champ.name} className="relative group/champ">
                                         <Image
-                                            src={`https://ddragon.leagueoflegends.com/cdn/14.23.1/img/champion/${champ.name}.png`}
+                                            src={`https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${champ.name}.png`}
                                             alt={champ.name}
                                             width={40}
                                             height={40}

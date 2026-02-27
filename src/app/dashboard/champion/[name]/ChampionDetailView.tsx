@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { ChampionDetailsDTO } from "@/app/actions/champion";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { useDDragonVersion } from "@/hooks/useDDragonVersion";
 // Premium Imports
 import PlanStatusBadge from "@/app/Components/subscription/PlanStatusBadge";
 import PremiumFeatureGate from "@/app/Components/subscription/PremiumFeatureGate";
@@ -33,6 +34,7 @@ function HelperTooltip({ text }: { text: string }) {
 
 export default function ChampionDetailView({ puuid, championName }: { puuid: string, championName: string }) {
     const { t } = useTranslation();
+    const ddVersion = useDDragonVersion();
 
     // SWR Hooks for data fetching with caching
     const { matchIds, isLoading: loadingIds, error: idsError } = useChampionMatchIds(puuid, championName);
@@ -496,7 +498,7 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                                             <td className="px-4 py-3 font-medium text-slate-200">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-8 h-8 rounded-full bg-slate-800 overflow-hidden relative border border-slate-600">
-                                                        <img src={`https://ddragon.leagueoflegends.com/cdn/14.24.1/img/champion/${matchup.opponentChampion}.png`} alt={matchup.opponentChampion} className="w-full h-full object-cover" />
+                                                        <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/champion/${matchup.opponentChampion}.png`} alt={matchup.opponentChampion} className="w-full h-full object-cover" />
                                                     </div>
                                                     {matchup.opponentChampion}
                                                 </div>
@@ -509,7 +511,7 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                                                 <div className="flex gap-1">
                                                     {matchup.keyItems.map(itemId => (
                                                         <div key={itemId} className="w-8 h-8 rounded border border-slate-700 bg-slate-800 overflow-hidden" title={`Item ${itemId}`}>
-                                                            <img src={`https://ddragon.leagueoflegends.com/cdn/14.24.1/img/item/${itemId}.png`} alt={`Item ${itemId}`} className="w-full h-full object-cover" />
+                                                            <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/item/${itemId}.png`} alt={`Item ${itemId}`} className="w-full h-full object-cover" />
                                                         </div>
                                                     ))}
                                                 </div>

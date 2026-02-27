@@ -4,9 +4,11 @@ import { ChampionStat } from "@/app/actions/stats";
 import Link from "next/link";
 import Image from "next/image";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { useDDragonVersion } from "@/hooks/useDDragonVersion";
 
 export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }) {
     const { t } = useTranslation();
+    const version = useDDragonVersion();
     
     if (!stats || stats.length === 0) {
         return (
@@ -45,7 +47,7 @@ export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }
                  <Link href={`/dashboard/champion/${encodeURIComponent(topChamp.name)}`} className="flex items-center gap-4 mb-4 hover:bg-white/5 p-2 -ml-2 rounded-lg transition overflow-visible group/top cursor-pointer">
                      <div className="w-16 h-16 rounded-lg border-2 border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.3)] overflow-hidden relative">
                          <Image
-                            src={`https://ddragon.leagueoflegends.com/cdn/14.23.1/img/champion/${topChamp.name}.png`}
+                            src={`https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${topChamp.name}.png`}
                             alt={topChamp.name}
                             width={64}
                             height={64}
@@ -78,7 +80,7 @@ export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }
                              <div className="flex items-center gap-3">
                                  <div className="w-8 h-8 rounded border border-slate-600 overflow-hidden">
                                     <Image
-                                        src={`https://ddragon.leagueoflegends.com/cdn/14.23.1/img/champion/${champ.name}.png`}
+                                        src={`https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${champ.name}.png`}
                                         alt={champ.name}
                                         width={32}
                                         height={32}

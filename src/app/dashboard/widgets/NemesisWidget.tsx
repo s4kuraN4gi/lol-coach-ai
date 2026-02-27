@@ -5,6 +5,7 @@ import { UniqueStats } from "@/app/actions/stats";
 import DashboardCard from "../components/DashboardCard";
 import InfoTooltip from "../components/InfoTooltip";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { useDDragonVersion } from "@/hooks/useDDragonVersion";
 
 type MatchupData = {
     name: string;
@@ -15,10 +16,12 @@ type MatchupData = {
 
 function MatchupCard({
     champ,
-    type
+    type,
+    version
 }: {
     champ: MatchupData;
     type: 'nemesis' | 'prey';
+    version: string;
 }) {
     const losses = champ.games - champ.wins;
     const isNemesis = type === 'nemesis';
@@ -30,7 +33,7 @@ function MatchupCard({
                 {/* Champion Icon */}
                 <div className={`relative w-10 h-10 rounded-lg overflow-hidden ring-2 ring-${accentColor}-500/30 group-hover/card:ring-${accentColor}-500/50 transition-all`}>
                     <Image
-                        src={`https://ddragon.leagueoflegends.com/cdn/14.23.1/img/champion/${champ.name}.png`}
+                        src={`https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${champ.name}.png`}
                         alt={champ.name}
                         width={40}
                         height={40}
@@ -70,6 +73,7 @@ function MatchupCard({
 
 export default function NemesisWidget({ stats }: { stats: UniqueStats | null }) {
     const { t } = useTranslation();
+    const version = useDDragonVersion();
 
     if (!stats) return <DashboardCard className="h-full">{t('widgets.nemesis.noData')}</DashboardCard>;
 
@@ -107,7 +111,7 @@ export default function NemesisWidget({ stats }: { stats: UniqueStats | null }) 
                         </div>
                         <div className="space-y-2">
                             {stats.nemesis.slice(0, 3).map(c => (
-                                <MatchupCard key={c.name} champ={c} type="nemesis" />
+                                <MatchupCard key={c.name} champ={c} type="nemesis" version={version} />
                             ))}
                             {stats.nemesis.length === 0 && (
                                 <div className="text-[10px] text-slate-600 italic p-2">
@@ -127,7 +131,7 @@ export default function NemesisWidget({ stats }: { stats: UniqueStats | null }) 
                         </div>
                         <div className="space-y-2">
                             {stats.prey.slice(0, 3).map(c => (
-                                <MatchupCard key={c.name} champ={c} type="prey" />
+                                <MatchupCard key={c.name} champ={c} type="prey" version={version} />
                             ))}
                             {stats.prey.length === 0 && (
                                 <div className="text-[10px] text-slate-600 italic p-2">

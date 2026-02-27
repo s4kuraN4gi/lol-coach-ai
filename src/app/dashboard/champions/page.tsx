@@ -7,6 +7,7 @@ import { useSummoner } from "../../Providers/SummonerProvider";
 import { getStatsFromCache, type MatchStatsDTO, type BasicStatsDTO } from "@/app/actions/stats";
 import LoadingAnimation from "../../Components/LoadingAnimation";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { useDDragonVersion } from "@/hooks/useDDragonVersion";
 
 type ChampionStat = {
     name: string;
@@ -28,6 +29,7 @@ export default function AllChampionsPage() {
     const [sortKey, setSortKey] = useState<"games" | "winRate" | "avgKda" | "name">("games");
     const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
     const { t } = useTranslation();
+    const ddVersion = useDDragonVersion();
 
     useEffect(() => {
         if (summonerLoading) return;
@@ -147,7 +149,7 @@ export default function AllChampionsPage() {
                             {/* Icon */}
                             <div className="w-14 h-14 rounded-lg border border-slate-700 overflow-hidden relative shadow-lg group-hover:border-blue-500/50 transition-colors">
                                 <Image
-                                    src={`https://ddragon.leagueoflegends.com/cdn/14.23.1/img/champion/${champ.name}.png`}
+                                    src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/champion/${champ.name}.png`}
                                     alt={champ.name}
                                     width={56}
                                     height={56}

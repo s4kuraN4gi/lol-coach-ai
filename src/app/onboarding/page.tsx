@@ -14,9 +14,11 @@ import { signOut } from "../actions/auth";
 import Footer from "../Components/layout/Footer";
 import { useTranslation } from "@/contexts/LanguageContext";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { useDDragonVersion } from "@/hooks/useDDragonVersion";
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const ddVersion = useDDragonVersion();
   const { user, loading: authLoading } = useAuth();
   const { t } = useTranslation();
   const [initLoading, setInitLoading] = useState(true);
@@ -193,14 +195,14 @@ export default function OnboardingPage() {
                                     {/* Arrow */}
                                     <div className="flex flex-col items-center">
                                         <div className="w-16 h-16 rounded-full bg-slate-800 border-2 border-slate-600 flex items-center justify-center grayscale opacity-50 mb-2">
-                                            <img src={`https://ddragon.leagueoflegends.com/cdn/15.24.1/img/profileicon/${candidate?.profileIconId}.png`} className="w-full h-full rounded-full" />
+                                            <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/profileicon/${candidate?.profileIconId}.png`} className="w-full h-full rounded-full" />
                                         </div>
                                         <span className="text-xs text-slate-500">Current</span>
                                     </div>
                                     <div className="text-2xl text-blue-500">→</div>
                                     <div className="flex flex-col items-center relative">
                                         <div className="w-20 h-20 rounded-full border-4 border-blue-500 shadow-[0_0_20px_blue] overflow-hidden mb-2">
-                                            <img src={`https://ddragon.leagueoflegends.com/cdn/15.24.1/img/profileicon/${candidate?.targetIconId}.png`} className="w-full h-full" />
+                                            <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/profileicon/${candidate?.targetIconId}.png`} className="w-full h-full" />
                                         </div>
                                         <span className="text-xs text-blue-400 font-bold">New Icon</span>
                                         <div className="absolute -top-1 -right-2 bg-blue-600 text-[10px] px-1.5 py-0.5 rounded text-white font-bold">Target</div>

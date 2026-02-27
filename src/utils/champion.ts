@@ -1,6 +1,6 @@
+import { fetchLatestVersion } from "@/app/actions/riot";
 
-const DDRAGON_VERSION = "14.24.1";
-const LOCALE = "en_US"; // or ja_JP
+const LOCALE = "en_US";
 
 export type ChampionData = {
     id: string; // "Aatrox"
@@ -14,7 +14,8 @@ let championCache: Map<string, ChampionData> | null = null;
 export async function getChampionData(championName: string): Promise<ChampionData | null> {
     if (!championCache) {
         try {
-            const res = await fetch(`https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VERSION}/data/${LOCALE}/champion.json`);
+            const version = await fetchLatestVersion();
+            const res = await fetch(`https://ddragon.leagueoflegends.com/cdn/${version}/data/${LOCALE}/champion.json`);
             if (!res.ok) return null;
             const data = await res.json();
             
