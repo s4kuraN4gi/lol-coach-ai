@@ -27,6 +27,12 @@ export default function LegalPage() {
         </div>
 
         <div>
+            <h3 className="text-lg font-bold text-slate-200 mb-2">連絡先</h3>
+            <p>メール: support@lolcoachai.com</p>
+            <p className="text-sm text-slate-400 mt-1">※お問い合わせは上記メールアドレスまでお願いいたします。</p>
+        </div>
+
+        <div>
             <h3 className="text-lg font-bold text-slate-200 mb-2">販売価格</h3>
             <p>プレミアムプラン: 月額980円（税込）</p>
         </div>
@@ -44,6 +50,11 @@ export default function LegalPage() {
         <div>
             <h3 className="text-lg font-bold text-slate-200 mb-2">代金の支払時期</h3>
              <p>初回申込時に決済され、以降毎月同日に自動更新されます。</p>
+        </div>
+
+        <div>
+            <h3 className="text-lg font-bold text-slate-200 mb-2">商品の引渡し時期</h3>
+            <p>代金決済完了後、直ちにサービスをご利用いただけます。</p>
         </div>
 
         <div>
