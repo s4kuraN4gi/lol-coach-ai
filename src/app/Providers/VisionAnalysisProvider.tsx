@@ -71,7 +71,6 @@ export function VisionAnalysisProvider({ children }: { children: React.ReactNode
 
             // Case 1: There's a job in progress - restore and poll
             if (savedJobId) {
-                console.log("[GlobalProvider] Restoring Micro Job:", savedJobId);
                 setMicroJobId(savedJobId);
                 setMatchId(savedMatchId);
                 setAsyncStatus('processing');
@@ -81,11 +80,9 @@ export function VisionAnalysisProvider({ children }: { children: React.ReactNode
 
             // Case 2: There's a completed match - try to restore result from DB
             if (completedMatchId) {
-                console.log("[GlobalProvider] Restoring completed result for match:", completedMatchId);
                 try {
                     const { found, result: savedResult } = await getLatestMicroAnalysisForMatch(completedMatchId);
                     if (found && savedResult) {
-                        console.log("[GlobalProvider] Restored completed result from DB");
                         setVisionResult(savedResult as VisionAnalysisResult);
                         setMatchId(completedMatchId);
                         setAsyncStatus('completed');
@@ -113,15 +110,11 @@ export function VisionAnalysisProvider({ children }: { children: React.ReactNode
 
         const checkMicroStatus = async () => {
             if (!microJobId) return;
-            console.log("[GlobalProvider] Polling job status:", microJobId);
-
             let res: any;
             try {
                 res = await getAnalysisJobStatus(microJobId);
-                console.log("[GlobalProvider] Poll result status:", res.status);
             } catch (pollError: any) {
-                console.error("[GlobalProvider] POLL ERROR (getAnalysisJobStatus):", pollError.message);
-                console.error("[GlobalProvider] Error stack:", pollError.stack);
+                console.error("[GlobalProvider] POLL ERROR:", pollError.message);
                 // Show error to user with location info
                 setAsyncStatus('failed');
                 setErrorMsg(`[POLL] ${pollError.message}`);
@@ -134,7 +127,6 @@ export function VisionAnalysisProvider({ children }: { children: React.ReactNode
             if (!isMounted) return;
 
             if (res.status === 'completed' && res.result) {
-                console.log("[GlobalProvider] Job Completed, result keys:", Object.keys(res.result));
                 // Check for corrupted result
                 if (res.result.error && res.result.error.includes('corrupted')) {
                     console.error("[GlobalProvider] Result was corrupted");
@@ -202,10 +194,7 @@ export function VisionAnalysisProvider({ children }: { children: React.ReactNode
         setProgress(0);
         setStatusMessage("");
         if (!keepDebugFrames) {
-            console.log("[GlobalProvider] Clearing Debug Frames");
             setDebugFrames([]);
-        } else {
-            console.log("[GlobalProvider] Keeping Debug Frames");
         }
         setErrorMsg(null);
         setMicroJobId(null);
@@ -219,11 +208,9 @@ export function VisionAnalysisProvider({ children }: { children: React.ReactNode
     // Restore result for a specific match (called by component when match changes)
     // Note: This function intentionally has no dependencies to maintain stable reference
     const restoreResultForMatch = useCallback(async (targetMatchId: string): Promise<boolean> => {
-        console.log("[GlobalProvider] Trying to restore MICRO result for match:", targetMatchId);
         try {
             const { found, result: savedResult } = await getLatestMicroAnalysisForMatch(targetMatchId);
             if (found && savedResult) {
-                console.log("[GlobalProvider] Found and restored MICRO result from DB");
                 setVisionResult(savedResult as VisionAnalysisResult);
                 setMatchId(targetMatchId);
                 setAsyncStatus('completed');
@@ -241,7 +228,6 @@ export function VisionAnalysisProvider({ children }: { children: React.ReactNode
     const verifyVideo = useCallback(async (file: File, match: MatchSummary, puuid: string, onProgress?: (msg: string) => void) => {
         if (!file || !match) return;
 
-        console.log("[GlobalProvider] Starting Verification:", file.name);
         const updateMsg = (msg: string) => {
             setStatusMessage(msg);
             if (onProgress) onProgress(msg);
@@ -273,8 +259,6 @@ export function VisionAnalysisProvider({ children }: { children: React.ReactNode
             // Let's use getFrames around a few seconds
             const frames = await processor.extractVerificationFrames(file); // Use specific method
             
-            // [DEBUG] Expose frames to UI
-            console.log(`[GlobalProvider] Setting Debug Frames. Count: ${frames.length}`);
             setDebugFrames(frames.map((f, i) => ({
                 url: `data:image/jpeg;base64,${f}`, // Fix: Prepend data prefix
                 info: `Verify Frame ${i+1}`
@@ -297,8 +281,6 @@ export function VisionAnalysisProvider({ children }: { children: React.ReactNode
                  throw new Error(`MATCH_INTEGRITY_ERROR: ${reason}`);
             }
 
-            console.log("[GlobalProvider] Verification Passed!", vResult);
-
         } catch (e: any) {
             console.error(e);
             throw e;
@@ -320,13 +302,11 @@ export function VisionAnalysisProvider({ children }: { children: React.ReactNode
             setStatusMessage(t('visionAnalysis.verifyingVideoMatch'));
             
             // 1-A. Context
-            console.log("[GlobalProvider] Calling fetchMatchDetail for:", match.matchId);
             let matchDetail: any;
             try {
                 matchDetail = await fetchMatchDetail(match.matchId);
-                console.log("[GlobalProvider] fetchMatchDetail returned:", matchDetail.success, matchDetail.error || '');
             } catch (fetchError: any) {
-                console.error("[GlobalProvider] FETCH ERROR (fetchMatchDetail):", fetchError.message);
+                console.error("[GlobalProvider] FETCH ERROR:", fetchError.message);
                 throw new Error(`[FETCH] ${fetchError.message}`);
             }
             if (!matchDetail.success || !matchDetail.data) {

@@ -182,7 +182,6 @@ export async function detectGameTimeFromFrame(
 
             if (is429 && attempt < maxRetries) {
                 const waitTime = Math.pow(2, attempt) * 2000;
-                console.log(`[detectGameTimeFromFrame] Rate limited, waiting ${waitTime}ms before retry (attempt ${attempt}/${maxRetries})`);
                 await delay(waitTime);
                 continue;
             }
@@ -679,7 +678,6 @@ export async function analyzeVideoMacro(
         });
 
         // Start build recommendation generation in parallel (non-blocking)
-        console.log('[VideoMacro] Starting build recommendation generation in parallel...');
         const buildPromise = generateBuildRecommendation(matchRes.data, request.puuid, model, lang);
 
         // Analyze each segment with rate limit handling
@@ -687,7 +685,6 @@ export async function analyzeVideoMacro(
         const segmentErrors: string[] = [];
 
         const isPremium = status.is_premium;
-        console.log(`[VideoMacro] Starting analysis of ${request.segments.length} segments (${isPremium ? 'PARALLEL - Premium' : 'SEQUENTIAL - Free'})`);
 
         // Helper function for delay
         const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -706,7 +703,6 @@ export async function analyzeVideoMacro(
                         const baseWait = Math.pow(2, attempt) * 1500;
                         const jitter = Math.random() * 2000;
                         const waitTime = baseWait + jitter;
-                        console.log(`[VideoMacro] Rate limited, waiting ${Math.round(waitTime)}ms before retry (attempt ${attempt}/${maxRetries})`);
                         await delay(waitTime);
                         continue;
                     }
@@ -741,8 +737,6 @@ export async function analyzeVideoMacro(
 
         // Function to analyze a single segment
         const analyzeSegment = async (segment: VideoMacroSegment, segmentIndex: number): Promise<SegmentAnalysis | null> => {
-            console.log(`[VideoMacro] Processing segment ${segment.segmentId} (${segment.type}) [${segmentIndex + 1}/${request.segments.length}]`);
-
             // Get frames for this segment
             const segmentFrames = request.frames.filter(f => f.segmentId === segment.segmentId);
 
@@ -752,8 +746,6 @@ export async function analyzeVideoMacro(
                 segmentErrors.push(errorMsg);
                 return null;
             }
-
-            console.log(`[VideoMacro] Segment ${segment.segmentId} has ${segmentFrames.length} frames`);
 
             // Build prompt
             const prompt = generateVideoMacroPrompt(segment, matchContext, lang);
@@ -770,17 +762,14 @@ export async function analyzeVideoMacro(
             }
 
             try {
-                console.log(`[VideoMacro] Calling Gemini for segment ${segment.segmentId}...`);
                 const text = await callGeminiWithRetry(parts);
                 const cleanedText = text
                     .replace(/^```json\s*/, "")
                     .replace(/^```\s*/, "")
                     .replace(/\s*```$/, "");
 
-                console.log(`[VideoMacro] Segment ${segment.segmentId} response received, parsing JSON...`);
                 const analysisData = JSON.parse(cleanedText);
 
-                console.log(`[VideoMacro] Segment ${segment.segmentId} analysis complete`);
                 return {
                     segmentId: segment.segmentId,
                     type: segment.type,
@@ -801,7 +790,6 @@ export async function analyzeVideoMacro(
         if (isPremium) {
             // PREMIUM/EXTRA: Process with limited concurrency (max 2 parallel) to avoid 429
             const concurrency = 3;
-            console.log(`[VideoMacro] Premium user - using parallel processing (concurrency=${concurrency})`);
             const tasks = request.segments.map((segment, index) => () => analyzeSegment(segment, index));
             const results = await processWithConcurrency(tasks, concurrency);
             results.forEach(result => {
@@ -809,10 +797,8 @@ export async function analyzeVideoMacro(
             });
         } else {
             // FREE: Process segments sequentially with delay to avoid rate limiting
-            console.log('[VideoMacro] Free user - using sequential processing with rate limiting');
             for (let i = 0; i < request.segments.length; i++) {
                 if (i > 0) {
-                    console.log(`[VideoMacro] Waiting 2s before next segment to avoid rate limiting...`);
                     await delay(1500);
                 }
                 const result = await analyzeSegment(request.segments[i], i);
@@ -820,7 +806,6 @@ export async function analyzeVideoMacro(
             }
         }
 
-        console.log(`[VideoMacro] Analysis complete: ${segmentResults.length}/${request.segments.length} segments successful`);
         if (segmentErrors.length > 0) {
             console.warn(`[VideoMacro] Segment errors: ${segmentErrors.join(', ')}`);
         }
@@ -829,13 +814,7 @@ export async function analyzeVideoMacro(
         const overallSummary = generateOverallSummary(segmentResults, lang);
 
         // Wait for build recommendation to complete (was running in parallel)
-        console.log('[VideoMacro] Waiting for build recommendation to complete...');
         const buildRecommendation = await buildPromise;
-        if (buildRecommendation) {
-            console.log('[VideoMacro] Build recommendation completed successfully');
-        } else {
-            console.log('[VideoMacro] Build recommendation returned null (may have failed)');
-        }
 
         // Update usage count atomically (both premium and free users increment weekly count)
         if (shouldIncrementCount) {
@@ -1048,8 +1027,6 @@ async function generateBuildRecommendation(
     language: 'ja' | 'en' | 'ko' = 'ja'
 ): Promise<BuildRecommendation | null> {
     try {
-        console.log('[VideoMacro] Generating build recommendation...');
-
         // Fetch item data from Data Dragon for name resolution
         const itemData = await fetchDDItemData(language);
         const getItemName = (itemId: number): string => {
@@ -1192,8 +1169,6 @@ ${lp.outputFormat}
             itemName: getItemName(id)
         }));
 
-        console.log('[VideoMacro] Build recommendation generated');
-
         return {
             userItems,
             userChampionName: me.championName,
@@ -1285,8 +1260,6 @@ export async function startVideoMacroAnalysis(
         return { success: false, error: "Database error: Could not start analysis job" };
     }
 
-    console.log(`[startVideoMacroAnalysis] Created job: ${job.id}`);
-
     // Fire-and-forget: Run analysis in background
     (async () => {
         try {
@@ -1331,8 +1304,6 @@ async function performVideoMacroAnalysisInBackground(
     const supabase = await createClient();
 
     try {
-        console.log(`[VideoMacro Job ${jobId}] Starting background analysis...`);
-
         // Fetch match context
         const matchRes = await fetchMatchDetail(request.matchId);
         if (!matchRes.success || !matchRes.data) {
