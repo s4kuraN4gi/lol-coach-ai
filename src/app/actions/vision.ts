@@ -235,11 +235,15 @@ async function performVisionAnalysis(
         const apiKeyToUse = useEnvKey ? GEMINI_API_KEY_ENV : userApiKey;
         if (!apiKeyToUse) throw new Error("API Key Not Found");
 
-        // [DEBIT FIRST] - Both premium and free users increment weekly count
+        // [DEBIT FIRST] - Atomic increment of weekly count
         if (shouldIncrementCount) {
-             // Increment weekly count (reset is handled by getAnalysisStatus)
-             const newWeeklyCount = (status.weekly_analysis_count || 0) + 1;
-             await supabase.from("profiles").update({ weekly_analysis_count: newWeeklyCount }).eq("id", userId);
+             const { data: rpcResult, error: rpcError } = await supabase.rpc('increment_weekly_count', {
+                 p_user_id: userId,
+                 p_limit: 999 // Limit already checked in startVisionAnalysis
+             });
+             if (rpcError || rpcResult === -1) {
+                 throw new Error("Failed to increment weekly count");
+             }
              debited = true;
         }
 
@@ -655,15 +659,10 @@ ${JSON.stringify(relevantTruthEvents.slice(0, 20))}
     } catch (e: any) {
         console.error(`[Vision Job ${jobId}] FAILED:`, e);
 
-        // [REFUND] - Decrement weekly count if analysis failed after debit
+        // [REFUND] - Atomic decrement of weekly count if analysis failed after debit
         try {
             if (debited && shouldIncrementCount) {
-                const { data: currentProfile } = await supabase.from("profiles").select("weekly_analysis_count").eq("id", userId).single();
-                if (currentProfile && currentProfile.weekly_analysis_count > 0) {
-                    await supabase.from("profiles").update({
-                        weekly_analysis_count: currentProfile.weekly_analysis_count - 1
-                    }).eq("id", userId);
-                }
+                await supabase.rpc('decrement_weekly_count', { p_user_id: userId });
             }
         } catch (refundError) {
             console.error("Refund failed", refundError);

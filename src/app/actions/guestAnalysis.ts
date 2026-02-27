@@ -404,10 +404,15 @@ export async function performGuestAnalysis(
             };
         }
 
-        const weeklyCount = status.weekly_analysis_count || 0;
         const limit = status.is_premium ? PREMIUM_WEEKLY_ANALYSIS_LIMIT : FREE_WEEKLY_ANALYSIS_LIMIT;
 
-        if (weeklyCount >= limit) {
+        // Atomically check limit and increment weekly usage count
+        const { data: newCount, error: rpcError } = await supabase.rpc('increment_weekly_count', {
+            p_user_id: user.id, p_limit: limit
+        });
+
+        if (rpcError || newCount === -1) {
+            const weeklyCount = status.weekly_analysis_count || 0;
             return {
                 success: false,
                 analyzedAt: '',
@@ -421,12 +426,7 @@ export async function performGuestAnalysis(
             };
         }
 
-        // Increment usage for free/premium members
-        await supabase.from("profiles").update({
-            weekly_analysis_count: weeklyCount + 1
-        }).eq("id", user.id);
-
-        remainingCredits = limit - weeklyCount - 1;
+        remainingCredits = limit - (newCount ?? 0);
     }
 
     const lang = request.language || 'ja';
@@ -609,10 +609,15 @@ export async function performGuestMicroAnalysis(
             return { success: false, error: "プロフィールが見つかりません", isGuest: false, remainingCredits: 0 };
         }
 
-        const weeklyCount = status.weekly_analysis_count || 0;
         const limit = status.is_premium ? PREMIUM_WEEKLY_ANALYSIS_LIMIT : FREE_WEEKLY_ANALYSIS_LIMIT;
 
-        if (weeklyCount >= limit) {
+        // Atomically check limit and increment weekly usage count
+        const { data: newCount, error: rpcError } = await supabase.rpc('increment_weekly_count', {
+            p_user_id: user.id, p_limit: limit
+        });
+
+        if (rpcError || newCount === -1) {
+            const weeklyCount = status.weekly_analysis_count || 0;
             return {
                 success: false,
                 error: status.is_premium
@@ -623,11 +628,7 @@ export async function performGuestMicroAnalysis(
             };
         }
 
-        await supabase.from("profiles").update({
-            weekly_analysis_count: weeklyCount + 1
-        }).eq("id", user.id);
-
-        remainingCredits = limit - weeklyCount - 1;
+        remainingCredits = limit - (newCount ?? 0);
     }
 
     const lang = request.language || 'ja';

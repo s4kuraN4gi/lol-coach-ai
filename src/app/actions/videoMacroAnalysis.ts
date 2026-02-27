@@ -837,11 +837,10 @@ export async function analyzeVideoMacro(
             console.log('[VideoMacro] Build recommendation returned null (may have failed)');
         }
 
-        // Update usage count (both premium and free users increment weekly count)
+        // Update usage count atomically (both premium and free users increment weekly count)
         if (shouldIncrementCount) {
-            await supabase.from("profiles").update({
-                weekly_analysis_count: (status.weekly_analysis_count || 0) + 1
-            }).eq("id", user.id);
+            const weeklyLimit = getWeeklyLimit(status);
+            await supabase.rpc('increment_weekly_count', { p_user_id: user.id, p_limit: weeklyLimit });
         }
 
         return {
@@ -1531,11 +1530,10 @@ async function performVideoMacroAnalysisInBackground(
             console.error(`[VideoMacro Job ${jobId}] Build recommendation error:`, e);
         }
 
-        // Update usage count (both premium and free users increment weekly count)
+        // Update usage count atomically (both premium and free users increment weekly count)
         if (shouldIncrementCount) {
-            await supabase.from("profiles").update({
-                weekly_analysis_count: (status.weekly_analysis_count || 0) + 1
-            }).eq("id", userId);
+            const weeklyLimit = getWeeklyLimit(status);
+            await supabase.rpc('increment_weekly_count', { p_user_id: userId, p_limit: weeklyLimit });
         }
 
         // Build result

@@ -591,8 +591,8 @@ export async function analyzeMatchTimeline(
         // --- Update Usage Limits (DB) ---
         // Both premium and free users increment weekly count when using env key
         if (shouldIncrementCount) {
-            const newWeeklyCount = (status.weekly_analysis_count || 0) + 1;
-            await supabase.from("profiles").update({ weekly_analysis_count: newWeeklyCount }).eq("id", user.id);
+            const limit = status.is_premium ? PREMIUM_WEEKLY_ANALYSIS_LIMIT : FREE_WEEKLY_ANALYSIS_LIMIT;
+            await supabase.rpc('increment_weekly_count', { p_user_id: user.id, p_limit: limit });
         }
         // -------------------------------
 

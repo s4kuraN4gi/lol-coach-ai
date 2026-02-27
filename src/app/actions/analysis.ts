@@ -504,7 +504,7 @@ export async function analyzeVideo(formData: FormData, userApiKey?: string, mode
         await supabase.from("profiles").update({ daily_analysis_count: newCount, last_analysis_date: today }).eq("id", user.id);
         debited = true;
     } else if (!userApiKey && useEnvKey && !status.is_premium) {
-        await supabase.from("profiles").update({ analysis_credits: status.analysis_credits - 1 }).eq("id", user.id);
+        await supabase.rpc('decrement_analysis_credits', { p_user_id: user.id });
         debited = true;
     }
 
@@ -538,16 +538,12 @@ export async function analyzeVideo(formData: FormData, userApiKey?: string, mode
         return { success: true, data: res.data };
 
     } catch (e: any) {
-        // [REFUND] If already debited, increment back
+        // [REFUND] If already debited, refund atomically
         if (debited) {
             if (shouldIncrementCount) {
-                // For daily count, we just decrement or ignore. Usually ignore is safer if it's just a count.
-                // But credits are real currency.
+                await supabase.rpc('decrement_weekly_count', { p_user_id: user.id });
             } else if (!userApiKey && useEnvKey && !status.is_premium) {
-                const { data: currentProfile } = await supabase.from("profiles").select("analysis_credits").eq("id", user.id).single();
-                if (currentProfile) {
-                    await supabase.from("profiles").update({ analysis_credits: currentProfile.analysis_credits + 1 }).eq("id", user.id);
-                }
+                await supabase.rpc('increment_analysis_credits', { p_user_id: user.id });
             }
         }
         throw e;
@@ -720,7 +716,7 @@ export async function analyzeMatchQuick(
 
         await supabase.from("profiles").update({ daily_analysis_count: newCount, last_analysis_date: today }).eq("id", user.id);
       } else if (!userApiKey && useEnvKey && !status.is_premium) {
-         await supabase.from("profiles").update({ analysis_credits: status.analysis_credits - 1 }).eq("id", user.id);
+         await supabase.rpc('decrement_analysis_credits', { p_user_id: user.id });
       }
       
        revalidatePath(`/dashboard/match/${matchId}`); 
@@ -875,8 +871,8 @@ KDA: ${kda}
 
       await supabase.from("profiles").update({ daily_analysis_count: newCount, last_analysis_date: today }).eq("id", user.id);
   } else if (!userApiKey && useEnvKey && !status.is_premium) {
-      // Consume Credit
-      await supabase.from("profiles").update({ analysis_credits: status.analysis_credits - 1 }).eq("id", user.id);
+      // Consume Credit atomically
+      await supabase.rpc('decrement_analysis_credits', { p_user_id: user.id });
   }
 
   revalidatePath("/dashboard");
@@ -1124,7 +1120,7 @@ export async function checkWeeklyLimit(): Promise<{
 
 /**
  * Increment weekly analysis count for premium users
- * Or decrement credits for free users
+ * Or decrement credits for free users (atomic operations)
  */
 export async function incrementAnalysisCount(userId: string, isPremium: boolean): Promise<boolean> {
     const supabase = await createClient();
@@ -1134,40 +1130,17 @@ export async function incrementAnalysisCount(userId: string, isPremium: boolean)
     if (!user || user.id !== userId) return false;
 
     if (isPremium) {
-        // Premium user: increment weekly count
-        const { error } = await supabase.rpc('increment_weekly_analysis', { user_id: user.id });
-
-        if (error) {
-            // Fallback: direct update
-            const { data: profile } = await supabase
-                .from("profiles")
-                .select("weekly_analysis_count")
-                .eq("id", user.id)
-                .single();
-
-            if (profile) {
-                await supabase
-                    .from("profiles")
-                    .update({ weekly_analysis_count: (profile.weekly_analysis_count || 0) + 1 })
-                    .eq("id", user.id);
-            }
-        }
-        return true;
+        // Premium user: atomic increment with limit check
+        const { data, error } = await supabase.rpc('increment_weekly_count', {
+            p_user_id: user.id,
+            p_limit: 999 // No hard limit here; limit is checked before calling this function
+        });
+        return !error && data !== -1;
     } else {
-        // Free user: decrement credits
-        const { data: profile } = await supabase
-            .from("profiles")
-            .select("analysis_credits")
-            .eq("id", user.id)
-            .single();
-
-        if (profile && profile.analysis_credits > 0) {
-            await supabase
-                .from("profiles")
-                .update({ analysis_credits: profile.analysis_credits - 1 })
-                .eq("id", user.id);
-            return true;
-        }
-        return false;
+        // Free user: atomic credit decrement
+        const { data, error } = await supabase.rpc('decrement_analysis_credits', {
+            p_user_id: user.id
+        });
+        return !error && data !== -1;
     }
 }
