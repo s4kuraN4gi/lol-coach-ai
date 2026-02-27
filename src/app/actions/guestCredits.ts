@@ -10,50 +10,26 @@ function getSupabaseAdmin() {
     return createClient(supabaseUrl, supabaseServiceKey);
 }
 
-// In-memory fallback for when migration is not applied
-// This allows guests to use the feature without DB setup
-// Note: This resets on server restart, but provides a working experience
-const inMemoryCredits: Map<string, { credits: number; lastUsedAt: Date | null }> = new Map();
-
-// Check if the guest_credits table exists
-let tableChecked = false;
-let tableExists = false;
-
-async function checkGuestCreditsTable(): Promise<boolean> {
-    if (tableChecked) return tableExists;
-
-    try {
-        const supabase = getSupabaseAdmin();
-        // Try to query the table - if it doesn't exist, this will throw
-        const { error } = await supabase
-            .from("guest_credits")
-            .select("id")
-            .limit(1);
-
-        tableExists = !error || !error.message.includes("does not exist");
-        tableChecked = true;
-        return tableExists;
-    } catch {
-        tableChecked = true;
-        tableExists = false;
-        return false;
-    }
-}
-
-// Get client IP from headers
+// Get client IP from headers (CF-Connecting-IP preferred for Cloudflare deployments)
 async function getClientIP(): Promise<string> {
     const headersList = await headers();
 
-    // Try various headers in order of preference
-    const forwarded = headersList.get("x-forwarded-for");
-    if (forwarded) {
-        // x-forwarded-for can contain multiple IPs, take the first one
-        return forwarded.split(",")[0].trim();
+    // 1. Cloudflare's trusted header (cannot be spoofed behind CF)
+    const cfIP = headersList.get("cf-connecting-ip");
+    if (cfIP) {
+        return cfIP;
     }
 
+    // 2. x-real-ip (set by reverse proxies like nginx)
     const realIP = headersList.get("x-real-ip");
     if (realIP) {
         return realIP;
+    }
+
+    // 3. x-forwarded-for (take first entry only)
+    const forwarded = headersList.get("x-forwarded-for");
+    if (forwarded) {
+        return forwarded.split(",")[0].trim();
     }
 
     // Fallback for local development
@@ -67,74 +43,35 @@ export type GuestCreditStatus = {
     isGuest: true;
 };
 
+const FAIL_CLOSED: GuestCreditStatus = {
+    credits: 0,
+    canUse: false,
+    nextCreditAt: null,
+    isGuest: true,
+};
+
 /**
- * Get guest credit status based on IP address
- * Uses in-memory fallback if DB table doesn't exist
+ * Get guest credit status based on IP address.
+ * Fail-Closed: errors result in canUse: false.
  */
 export async function getGuestCreditStatus(): Promise<GuestCreditStatus> {
     const ip = await getClientIP();
-
-    // Check if table exists, use in-memory fallback if not
-    const hasTable = await checkGuestCreditsTable();
-
-    if (!hasTable) {
-        // Use in-memory fallback
-        const memoryRecord = inMemoryCredits.get(ip);
-        if (!memoryRecord) {
-            // New guest - give 3 credits
-            inMemoryCredits.set(ip, { credits: 3, lastUsedAt: null });
-            return {
-                credits: 3,
-                canUse: true,
-                nextCreditAt: null,
-                isGuest: true,
-            };
-        }
-
-        // Replenish credits based on time (1 per 3 days)
-        if (memoryRecord.lastUsedAt) {
-            const daysSinceUse = (Date.now() - memoryRecord.lastUsedAt.getTime()) / (1000 * 60 * 60 * 24);
-            const creditsToAdd = Math.floor(daysSinceUse / 3);
-            if (creditsToAdd > 0) {
-                memoryRecord.credits = Math.min(3, memoryRecord.credits + creditsToAdd);
-            }
-        }
-
-        return {
-            credits: memoryRecord.credits,
-            canUse: memoryRecord.credits > 0,
-            nextCreditAt: memoryRecord.credits < 3 && memoryRecord.lastUsedAt
-                ? new Date(memoryRecord.lastUsedAt.getTime() + 3 * 24 * 60 * 60 * 1000)
-                : null,
-            isGuest: true,
-        };
-    }
-
-    // Use database
     const supabase = getSupabaseAdmin();
 
     try {
-        // Call the replenish function which handles both creation and replenishment
         const { data, error } = await supabase
             .rpc("replenish_guest_credits", { p_ip_address: ip });
 
         if (error) {
             console.error("Error getting guest credits:", error);
-            // Return default for new guests
-            return {
-                credits: 3,
-                canUse: true,
-                nextCreditAt: null,
-                isGuest: true,
-            };
+            return FAIL_CLOSED;
         }
 
-        const result = data?.[0] || { current_credits: 3, can_use: true };
+        const result = data?.[0] || { current_credits: 0, can_use: false };
 
         // Calculate next credit time if not at max
         let nextCreditAt: Date | null = null;
         if (result.current_credits < 3) {
-            // Get last_used_at to calculate next credit
             const { data: record } = await supabase
                 .from("guest_credits")
                 .select("last_used_at")
@@ -143,7 +80,6 @@ export async function getGuestCreditStatus(): Promise<GuestCreditStatus> {
 
             if (record?.last_used_at) {
                 const lastUsed = new Date(record.last_used_at);
-                // Next credit comes 3 days after last use (per credit)
                 const daysUntilNext = 3 - ((Date.now() - lastUsed.getTime()) / (1000 * 60 * 60 * 24)) % 3;
                 nextCreditAt = new Date(Date.now() + daysUntilNext * 24 * 60 * 60 * 1000);
             }
@@ -157,59 +93,16 @@ export async function getGuestCreditStatus(): Promise<GuestCreditStatus> {
         };
     } catch (err) {
         console.error("Error in getGuestCreditStatus:", err);
-        return {
-            credits: 3,
-            canUse: true,
-            nextCreditAt: null,
-            isGuest: true,
-        };
+        return FAIL_CLOSED;
     }
 }
 
 /**
- * Use one guest credit for analysis
- * Returns true if credit was successfully used
- * Uses in-memory fallback if DB table doesn't exist
+ * Use one guest credit for analysis.
+ * Fail-Closed: errors result in success: false.
  */
 export async function useGuestCredit(): Promise<{ success: boolean; remainingCredits: number }> {
     const ip = await getClientIP();
-
-    // Check if table exists, use in-memory fallback if not
-    const hasTable = await checkGuestCreditsTable();
-
-    if (!hasTable) {
-        // Use in-memory fallback
-        let memoryRecord = inMemoryCredits.get(ip);
-        if (!memoryRecord) {
-            // New guest - give 3 credits
-            memoryRecord = { credits: 3, lastUsedAt: null };
-            inMemoryCredits.set(ip, memoryRecord);
-        }
-
-        // Replenish credits first
-        if (memoryRecord.lastUsedAt) {
-            const daysSinceUse = (Date.now() - memoryRecord.lastUsedAt.getTime()) / (1000 * 60 * 60 * 24);
-            const creditsToAdd = Math.floor(daysSinceUse / 3);
-            if (creditsToAdd > 0) {
-                memoryRecord.credits = Math.min(3, memoryRecord.credits + creditsToAdd);
-            }
-        }
-
-        if (memoryRecord.credits <= 0) {
-            return { success: false, remainingCredits: 0 };
-        }
-
-        // Use a credit
-        memoryRecord.credits -= 1;
-        memoryRecord.lastUsedAt = new Date();
-
-        return {
-            success: true,
-            remainingCredits: memoryRecord.credits,
-        };
-    }
-
-    // Use database
     const supabase = getSupabaseAdmin();
 
     try {
@@ -236,7 +129,6 @@ export async function useGuestCredit(): Promise<{ success: boolean; remainingCre
 
 /**
  * Check if the current request is from a guest (not logged in)
- * This is determined by the absence of auth session
  */
 export async function isGuestUser(): Promise<boolean> {
     const { createClient: createServerClient } = await import("@/utils/supabase/server");
