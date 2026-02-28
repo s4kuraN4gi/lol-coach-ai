@@ -341,7 +341,10 @@
       "checkoutFailed": "결제를 시작하지 못했습니다.",
       "error": "오류가 발생했습니다.",
       "extraOnly": "Extra 플랜 전용 기능",
-      "viewPlans": "요금제 보기"
+      "viewPlans": "요금제 보기",
+      "premiumBenefit": "AI 코칭, 마이크로 분석 등 이용 가능",
+      "extraBenefit": "AI 데미지 분석 및 고급 기능 이용 가능",
+      "upgradeNow": "업그레이드"
     },
     "promoCard": {
       "title": "프리미엄 잠금 해제",

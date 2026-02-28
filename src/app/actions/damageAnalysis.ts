@@ -198,7 +198,7 @@ export async function analyzeDamageMatchup(input: DamageAnalysisInput): Promise<
     if (!user) return { success: false, error: "Not authenticated" };
 
     // Extra tier check
-    const status = await refreshAnalysisStatus();
+    const status = await refreshAnalysisStatus(user.id);
     if (!isExtraTier(status)) {
         return { success: false, error: "Extra plan required for AI damage analysis" };
     }
@@ -209,8 +209,8 @@ export async function analyzeDamageMatchup(input: DamageAnalysisInput): Promise<
     }
 
     try {
-        const { GoogleGenerativeAI } = await import("@google/generative-ai");
-        const genAI = new GoogleGenerativeAI(apiKey);
+        const { getGeminiClient } = await import("@/lib/gemini");
+        const genAI = getGeminiClient(apiKey);
         const prompt = buildPrompt(input);
 
         let finalJson = "";

@@ -341,7 +341,10 @@
       "checkoutFailed": "Failed to start checkout.",
       "error": "An error occurred.",
       "extraOnly": "Extra plan exclusive",
-      "viewPlans": "View pricing plans"
+      "viewPlans": "View pricing plans",
+      "premiumBenefit": "Unlock AI coaching, micro analysis, and more",
+      "extraBenefit": "Unlock AI damage analysis and advanced features",
+      "upgradeNow": "Upgrade Now"
     },
     "promoCard": {
       "title": "UNLOCK PREMIUM",

@@ -53,17 +53,32 @@ export default function PremiumFeatureGate({
                 {children}
             </div>
 
-            {/* Simple Overlay */}
-            <div className="absolute inset-0 z-10 flex items-center justify-center">
-                <div className="text-center">
-                    <p className="text-sm text-slate-400 font-medium">
+            {/* CTA Overlay */}
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-900/30">
+                <div className="text-center space-y-3 max-w-xs px-4">
+                    {/* Lock icon */}
+                    <div className="mx-auto w-10 h-10 rounded-full bg-slate-800/80 flex items-center justify-center border border-slate-600/50">
+                        <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                        </svg>
+                    </div>
+                    {/* Title */}
+                    <p className="text-sm font-semibold text-slate-200">
                         {t(messageKey, defaultMessage)}
                     </p>
+                    {/* Benefit */}
+                    <p className="text-xs text-slate-400">
+                        {t(
+                            requiredTier === 'extra' ? 'premium.featureGate.extraBenefit' : 'premium.featureGate.premiumBenefit',
+                            requiredTier === 'extra' ? 'AIダメージ分析や高度な機能が利用可能に' : 'AIコーチング・ミクロ分析などが利用可能に'
+                        )}
+                    </p>
+                    {/* CTA Button */}
                     <Link
                         href="/pricing"
-                        className="text-xs text-slate-500 hover:text-slate-300 transition"
+                        className="inline-block px-5 py-2 rounded-lg bg-gradient-to-r from-yellow-500 to-amber-500 text-slate-900 text-sm font-bold hover:from-yellow-400 hover:to-amber-400 transition-all shadow-lg shadow-yellow-500/20"
                     >
-                        {t('premium.featureGate.viewPlans', '料金プランを見る')}
+                        {t('premium.featureGate.upgradeNow', 'アップグレード')}
                     </Link>
                 </div>
             </div>

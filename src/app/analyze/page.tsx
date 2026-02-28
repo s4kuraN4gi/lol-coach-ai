@@ -203,12 +203,12 @@ export default function AnalyzePage() {
     // Extract a single frame
     const extractSingleFrame = async (video: HTMLVideoElement): Promise<string> => {
         const canvas = document.createElement("canvas");
-        canvas.width = 1280;
-        canvas.height = 720;
+        canvas.width = 960;
+        canvas.height = 540;
         const ctx = canvas.getContext("2d");
         if (!ctx) throw new Error("Canvas not supported");
-        ctx.drawImage(video, 0, 0, 1280, 720);
-        return canvas.toDataURL("image/jpeg", 0.7);
+        ctx.drawImage(video, 0, 0, 960, 540);
+        return canvas.toDataURL("image/jpeg", 0.6);
     };
 
     // Extract frames for a segment (supports both GuestSegment and VideoMacroSegment)
@@ -224,8 +224,8 @@ export default function AnalyzePage() {
         const interval = duration / frameCount;
 
         const canvas = document.createElement("canvas");
-        canvas.width = 1280;
-        canvas.height = 720;
+        canvas.width = 960;
+        canvas.height = 540;
         const ctx = canvas.getContext("2d");
         if (!ctx) return frames;
 
@@ -242,8 +242,8 @@ export default function AnalyzePage() {
                 video.addEventListener("seeked", onSeeked);
             });
 
-            ctx.drawImage(video, 0, 0, 1280, 720);
-            const base64 = canvas.toDataURL("image/jpeg", 0.7);
+            ctx.drawImage(video, 0, 0, 960, 540);
+            const base64 = canvas.toDataURL("image/jpeg", 0.6);
 
             frames.push({
                 segmentId: segment.segmentId,

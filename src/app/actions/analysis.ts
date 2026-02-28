@@ -8,17 +8,20 @@ import { FREE_WEEKLY_ANALYSIS_LIMIT, PREMIUM_WEEKLY_ANALYSIS_LIMIT, type Analysi
 // Weekly limit constant is imported from ./constants
 
 // ユーザーのクレジット情報を取得（純粋なREAD - 副作用なし）
-export async function getAnalysisStatus(): Promise<AnalysisStatus | null> {
+// callerUserIdを渡すと内部のgetUser()呼び出しをスキップし、認証ラウンドトリップを削減
+export async function getAnalysisStatus(callerUserId?: string): Promise<AnalysisStatus | null> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  let userId = callerUserId;
+  if (!userId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    userId = user.id;
+  }
 
   const { data } = await supabase
     .from("profiles")
     .select("is_premium, analysis_credits, subscription_tier, daily_analysis_count, last_analysis_date, subscription_end_date, auto_renew, last_credit_update, last_reward_ad_date, weekly_analysis_count, weekly_reset_date")
-    .eq("id", user.id)
+    .eq("id", userId)
     .single();
 
   if (!data) return null;
@@ -32,18 +35,21 @@ export async function getAnalysisStatus(): Promise<AnalysisStatus | null> {
 }
 
 // クレジット補充・期限チェック等のWRITE処理を実行してから最新ステータスを返す
-export async function refreshAnalysisStatus(): Promise<AnalysisStatus | null> {
+// callerUserIdを渡すと内部のgetUser()呼び出しをスキップ
+export async function refreshAnalysisStatus(callerUserId?: string): Promise<AnalysisStatus | null> {
   const supabase = await createClient();
   const adminDb = createServiceRoleClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  let userId = callerUserId;
+  if (!userId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    userId = user.id;
+  }
 
   const { data } = await supabase
     .from("profiles")
     .select("is_premium, analysis_credits, subscription_tier, daily_analysis_count, last_analysis_date, subscription_end_date, auto_renew, last_credit_update, last_reward_ad_date, weekly_analysis_count, weekly_reset_date")
-    .eq("id", user.id)
+    .eq("id", userId)
     .single();
 
   if (!data) return null;
@@ -57,7 +63,7 @@ export async function refreshAnalysisStatus(): Promise<AnalysisStatus | null> {
       await adminDb.from("profiles").update({
           subscription_end_date: nextMonth.toISOString(),
           auto_renew: true
-      }).eq("id", user.id);
+      }).eq("id", userId);
 
       data.subscription_end_date = nextMonth.toISOString();
       data.auto_renew = true;
@@ -72,7 +78,7 @@ export async function refreshAnalysisStatus(): Promise<AnalysisStatus | null> {
       const timeDiff = now.getTime() - lastUpdate.getTime();
 
       if (!data.last_credit_update) {
-          await adminDb.from("profiles").update({ last_credit_update: now.toISOString() }).eq("id", user.id);
+          await adminDb.from("profiles").update({ last_credit_update: now.toISOString() }).eq("id", userId);
           data.last_credit_update = now.toISOString();
       } else if (timeDiff >= oneWeekMs) {
           const weeksPassed = Math.floor(timeDiff / oneWeekMs);
@@ -85,14 +91,14 @@ export async function refreshAnalysisStatus(): Promise<AnalysisStatus | null> {
              await adminDb.from("profiles").update({
                  analysis_credits: newCredits,
                  last_credit_update: newLastUpdate.toISOString()
-             }).eq("id", user.id);
+             }).eq("id", userId);
 
              data.analysis_credits = newCredits;
              data.last_credit_update = newLastUpdate.toISOString();
           } else {
              await adminDb.from("profiles").update({
                  last_credit_update: now.toISOString()
-             }).eq("id", user.id);
+             }).eq("id", userId);
              data.last_credit_update = now.toISOString();
           }
       }
@@ -109,7 +115,7 @@ export async function refreshAnalysisStatus(): Promise<AnalysisStatus | null> {
           await adminDb.from("profiles").update({
               weekly_analysis_count: 0,
               weekly_reset_date: nextMonday.toISOString()
-          }).eq("id", user.id);
+          }).eq("id", userId);
 
           data.weekly_analysis_count = 0;
           data.weekly_reset_date = nextMonday.toISOString();
@@ -125,7 +131,7 @@ export async function refreshAnalysisStatus(): Promise<AnalysisStatus | null> {
       const now = new Date();
       const end = new Date(data.subscription_end_date);
       if (end < now) {
-          await adminDb.from("profiles").update({ is_premium: false, auto_renew: false }).eq("id", user.id);
+          await adminDb.from("profiles").update({ is_premium: false, auto_renew: false }).eq("id", userId);
           data.is_premium = false;
           data.auto_renew = false;
       }
@@ -439,8 +445,8 @@ export async function analyzeVideo(formData: FormData, userApiKey?: string, mode
   }
 
   try {
-    // Current Status Check (for Limits/Credits)
-    const status = await refreshAnalysisStatus();
+    // Current Status Check (for Limits/Credits) - pass userId to skip redundant getUser()
+    const status = await refreshAnalysisStatus(user.id);
     if (!status) throw new Error("User not found");
 
     // Fetch Summoner Rank for Persona
@@ -608,8 +614,8 @@ export async function analyzeMatchQuick(
       }
   }
 
-  // 2. Check Limits
-  const status = await refreshAnalysisStatus();
+  // 2. Check Limits - pass userId to skip redundant getUser()
+  const status = await refreshAnalysisStatus(user.id);
   if (!status) return { error: "User profile not found." };
 
   let useEnvKey = false;
@@ -662,8 +668,8 @@ export async function analyzeMatchQuick(
   let finalJson = "";
 
   try {
-      const { GoogleGenerativeAI } = await import("@google/generative-ai");
-      const genAI = new GoogleGenerativeAI(apiKey);
+      const { getGeminiClient } = await import("@/lib/gemini");
+      const genAI = getGeminiClient(apiKey);
 
       const version = await fetchLatestVersion();
 
@@ -772,8 +778,8 @@ export async function analyzeMatch(
     return { success: true, advice: existing.analysis_text, cached: true };
   }
 
-  // --- Logic for Limits & Keys ---
-  const status = await refreshAnalysisStatus();
+  // --- Logic for Limits & Keys --- pass userId to skip redundant getUser()
+  const status = await refreshAnalysisStatus(user.id);
   if (!status) return { error: "User profile not found." };
 
   let useEnvKey = false;
@@ -815,9 +821,9 @@ export async function analyzeMatch(
   } else {
       // Call Gemini with Multi-Model Fallback
       try {
-        const { GoogleGenerativeAI } = await import("@google/generative-ai");
-        const genAI = new GoogleGenerativeAI(apiKey);
-        
+        const { getGeminiClient } = await import("@/lib/gemini");
+        const genAI = getGeminiClient(apiKey);
+
         const MODELS_TO_TRY = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
         
         const prompt = `

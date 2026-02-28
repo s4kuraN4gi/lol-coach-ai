@@ -2,7 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { fetchMatchTimeline, fetchMatchDetail, fetchDDItemData, fetchRank, fetchLatestVersion, extractMatchEvents, extractFrameStats, getChampionAttributes, ChampionAttributes, TruthEvent, FrameStats, buildParticipantRoleMap, ParticipantRoleMap, getRelevantMacroAdvice, getEnhancedMacroAdvice, MacroAdviceContext } from "./riot";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getGeminiClient } from "@/lib/gemini";
 import { AnalysisMode, getPersonaPrompt } from './promptUtils';
 import { FREE_WEEKLY_ANALYSIS_LIMIT, PREMIUM_WEEKLY_ANALYSIS_LIMIT } from './constants';
 
@@ -192,7 +192,7 @@ export async function analyzeMatchTimeline(
 
     // --- Logic for Limits & Keys (Shared with analyzeVideo/analyzeMatch) ---
     const { refreshAnalysisStatus } = await import("./analysis");
-    const status = await refreshAnalysisStatus();
+    const status = await refreshAnalysisStatus(user.id);
     if (!status) return { success: false, error: "User profile not found." };
 
     console.log("DEBUG_AI_COACH_LIMITS:", { 
@@ -428,7 +428,7 @@ export async function analyzeMatchTimeline(
         console.log("[Coach] User Deaths:", deathCount, "| Enemy Objectives:", enemyObjectiveEvents.length);
 
         // 9. Prompt Gemini
-        const genAI = new GoogleGenerativeAI(apiKeyToUse);
+        const genAI = getGeminiClient(apiKeyToUse);
 
         // Use the new versatile prompt generator with enhanced data
         const systemPrompt = generateSystemPrompt(
@@ -455,7 +455,7 @@ export async function analyzeMatchTimeline(
         for (const modelName of MODELS_TO_TRY) {
             try {
                 console.log(`Trying Gemini Model: ${modelName}`);
-                const genAI = new GoogleGenerativeAI(apiKeyToUse);
+                const genAI = getGeminiClient(apiKeyToUse);
                 
                 // Note: JSON Schema constraint removed due to SDK type compatibility.
                 // Using prompt-based instruction for output format instead.

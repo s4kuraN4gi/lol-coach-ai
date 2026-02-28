@@ -1,7 +1,7 @@
 'use server';
 
 // Import Google GenAI (Same as analysis.ts)
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getGeminiClient } from "@/lib/gemini";
 import { createClient } from "@/utils/supabase/server";
 
 const GEMINI_API_KEY_ENV = process.env.GEMINI_API_KEY;
@@ -24,7 +24,7 @@ export async function analyzeTurningPoints(req: AnalysisRequest) {
     }
 
     try {
-        const genAI = new GoogleGenerativeAI(apiKeyToUse);
+        const genAI = getGeminiClient(apiKeyToUse);
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
         const prompt = `

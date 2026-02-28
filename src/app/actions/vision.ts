@@ -2,7 +2,7 @@
 
 import { after } from "next/server";
 import { createClient } from "@/utils/supabase/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getGeminiClient } from "@/lib/gemini";
 import fs from 'fs/promises';
 import path from 'path';
 import { refreshAnalysisStatus } from "./analysis";
@@ -142,7 +142,7 @@ export async function startVisionAnalysis(
     console.log("[startVisionAnalysis] User authenticated:", user.id);
 
     // 1. Initial Limit/Auth Check (Fail fast)
-    const status = await refreshAnalysisStatus();
+    const status = await refreshAnalysisStatus(user.id);
     if (!status) return { success: false, error: "User profile not found." };
 
     // Micro analysis is Premium-only (unless user provides their own API key)
@@ -211,7 +211,7 @@ async function performVisionAnalysis(
     
     try {
         // --- Limit Check Again (Double safe) & Key Setup ---
-        status = await refreshAnalysisStatus();
+        status = await refreshAnalysisStatus(userId);
         if (!status) throw new Error("User profile missing during processing.");
         
         const weeklyCount = status.weekly_analysis_count || 0;
@@ -318,7 +318,7 @@ async function performVisionAnalysis(
             while (retryCount <= maxRetries) {
                 try {
                     console.log(`[Vision Job ${jobId}] Attempting ${modelName} (Try ${retryCount + 1})`);
-                    const genAI = new GoogleGenerativeAI(apiKeyToUse);
+                    const genAI = getGeminiClient(apiKeyToUse);
                     const model = genAI.getGenerativeModel({
                         model: modelName,
                         generationConfig: {
@@ -697,7 +697,7 @@ export async function verifyMatchVideo(
     if (!user) return { success: false, error: "Not authenticated" };
 
     // [GUARD] Weekly Limit Check: Ensure user has remaining analyses
-    const status = await refreshAnalysisStatus();
+    const status = await refreshAnalysisStatus(user.id);
     if (!status) return { success: false, error: "User profile not found." };
     const weeklyCount = status.weekly_analysis_count || 0;
     const limit = status.is_premium ? PREMIUM_WEEKLY_ANALYSIS_LIMIT : FREE_WEEKLY_ANALYSIS_LIMIT;
@@ -723,7 +723,7 @@ export async function verifyMatchVideo(
     for (const modelName of modelsToTry) {
         try {
             console.log(`[Verify] Attempting model: ${modelName}`);
-            const genAI = new GoogleGenerativeAI(GEMINI_API_KEY_ENV);
+            const genAI = getGeminiClient(GEMINI_API_KEY_ENV);
             const model = genAI.getGenerativeModel({ 
                 model: modelName, 
                 generationConfig: { 

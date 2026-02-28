@@ -1,6 +1,6 @@
 "use server";
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getGeminiClient } from "@/lib/gemini";
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import { getGuestCreditStatus, useGuestCredit, isGuestUser } from "./guestCredits";
 import { refreshAnalysisStatus } from "./analysis";
@@ -391,7 +391,7 @@ export async function performGuestAnalysis(
             };
         }
 
-        const status = await refreshAnalysisStatus();
+        const status = await refreshAnalysisStatus(user.id);
         if (!status) {
             return {
                 success: false,
@@ -432,7 +432,7 @@ export async function performGuestAnalysis(
     const lang = request.language || 'ja';
 
     try {
-        const genAI = new GoogleGenerativeAI(apiKey);
+        const genAI = getGeminiClient(apiKey);
         const model = genAI.getGenerativeModel({
             model: "gemini-2.0-flash",
             generationConfig: {
@@ -604,7 +604,7 @@ export async function performGuestMicroAnalysis(
             return { success: false, error: "認証が必要です", isGuest: false, remainingCredits: 0 };
         }
 
-        const status = await refreshAnalysisStatus();
+        const status = await refreshAnalysisStatus(user.id);
         if (!status) {
             return { success: false, error: "プロフィールが見つかりません", isGuest: false, remainingCredits: 0 };
         }
@@ -848,7 +848,7 @@ ${JSON.stringify(relevantTruthEvents.slice(0, 20))}
             while (retryCount <= maxRetries) {
                 try {
                     console.log(`[GuestMicro] Attempting ${modelName} (Try ${retryCount + 1})`);
-                    const genAI = new GoogleGenerativeAI(apiKey);
+                    const genAI = getGeminiClient(apiKey);
                     const model = genAI.getGenerativeModel({
                         model: modelName,
                         generationConfig: {

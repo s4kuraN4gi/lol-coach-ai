@@ -341,7 +341,10 @@
       "checkoutFailed": "決済の開始に失敗しました。",
       "error": "エラーが発生しました。",
       "extraOnly": "Extraプラン限定機能",
-      "viewPlans": "料金プランを見る"
+      "viewPlans": "料金プランを見る",
+      "premiumBenefit": "AIコーチング・ミクロ分析などが利用可能に",
+      "extraBenefit": "AIダメージ分析や高度な機能が利用可能に",
+      "upgradeNow": "アップグレード"
     },
     "promoCard": {
       "title": "プレミアムをアンロック",

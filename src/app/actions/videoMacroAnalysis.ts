@@ -2,7 +2,7 @@
 
 import { after } from "next/server";
 import { createClient } from "@/utils/supabase/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getGeminiClient } from "@/lib/gemini";
 import { fetchMatchDetail, fetchMatchTimeline, fetchLatestVersion, extractMatchEvents, TruthEvent, fetchDDItemData } from "./riot";
 import { refreshAnalysisStatus } from "./analysis";
 import { getWeeklyLimit } from "./constants";
@@ -125,7 +125,7 @@ export async function detectGameTimeFromFrame(
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-            const genAI = new GoogleGenerativeAI(apiKey);
+            const genAI = getGeminiClient(apiKey);
             const model = genAI.getGenerativeModel({
                 model: "gemini-2.5-flash",
                 generationConfig: {
@@ -577,7 +577,7 @@ export async function analyzeVideoMacro(
     }
 
     // Check limits
-    const status = await refreshAnalysisStatus();
+    const status = await refreshAnalysisStatus(user.id);
     if (!status) {
         return { success: false, matchId: request.matchId, analyzedAt: '', segments: [], overallSummary: { mainIssue: '', homework: { title: '', description: '', howToCheck: '', relatedTimestamps: [] } }, error: "User profile not found" };
     }
@@ -669,7 +669,7 @@ export async function analyzeVideoMacro(
         };
 
         // Initialize Gemini
-        const genAI = new GoogleGenerativeAI(apiKeyToUse);
+        const genAI = getGeminiClient(apiKeyToUse);
         const model = genAI.getGenerativeModel({
             model: "gemini-2.0-flash",
             generationConfig: {
@@ -1204,7 +1204,7 @@ export async function startVideoMacroAnalysis(
     }
 
     // Check limits before starting
-    const status = await refreshAnalysisStatus();
+    const status = await refreshAnalysisStatus(user.id);
     if (!status) {
         return { success: false, error: "User profile not found" };
     }
@@ -1352,7 +1352,7 @@ async function performVideoMacroAnalysisInBackground(
         };
 
         // Initialize Gemini
-        const genAI = new GoogleGenerativeAI(apiKey);
+        const genAI = getGeminiClient(apiKey);
         const model = genAI.getGenerativeModel({
             model: "gemini-2.0-flash",
             generationConfig: {

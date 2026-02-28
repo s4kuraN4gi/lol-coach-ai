@@ -107,9 +107,9 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
         const interval = duration / frameCount;
 
         // Resize to 1280x720 (720p) for better minimap visibility
-        // Higher resolution needed for AI to read minimap accurately
-        const targetWidth = 1280;
-        const targetHeight = 720;
+        // 960×540 balances minimap readability vs payload size
+        const targetWidth = 960;
+        const targetHeight = 540;
 
         const canvas = document.createElement("canvas");
         canvas.width = targetWidth;
@@ -134,8 +134,7 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
 
             // Capture and resize frame
             ctx.drawImage(video, 0, 0, targetWidth, targetHeight);
-            // Use JPEG quality 0.7 for better minimap visibility
-            const base64 = canvas.toDataURL("image/jpeg", 0.7);
+            const base64 = canvas.toDataURL("image/jpeg", 0.6);
 
             frames.push({
                 segmentId: segment.segmentId,
@@ -343,12 +342,12 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
     // Extract a single frame at current video position for calibration
     const extractSingleFrame = async (video: HTMLVideoElement): Promise<string> => {
         const canvas = document.createElement("canvas");
-        canvas.width = 1280;
-        canvas.height = 720;
+        canvas.width = 960;
+        canvas.height = 540;
         const ctx = canvas.getContext("2d");
         if (!ctx) throw new Error("Canvas not supported");
-        ctx.drawImage(video, 0, 0, 1280, 720);
-        return canvas.toDataURL("image/jpeg", 0.7);
+        ctx.drawImage(video, 0, 0, 960, 540);
+        return canvas.toDataURL("image/jpeg", 0.6);
     };
 
     // Format seconds to mm:ss

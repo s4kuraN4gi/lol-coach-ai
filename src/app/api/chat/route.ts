@@ -1,60 +1,48 @@
 
-import { createClient, createServiceRoleClient } from "@/utils/supabase/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { createClient } from "@/utils/supabase/server";
+import { getGeminiClient } from "@/lib/gemini";
 import { fetchLatestVersion } from "@/app/actions/riot";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY!;
+const DAILY_LIMIT = 50;
 
 export async function POST(req: Request) {
     try {
         const { message, context, history } = await req.json();
 
-        // 1. Auth & Rate Limit Check via Supabase
+        // 1. Auth check
         const supabase = await createClient();
         const { data: { user } } = await supabase.auth.getUser();
 
-        console.log(`[Chat] Request Received. User: ${user?.id}`);
-
         if (!user) {
-            console.warn("[Chat] Unauthorized access attempt");
             return Response.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        // Fetch User Profile for Limits
+        // 2. Premium check (chat is premium-only)
         const { data: profile } = await supabase
             .from("profiles")
-            .select("daily_chat_count, last_chat_reset, is_premium")
+            .select("is_premium")
             .eq("id", user.id)
             .single();
 
         if (!profile) {
-            console.warn("[Chat] Profile not found for user", user.id);
             return Response.json({ error: "Profile not found" }, { status: 404 });
         }
 
-        console.log(`[Chat] Profile Loaded. Premium: ${profile.is_premium}`);
-
-        // 1. Strict Premium Check (Pattern A: Block completely if not premium)
         if (!profile.is_premium) {
              return Response.json({ error: "Chat feature is locked for Free Tier users." }, { status: 403 });
         }
 
-        // 2. Limit Logic (Even for Premium Users to prevent abuse)
-        const today = new Date().toISOString().split('T')[0];
-        const lastReset = profile.last_chat_reset ? profile.last_chat_reset.split('T')[0] : null;
+        // 3. Atomic rate limit: check + increment in a single DB round-trip
+        const { data: newCount, error: rpcError } = await supabase.rpc('increment_daily_chat_count', {
+            p_user_id: user.id,
+            p_limit: DAILY_LIMIT
+        });
 
-        let currentCount = profile.daily_chat_count;
-        if (lastReset !== today) {
-            // Reset count if new day
-            currentCount = 0;
-        }
-
-        // Check Limit (50/day) - Can be increased for Premium if needed, but keeping safe for now
-        const DAILY_LIMIT = 50;
-        if (currentCount >= DAILY_LIMIT) {
-             return Response.json({ 
+        if (rpcError || newCount === -1) {
+             return Response.json({
                  error: "1日のチャット利用上限(50回)に達しました。明日またご利用ください。",
-                 limitReached: true 
+                 limitReached: true
              }, { status: 429 });
         }
 
@@ -142,7 +130,7 @@ export async function POST(req: Request) {
         for (const modelName of MODELS_TO_TRY) {
             try {
                 console.log(`[Chat] Trying Model (Stateless): ${modelName}`);
-                const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+                const genAI = getGeminiClient(GEMINI_API_KEY);
                 
                 // Stateless Configuration (Matches coach.ts)
                 const model = genAI.getGenerativeModel({ 
@@ -168,13 +156,6 @@ export async function POST(req: Request) {
         if (!advice) {
             throw new Error("All AI models failed to respond.");
         }
-
-        // 4. Increment Limit in Background (use adminDb to bypass RLS WITH CHECK)
-        const adminDb = createServiceRoleClient();
-        await adminDb.from("profiles").update({
-            daily_chat_count: currentCount + 1,
-            last_chat_reset: new Date().toISOString()
-        }).eq("id", user.id);
 
         return Response.json({ advice, usedModel });
 
