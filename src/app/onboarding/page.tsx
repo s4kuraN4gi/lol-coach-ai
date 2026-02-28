@@ -8,10 +8,10 @@ import {
     registerVerificationTimeout,
     getActiveSummoner 
 } from "../actions/profile";
-import LoadingAnimation from "../Components/LoadingAnimation";
-import { useAuth } from "../Providers/AuthProvider";
+import LoadingAnimation from "../components/LoadingAnimation";
+import { useAuth } from "../providers/AuthProvider";
 import { signOut } from "../actions/auth";
-import Footer from "../Components/layout/Footer";
+import Footer from "../components/layout/Footer";
 import { useTranslation } from "@/contexts/LanguageContext";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useDDragonVersion } from "@/hooks/useDDragonVersion";

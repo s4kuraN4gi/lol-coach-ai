@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { fetchAllChampions } from "@/app/actions/riot";
-import AdSenseBanner from "@/app/Components/ads/AdSenseBanner";
+import AdSenseBanner from "@/app/components/ads/AdSenseBanner";
 import { useBackUrl } from "@/hooks/useBackUrl";
 
 const ROLES = ["all", "Fighter", "Tank", "Mage", "Assassin", "Marksman", "Support"] as const;

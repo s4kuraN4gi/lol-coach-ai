@@ -6,8 +6,8 @@ import Link from "next/link";
 import { FaPlay, FaUpload, FaClock, FaChevronDown, FaChevronUp, FaLightbulb, FaMapMarkerAlt, FaLock, FaCrown, FaUser, FaGamepad, FaArrowLeft, FaSearch } from "react-icons/fa";
 import { useTranslation } from "@/contexts/LanguageContext";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
-import AdSenseBanner from "@/app/Components/ads/AdSenseBanner";
-import RewardedAdModal from "@/app/Components/ads/RewardedAdModal";
+import AdSenseBanner from "@/app/components/ads/AdSenseBanner";
+import RewardedAdModal from "@/app/components/ads/RewardedAdModal";
 import { GUEST_FIXED_SEGMENTS, type GuestSegment } from "@/app/actions/guestConstants";
 import {
     canPerformGuestAnalysis,

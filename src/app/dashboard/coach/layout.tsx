@@ -1,7 +1,7 @@
 import React from "react";
-import { VisionAnalysisProvider } from "@/app/Providers/VisionAnalysisProvider";
-import { VideoMacroAnalysisProvider } from "@/app/Providers/VideoMacroAnalysisProvider";
-import { CoachUIProvider } from "@/app/Providers/CoachUIProvider";
+import { VisionAnalysisProvider } from "@/app/providers/VisionAnalysisProvider";
+import { VideoMacroAnalysisProvider } from "@/app/providers/VideoMacroAnalysisProvider";
+import { CoachUIProvider } from "@/app/providers/CoachUIProvider";
 
 export default function CoachLayout({
   children,

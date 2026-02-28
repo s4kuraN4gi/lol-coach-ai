@@ -6,7 +6,7 @@ import Link from "next/link";
 import DOMPurify from "isomorphic-dompurify";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { fetchChampionDetail } from "@/app/actions/riot";
-import AdSenseBanner from "@/app/Components/ads/AdSenseBanner";
+import AdSenseBanner from "@/app/components/ads/AdSenseBanner";
 
 type Props = {
     champion: any;

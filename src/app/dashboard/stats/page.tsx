@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import DashboardLayout from "@/app/Components/layout/DashboardLayout";
+import DashboardLayout from "@/app/components/layout/DashboardLayout";
 import Link from "next/link";
-import { useSummoner } from "@/app/Providers/SummonerProvider";
+import { useSummoner } from "@/app/providers/SummonerProvider";
 import StatsSkeleton from "../components/skeletons/StatsSkeleton";
 // Premium Imports
-import PlanStatusBadge from "@/app/Components/subscription/PlanStatusBadge";
+import PlanStatusBadge from "@/app/components/subscription/PlanStatusBadge";
 import { type AnalysisStatus } from "@/app/actions/constants";
 import { useTranslation } from "@/contexts/LanguageContext";
 // SWR Hooks

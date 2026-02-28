@@ -3,7 +3,7 @@
 import { useState, useCallback, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/contexts/LanguageContext";
-import { useSummoner } from "@/app/Providers/SummonerProvider";
+import { useSummoner } from "@/app/providers/SummonerProvider";
 import DashboardUpdater from "./DashboardUpdater";
 
 type Props = {

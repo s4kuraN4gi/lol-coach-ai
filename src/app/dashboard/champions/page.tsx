@@ -3,9 +3,9 @@
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useSummoner } from "../../Providers/SummonerProvider";
+import { useSummoner } from "../../providers/SummonerProvider";
 import { getStatsFromCache, type MatchStatsDTO, type BasicStatsDTO } from "@/app/actions/stats";
-import LoadingAnimation from "../../Components/LoadingAnimation";
+import LoadingAnimation from "../../components/LoadingAnimation";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { useDDragonVersion } from "@/hooks/useDDragonVersion";
 

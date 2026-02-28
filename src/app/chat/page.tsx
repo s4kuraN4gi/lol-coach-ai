@@ -3,10 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { getAnalysisStatus } from "@/app/actions/analysis";
 import { type AnalysisStatus } from "@/app/actions/constants";
-import DashboardLayout from "../Components/layout/DashboardLayout";
-import LoadingAnimation from "../Components/LoadingAnimation";
-import PremiumFeatureGate from "../Components/subscription/PremiumFeatureGate";
-import { useSummoner } from "../Providers/SummonerProvider";
+import DashboardLayout from "../components/layout/DashboardLayout";
+import LoadingAnimation from "../components/LoadingAnimation";
+import PremiumFeatureGate from "../components/subscription/PremiumFeatureGate";
+import { useSummoner } from "../providers/SummonerProvider";
 import { useRouter } from "next/navigation";
 import { fetchBasicStats, fetchMatchStats } from "@/app/actions/stats";
 import { useTranslation } from "@/contexts/LanguageContext";

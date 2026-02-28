@@ -2,7 +2,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { getActiveSummoner } from "@/app/actions/profile";
-import DashboardLayout from "@/app/Components/layout/DashboardLayout";
+import DashboardLayout from "@/app/components/layout/DashboardLayout";
 import MatchClientPage from "./components/MatchClientPage";
 
 // Force dynamic rendering for match-specific data

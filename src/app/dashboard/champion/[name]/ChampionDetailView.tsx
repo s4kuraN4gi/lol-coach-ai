@@ -6,8 +6,8 @@ import { ChampionDetailsDTO } from "@/app/actions/champion";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { useDDragonVersion } from "@/hooks/useDDragonVersion";
 // Premium Imports
-import PlanStatusBadge from "@/app/Components/subscription/PlanStatusBadge";
-import PremiumFeatureGate from "@/app/Components/subscription/PremiumFeatureGate";
+import PlanStatusBadge from "@/app/components/subscription/PlanStatusBadge";
+import PremiumFeatureGate from "@/app/components/subscription/PremiumFeatureGate";
 import { type AnalysisStatus } from "@/app/actions/constants";
 // SWR Hooks
 import { useChampionMatchIds, useChampionMatchDetails } from "@/hooks/useChampionData";

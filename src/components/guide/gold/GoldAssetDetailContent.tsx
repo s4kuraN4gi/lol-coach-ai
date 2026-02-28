@@ -5,7 +5,7 @@ import Link from "next/link";
 import { LuBookOpen, LuTarget, LuCoins, LuInfo } from "react-icons/lu";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getLocalizedName, getLocalizedTooltip, getLocalizedBuffValue } from "@/utils/goldLocalization";
-import AdSenseBanner from "@/app/Components/ads/AdSenseBanner";
+import AdSenseBanner from "@/app/components/ads/AdSenseBanner";
 
 type Props = { id: string; basePath?: string };
 

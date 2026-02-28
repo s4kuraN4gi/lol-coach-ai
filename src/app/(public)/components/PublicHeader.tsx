@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useTranslation } from "@/contexts/LanguageContext";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
-import { useAuth } from "@/app/Providers/AuthProvider";
+import { useAuth } from "@/app/providers/AuthProvider";
 import { useState } from "react";
 import { LuMenu, LuX, LuLayoutDashboard } from "react-icons/lu";
 

@@ -6,7 +6,7 @@ import Image from "next/image";
 import DOMPurify from "isomorphic-dompurify";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { fetchDDItemData } from "@/app/actions/riot";
-import AdSenseBanner from "@/app/Components/ads/AdSenseBanner";
+import AdSenseBanner from "@/app/components/ads/AdSenseBanner";
 import { useBackUrl } from "@/hooks/useBackUrl";
 
 const CATEGORIES = [

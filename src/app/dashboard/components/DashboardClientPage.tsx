@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
-import DashboardLayout from "../../Components/layout/DashboardLayout";
+import DashboardLayout from "../../components/layout/DashboardLayout";
 import ProfileCard from "./ProfileCard";
 import { useRouter } from "next/navigation";
 
@@ -49,7 +49,7 @@ const NemesisWidget = dynamic(() => import("../widgets/NemesisWidget"), {
 
 import DashboardUpdater from "./DashboardUpdater";
 import { useTranslation } from "@/contexts/LanguageContext";
-import { useSummoner } from "../../Providers/SummonerProvider";
+import { useSummoner } from "../../providers/SummonerProvider";
 import type { MatchStatsDTO, BasicStatsDTO, RankHistoryEntry, MonthlyStats, CoachFeedbackSummary } from "@/app/actions/stats";
 
 type DashboardStatsDTO = MatchStatsDTO & BasicStatsDTO;

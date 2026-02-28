@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useTransition, useEffect, useCallback } from "react";
-import DashboardLayout from "../Components/layout/DashboardLayout";
-import LoadingAnimation from "../Components/LoadingAnimation";
-import { useSummoner } from "../Providers/SummonerProvider";
+import DashboardLayout from "../components/layout/DashboardLayout";
+import LoadingAnimation from "../components/LoadingAnimation";
+import { useSummoner } from "../providers/SummonerProvider";
 import { 
     lookupSummoner,
     verifyAndAddSummoner,

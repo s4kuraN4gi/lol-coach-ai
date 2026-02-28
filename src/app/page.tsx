@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, useRef, MouseEvent } from "react";
 import { motion, useScroll, useTransform, useSpring, useMotionValue } from "framer-motion";
-import Footer from "./Components/layout/Footer";
+import Footer from "./components/layout/Footer";
 import { LuChartBar, LuMessageCircle, LuSwords, LuTarget, LuTrendingUp, LuZap } from "react-icons/lu";
 import { useTranslation } from "@/contexts/LanguageContext";
 import LanguageSwitcher from "@/components/LanguageSwitcher";

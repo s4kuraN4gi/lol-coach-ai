@@ -3,7 +3,7 @@
 import { LuDollarSign, LuScale, LuSwords, LuArrowRight, LuCoins } from "react-icons/lu";
 import Link from "next/link";
 import { useTranslation } from "@/contexts/LanguageContext";
-import AdSenseBanner from "@/app/Components/ads/AdSenseBanner";
+import AdSenseBanner from "@/app/components/ads/AdSenseBanner";
 import { useBackUrl } from "@/hooks/useBackUrl";
 
 type Props = { basePath?: string };

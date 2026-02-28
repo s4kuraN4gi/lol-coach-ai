@@ -6,8 +6,8 @@ import { useEffect } from "react";
 import SidebarNav from "./SidebarNav";
 import Footer from "./Footer";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
-import { useSummoner } from "../../Providers/SummonerProvider";
-import { useAuth } from "@/app/Providers/AuthProvider";
+import { useSummoner } from "../../providers/SummonerProvider";
+import { useAuth } from "@/app/providers/AuthProvider";
 
 type DashboardLayoutProps = {
   children: React.ReactNode

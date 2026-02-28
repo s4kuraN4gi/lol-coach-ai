@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "@/contexts/LanguageContext";
-import { useSummoner } from "@/app/Providers/SummonerProvider";
+import { useSummoner } from "@/app/providers/SummonerProvider";
 import { useDashboard } from "@/hooks/useDashboardData";
 
 import DashboardUpdater from "./DashboardUpdater";

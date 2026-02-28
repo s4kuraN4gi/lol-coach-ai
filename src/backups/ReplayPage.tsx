@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import DashboardLayout from "@/app/Components/layout/DashboardLayout";
+import DashboardLayout from "@/app/components/layout/DashboardLayout";
 import { getLatestActiveAnalysis } from "@/app/actions/analysis"; // Re-use connection? No, need fetch matches
 import { fetchMatchIds, fetchMatchDetail } from "@/app/actions/riot";
 import { getReplayData, ReplayData } from "@/app/actions/replay";
 import { getActiveSummoner } from "@/app/actions/profile"; // assuming this exists or similar
 import ReplayViewer from "@/components/replay/ReplayViewer";
-import { useAuth } from "@/app/Providers/AuthProvider";
+import { useAuth } from "@/app/providers/AuthProvider";
 
 // Mocking get active summoner if not exported, or using what Coach/Page uses.
 // For now, I'll copy the match fetching logic pattern from Coach Page.

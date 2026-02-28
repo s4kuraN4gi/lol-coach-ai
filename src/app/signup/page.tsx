@@ -4,7 +4,7 @@ import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react"
-import Footer from "../Components/layout/Footer";
+import Footer from "../components/layout/Footer";
 import { useTranslation } from "@/contexts/LanguageContext";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 

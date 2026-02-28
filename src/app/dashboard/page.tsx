@@ -5,7 +5,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { getActiveSummoner } from "@/app/actions/profile";
-import DashboardLayout from "../Components/layout/DashboardLayout";
+import DashboardLayout from "../components/layout/DashboardLayout";
 import DashboardContent from "./components/DashboardContent";
 
 // Force dynamic rendering for user-specific data

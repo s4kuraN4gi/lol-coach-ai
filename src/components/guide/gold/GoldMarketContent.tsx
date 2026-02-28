@@ -5,7 +5,7 @@ import Link from "next/link";
 import { LuArrowUpRight, LuShield, LuSwords, LuGem } from "react-icons/lu";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getLocalizedName } from "@/utils/goldLocalization";
-import AdSenseBanner from "@/app/Components/ads/AdSenseBanner";
+import AdSenseBanner from "@/app/components/ads/AdSenseBanner";
 
 const AssetCard = ({ id, item, type, basePath, t, language }: { id: string; item: any; type: string; basePath: string; t: (key: string) => string; language: string }) => {
     const hasDetail = type === "objectives" && (id === "dragons" || id === "baron" || id === "herald" || id === "void_grubs");

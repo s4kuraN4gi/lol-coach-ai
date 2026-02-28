@@ -6,7 +6,7 @@ import { selectAnalysisSegments, detectGameTimeFromFrame, type VideoMacroSegment
 import { useTranslation } from "@/contexts/LanguageContext";
 import { getAnalysisStatus } from "@/app/actions/analysis";
 import { FREE_MAX_SEGMENTS, PREMIUM_MAX_SEGMENTS, EXTRA_MAX_SEGMENTS, FRAMES_PER_SEGMENT } from "@/app/actions/constants";
-import { useVideoMacroAnalysis } from "@/app/Providers/VideoMacroAnalysisProvider";
+import { useVideoMacroAnalysis } from "@/app/providers/VideoMacroAnalysisProvider";
 
 type Props = {
     matchId: string;
