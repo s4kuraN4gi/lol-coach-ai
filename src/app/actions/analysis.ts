@@ -3,7 +3,7 @@
 import { createClient, createServiceRoleClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { stripe } from "@/lib/stripe";
-import { FREE_WEEKLY_ANALYSIS_LIMIT, PREMIUM_WEEKLY_ANALYSIS_LIMIT, type AnalysisStatus, getWeeklyLimit } from "./constants";
+import { FREE_WEEKLY_ANALYSIS_LIMIT, PREMIUM_WEEKLY_ANALYSIS_LIMIT, type AnalysisStatus, getWeeklyLimit, getNextMonday } from "./constants";
 
 // Weekly limit constant is imported from ./constants
 
@@ -1066,20 +1066,6 @@ export async function syncSubscriptionStatus() {
 // ============================================================
 // WEEKLY ANALYSIS LIMIT HELPERS
 // ============================================================
-
-/**
- * Get next Monday 00:00 JST from a given date
- */
-function getNextMonday(from: Date): Date {
-    const result = new Date(from);
-    // Get current day (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
-    const currentDay = result.getDay();
-    // Calculate days until next Monday
-    const daysUntilMonday = currentDay === 0 ? 1 : (8 - currentDay);
-    result.setDate(result.getDate() + daysUntilMonday);
-    result.setHours(0, 0, 0, 0);
-    return result;
-}
 
 /**
  * Check if user can perform analysis (within weekly limit)

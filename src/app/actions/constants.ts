@@ -50,3 +50,14 @@ export function getWeeklyLimit(status: AnalysisStatus | null): number {
   if (status.is_premium) return PREMIUM_WEEKLY_ANALYSIS_LIMIT;
   return FREE_WEEKLY_ANALYSIS_LIMIT;
 }
+
+/** Calculate the next Monday at 00:00:00 from a given date */
+export function getNextMonday(from: Date): Date {
+  const result = new Date(from);
+  const currentDay = result.getDay();
+  // 0=Sunday → 1 day, 1=Monday → 7 days, ..., 6=Saturday → 2 days
+  const daysUntilMonday = currentDay === 0 ? 1 : (8 - currentDay);
+  result.setDate(result.getDate() + daysUntilMonday);
+  result.setHours(0, 0, 0, 0);
+  return result;
+}
