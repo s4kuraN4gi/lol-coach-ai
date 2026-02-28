@@ -141,9 +141,13 @@ function TiltCard({ children, className, glowColor = "cyan" }: { children: React
 // Floating Particles Component (uses fixed positions to avoid hydration mismatch)
 function FloatingParticles() {
   const [mounted, setMounted] = useState(false);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    if (window.matchMedia("(pointer: coarse)").matches) {
+      setIsTouchDevice(true);
+    }
   }, []);
 
   // Fixed particle positions to avoid hydration mismatch
@@ -166,7 +170,7 @@ function FloatingParticles() {
     { id: 15, x: 80, y: 60, size: 4, duration: 24, delay: 2.8 },
   ];
 
-  if (!mounted) return null;
+  if (!mounted || isTouchDevice) return null;
 
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -231,9 +235,15 @@ function GridBackground() {
 function MouseFollowGlow() {
   const [mounted, setMounted] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    // Skip on touch devices (mobile/tablet) to save performance
+    if (window.matchMedia("(pointer: coarse)").matches) {
+      setIsTouchDevice(true);
+      return;
+    }
     const handleMouseMove = (e: globalThis.MouseEvent) => {
       setMousePos({ x: e.clientX, y: e.clientY });
     };
@@ -241,7 +251,7 @@ function MouseFollowGlow() {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
-  if (!mounted) return null;
+  if (!mounted || isTouchDevice) return null;
 
   return (
     <motion.div
