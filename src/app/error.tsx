@@ -1,10 +1,11 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
 import Link from "next/link";
 import { useTranslation } from "@/contexts/LanguageContext";
 
-export default function GlobalError({
+export default function AppError({
     error,
     reset,
 }: {
@@ -14,7 +15,7 @@ export default function GlobalError({
     const { t } = useTranslation();
 
     useEffect(() => {
-        console.error("[App Error]", error);
+        Sentry.captureException(error);
     }, [error]);
 
     return (

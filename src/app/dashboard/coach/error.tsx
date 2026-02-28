@@ -1,5 +1,6 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
 import { FaExclamationTriangle, FaRedo, FaHome } from "react-icons/fa";
 import Link from "next/link";
@@ -15,7 +16,7 @@ export default function CoachError({
     const { t } = useTranslation();
 
     useEffect(() => {
-        console.error("[CoachPage Error]", error);
+        Sentry.captureException(error);
     }, [error]);
 
     return (

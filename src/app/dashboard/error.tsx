@@ -1,5 +1,6 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
 import Link from "next/link";
 import { useTranslation } from "@/contexts/LanguageContext";
@@ -14,7 +15,7 @@ export default function DashboardError({
     const { t } = useTranslation();
 
     useEffect(() => {
-        console.error("[Dashboard Error]", error);
+        Sentry.captureException(error);
     }, [error]);
 
     return (
