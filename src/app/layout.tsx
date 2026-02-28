@@ -3,8 +3,6 @@ import { Geist, Geist_Mono, Outfit } from "next/font/google";
 import "./globals.css";
 import { SummonerProvider } from "./Providers/SummonerProvider";
 import { AuthProvider } from "./Providers/AuthProvider";
-import { VisionAnalysisProvider } from "./Providers/VisionAnalysisProvider";
-import { CoachUIProvider } from "./Providers/CoachUIProvider";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import SWRProvider from "./Providers/SWRProvider";
 
@@ -55,11 +53,7 @@ export default function RootLayout({
           <SWRProvider>
             <AuthProvider>
               <SummonerProvider>
-                <VisionAnalysisProvider>
-                  <CoachUIProvider>
-                    {children}
-                  </CoachUIProvider>
-                </VisionAnalysisProvider>
+                {children}
               </SummonerProvider>
             </AuthProvider>
           </SWRProvider>
