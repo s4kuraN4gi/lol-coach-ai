@@ -50,6 +50,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ url: session.url });
   } catch (error: any) {
     console.error('Stripe Portal Error:', error);
-    return new NextResponse(JSON.stringify({ error: error.message }), { status: 500 });
+    return new NextResponse(JSON.stringify({ error: "Billing service error. Please try again later." }), { status: 500 });
   }
 }

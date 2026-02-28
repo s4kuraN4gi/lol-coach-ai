@@ -600,7 +600,8 @@ export async function analyzeMatchTimeline(
 
     } catch (e: any) {
         console.error("Coaching Analysis Error:", e);
-        return { success: false, error: e.message };
+        const isUserFacing = e.message?.startsWith("⚠️") || e.message?.includes("API Key") || e.message?.includes("Not authenticated");
+        return { success: false, error: isUserFacing ? e.message : "Coaching analysis failed. Please try again later." };
     }
 }
 

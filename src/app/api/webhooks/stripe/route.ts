@@ -43,6 +43,10 @@ export async function POST(req: Request) {
           const subscriptionDeleted = event.data.object as Stripe.Subscription;
           await handleSubscriptionDeleted(subscriptionDeleted, supabase);
           break;
+        case 'invoice.payment_failed':
+          const failedInvoice = event.data.object as Stripe.Invoice;
+          await handleInvoicePaymentFailed(failedInvoice, supabase);
+          break;
       }
   } catch(e) {
       console.error('[Webhook] Handler Error:', e);
@@ -179,4 +183,28 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription, supa
         subscription_end_date: null,
         auto_renew: false,
     }).eq('id', profile.id);
+}
+
+async function handleInvoicePaymentFailed(invoice: Stripe.Invoice, supabase: any) {
+    const customerId = invoice.customer as string;
+    if (!customerId) return;
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, subscription_status')
+        .eq('stripe_customer_id', customerId)
+        .single();
+
+    if (!profile) {
+        console.warn(`[Webhook] No profile found for customer: ${customerId}`);
+        return;
+    }
+
+    // Mark subscription as past_due so the UI can show a warning
+    await supabase.from('profiles').update({
+        subscription_status: 'past_due',
+        auto_renew: false,
+    }).eq('id', profile.id);
+
+    console.log(`[Webhook] Payment failed for customer ${customerId}, marked as past_due`);
 }

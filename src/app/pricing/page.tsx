@@ -327,6 +327,13 @@ export default function PricingPage() {
                     {/* Premium Plan */}
                     <div className="bg-gradient-to-b from-amber-900/20 to-orange-900/10 border border-amber-500/50 rounded-2xl p-6 flex flex-col relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl" />
+                        {userPlan !== "premium" && userPlan !== "extra" && (
+                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                                <span className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">
+                                    {t('pricingPage.premium.trialBadge')}
+                                </span>
+                            </div>
+                        )}
 
                         <div className="text-center mb-6 relative">
                             <div className="w-12 h-12 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-4">

@@ -10,6 +10,7 @@ import { FREE_WEEKLY_ANALYSIS_LIMIT, PREMIUM_WEEKLY_ANALYSIS_LIMIT, type Analysi
 // ユーザーのクレジット情報などを取得
 export async function getAnalysisStatus(): Promise<AnalysisStatus | null> {
   const supabase = await createClient();
+  const adminDb = createServiceRoleClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -32,9 +33,9 @@ export async function getAnalysisStatus(): Promise<AnalysisStatus | null> {
       nextMonth.setMonth(nextMonth.getMonth() + 1);
       
       // Update DB to have valid subscription data
-      await supabase.from("profiles").update({ 
+      await adminDb.from("profiles").update({
           subscription_end_date: nextMonth.toISOString(),
-          auto_renew: true 
+          auto_renew: true
       }).eq("id", user.id);
 
       // Update local data object
@@ -54,7 +55,7 @@ export async function getAnalysisStatus(): Promise<AnalysisStatus | null> {
       // If last_credit_update is missing (null), we set it to NOW to start the timer.
       // If it exists, we check if 1 week has passed.
       if (!data.last_credit_update) {
-          await supabase.from("profiles").update({ last_credit_update: now.toISOString() }).eq("id", user.id);
+          await adminDb.from("profiles").update({ last_credit_update: now.toISOString() }).eq("id", user.id);
           data.last_credit_update = now.toISOString();
       } else if (timeDiff >= oneWeekMs) {
           // Calculate how many weeks passed (e.g. 2 weeks = 2 credits)
@@ -67,7 +68,7 @@ export async function getAnalysisStatus(): Promise<AnalysisStatus | null> {
              // Update Date: Move forward by EXACT weeks to keep cycle consistent
              const newLastUpdate = new Date(lastUpdate.getTime() + (weeksPassed * oneWeekMs));
 
-             await supabase.from("profiles").update({
+             await adminDb.from("profiles").update({
                  analysis_credits: newCredits,
                  last_credit_update: newLastUpdate.toISOString()
              }).eq("id", user.id);
@@ -81,7 +82,7 @@ export async function getAnalysisStatus(): Promise<AnalysisStatus | null> {
              // Typically in these systems, if you are full, the timer stops.
              // When you use a credit, the timer starts.
              // So if full, we set last_credit_update to NOW.
-             await supabase.from("profiles").update({
+             await adminDb.from("profiles").update({
                  last_credit_update: now.toISOString()
              }).eq("id", user.id);
              data.last_credit_update = now.toISOString();
@@ -99,7 +100,7 @@ export async function getAnalysisStatus(): Promise<AnalysisStatus | null> {
           // Calculate next Monday 00:00 JST
           const nextMonday = getNextMonday(now);
 
-          await supabase.from("profiles").update({
+          await adminDb.from("profiles").update({
               weekly_analysis_count: 0,
               weekly_reset_date: nextMonday.toISOString()
           }).eq("id", user.id);
@@ -120,7 +121,7 @@ export async function getAnalysisStatus(): Promise<AnalysisStatus | null> {
       const end = new Date(data.subscription_end_date);
       if (end < now) {
           // 有効期限切れ: ステータスを更新してリターン
-          await supabase.from("profiles").update({ is_premium: false, auto_renew: false }).eq("id", user.id);
+          await adminDb.from("profiles").update({ is_premium: false, auto_renew: false }).eq("id", user.id);
           data.is_premium = false;
           data.auto_renew = false;
       }
@@ -148,13 +149,14 @@ export async function getMatchAnalysis(matchId: string) {
 // プレミアムプランの自動更新停止（解約予約）
 export async function downgradeToFree() {
   const supabase = await createClient();
+  const adminDb = createServiceRoleClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
   // 即時解約ではなく、自動更新をOFFにするだけ
-  const { error } = await supabase
+  const { error } = await adminDb
     .from("profiles")
     .update({
       auto_renew: false,
@@ -388,6 +390,7 @@ export async function getLatestActiveAnalysis() {
 // 動画解析を実行 (Mock: Riot API based)
 export async function analyzeVideo(formData: FormData, userApiKey?: string, mode: AnalysisMode = 'MACRO', locale: string = 'ja') {
   const supabase = await createClient();
+  const adminDb = createServiceRoleClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -501,7 +504,7 @@ export async function analyzeVideo(formData: FormData, userApiKey?: string, mode
         let newCount = status.daily_analysis_count + 1;
         if (lastDateStr !== todayDateStr) newCount = 1;
 
-        await supabase.from("profiles").update({ daily_analysis_count: newCount, last_analysis_date: today }).eq("id", user.id);
+        await adminDb.from("profiles").update({ daily_analysis_count: newCount, last_analysis_date: today }).eq("id", user.id);
         debited = true;
     } else if (!userApiKey && useEnvKey && !status.is_premium) {
         await supabase.rpc('decrement_analysis_credits', { p_user_id: user.id });
@@ -551,18 +554,20 @@ export async function analyzeVideo(formData: FormData, userApiKey?: string, mode
 
   } catch (e: any) {
     console.error("Video Analysis Error:", e);
-    const errorMessage = e.message || "Unknown error";
+    const internalMessage = e.message || "Unknown error";
+    const isUserFacing = internalMessage.startsWith("⚠️") || internalMessage.includes("API Key") || internalMessage.includes("Credits");
+    const userMessage = isUserFacing ? internalMessage : "Analysis failed. Please try again later.";
 
-    // Update Job to Failed
+    // Update Job to Failed (store internal message for debugging)
     await supabase
         .from("video_analyses")
         .update({
             status: "failed",
-            error: errorMessage
+            error: internalMessage
         })
         .eq("id", job.id);
 
-    return { error: errorMessage };
+    return { error: userMessage };
   }
 }
 
@@ -574,6 +579,7 @@ export async function analyzeMatchQuick(
   userApiKey?: string
 ) {
   const supabase = await createClient();
+  const adminDb = createServiceRoleClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -714,7 +720,7 @@ export async function analyzeMatchQuick(
         let newCount = status.daily_analysis_count + 1;
         if (lastDateStr !== todayDateStr) newCount = 1;
 
-        await supabase.from("profiles").update({ daily_analysis_count: newCount, last_analysis_date: today }).eq("id", user.id);
+        await adminDb.from("profiles").update({ daily_analysis_count: newCount, last_analysis_date: today }).eq("id", user.id);
       } else if (!userApiKey && useEnvKey && !status.is_premium) {
          await supabase.rpc('decrement_analysis_credits', { p_user_id: user.id });
       }
@@ -725,7 +731,8 @@ export async function analyzeMatchQuick(
 
   } catch (e: any) {
       console.error("Analyze Quick Error:", e);
-      return { error: e.message };
+      const isUserFacing = e.message?.startsWith("⚠️") || e.message?.includes("API Key") || e.message?.includes("Credits");
+      return { error: isUserFacing ? e.message : "Analysis failed. Please try again later." };
   }
 }
 
@@ -742,6 +749,7 @@ export async function analyzeMatch(
   // For now perform backward compatibility wrap or just keep as is
   // ... (Existing implementation below)
   const supabase = await createClient();
+  const adminDb = createServiceRoleClient();
    // ... keep existing implementation ...
   const {
     data: { user },
@@ -869,7 +877,7 @@ KDA: ${kda}
       let newCount = status.daily_analysis_count + 1;
       if (lastDateStr !== todayDateStr) newCount = 1;
 
-      await supabase.from("profiles").update({ daily_analysis_count: newCount, last_analysis_date: today }).eq("id", user.id);
+      await adminDb.from("profiles").update({ daily_analysis_count: newCount, last_analysis_date: today }).eq("id", user.id);
   } else if (!userApiKey && useEnvKey && !status.is_premium) {
       // Consume Credit atomically
       await supabase.rpc('decrement_analysis_credits', { p_user_id: user.id });
@@ -881,43 +889,18 @@ KDA: ${kda}
   return { success: true, advice: resultAdvice };
 }
 
-// 1日1回の広告リワード（クレジット付与）
+// 1日1回の広告リワード（クレジット付与）— アトミックRPC版
 export async function claimDailyReward() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("analysis_credits, last_reward_ad_date")
-    .eq("id", user.id)
-    .single();
+  const { data: newCredits, error } = await supabase.rpc('claim_daily_reward', {
+    p_user_id: user.id,
+  });
 
-  if (!profile) return { error: "Profile not found" };
-
-  const now = new Date();
-  const lastRewardStr = profile.last_reward_ad_date;
-  
-  if (lastRewardStr) {
-      const lastRewardDate = new Date(lastRewardStr);
-      // 同じ日付なら拒否
-      if (now.toDateString() === lastRewardDate.toDateString()) {
-          return { error: "Already claimed today." };
-      }
-  }
-
-  const currentCredits = profile.analysis_credits || 0;
-  const newCredits = currentCredits + 1;
-
-  const { error } = await supabase
-    .from("profiles")
-    .update({
-        analysis_credits: newCredits,
-        last_reward_ad_date: now.toISOString()
-    })
-    .eq("id", user.id);
-
-  if (error) return { error: "Failed to update credits" };
+  if (error) return { error: "Failed to claim reward." };
+  if (newCredits === -1) return { error: "Already claimed today." };
 
   revalidatePath("/dashboard", "layout");
   return { success: true, newCredits };
@@ -1059,7 +1042,7 @@ export async function syncSubscriptionStatus() {
       return { success: !updateError, tier: updateData.subscription_tier };
   } catch (e: any) {
       console.error("Sync Error:", e);
-      return { error: e.message };
+      return { error: "Subscription sync failed. Please try again later." };
   }
 }
 

@@ -1,5 +1,5 @@
 
-import { createClient } from "@/utils/supabase/server";
+import { createClient, createServiceRoleClient } from "@/utils/supabase/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { fetchLatestVersion } from "@/app/actions/riot";
 
@@ -169,8 +169,9 @@ export async function POST(req: Request) {
             throw new Error("All AI models failed to respond.");
         }
 
-        // 4. Increment Limit in Background
-        await supabase.from("profiles").update({
+        // 4. Increment Limit in Background (use adminDb to bypass RLS WITH CHECK)
+        const adminDb = createServiceRoleClient();
+        await adminDb.from("profiles").update({
             daily_chat_count: currentCount + 1,
             last_chat_reset: new Date().toISOString()
         }).eq("id", user.id);
@@ -179,6 +180,6 @@ export async function POST(req: Request) {
 
     } catch(err: any){
         console.error("AIチャットAPIエラー:", err);
-        return Response.json({ error: "AI Service Error: " + err.message }, { status: 500 });
+        return Response.json({ error: "AI service is temporarily unavailable. Please try again later." }, { status: 500 });
     }
 }

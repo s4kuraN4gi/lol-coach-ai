@@ -2,6 +2,7 @@
 
 // Import Google GenAI (Same as analysis.ts)
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { createClient } from "@/utils/supabase/server";
 
 const GEMINI_API_KEY_ENV = process.env.GEMINI_API_KEY;
 
@@ -11,6 +12,11 @@ type AnalysisRequest = {
 }
 
 export async function analyzeTurningPoints(req: AnalysisRequest) {
+    // Auth check
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: "Not authenticated" };
+
     const apiKeyToUse = req.apiKey || GEMINI_API_KEY_ENV;
 
     if (!apiKeyToUse) {
@@ -52,6 +58,6 @@ Output Format (JSON):
 
     } catch (e: any) {
         console.error("AI Analysis Error:", e);
-        return { error: e.message || "AI Analysis Failed" };
+        return { error: "AI analysis failed. Please try again later." };
     }
 }

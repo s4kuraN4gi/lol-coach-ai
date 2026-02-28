@@ -101,7 +101,7 @@ export async function canPerformGuestAnalysis(): Promise<{
             maxCredits: 3,
             nextCreditAt: guestStatus.nextCreditAt,
             upgradeMessage: guestStatus.credits <= 0
-                ? "ゲストのクレジットが不足しています。アカウント登録で週3回まで分析できます！"
+                ? "ゲストのクレジットが不足しています。アカウント登録で週1回まで分析できます！"
                 : undefined,
             isPremium: false
         };
@@ -368,7 +368,7 @@ export async function performGuestAnalysis(
                 analyzedAt: '',
                 segments: [],
                 overallSummary: { mainIssue: '', homework: { title: '', description: '', howToCheck: '' } },
-                error: "クレジットが不足しています。アカウント登録で週3回まで分析できます！",
+                error: "クレジットが不足しています。アカウント登録で週1回まで分析できます！",
                 isGuest: true,
                 remainingCredits: creditResult.remainingCredits
             };
@@ -590,7 +590,7 @@ export async function performGuestMicroAnalysis(
         if (!creditResult.success) {
             return {
                 success: false,
-                error: "クレジットが不足しています。アカウント登録で週3回まで分析できます！",
+                error: "クレジットが不足しています。アカウント登録で週1回まで分析できます！",
                 isGuest: true,
                 remainingCredits: creditResult.remainingCredits
             };

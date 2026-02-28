@@ -141,6 +141,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Create Stripe Checkout Session (always show payment page)
+    const isNewSubscriber = !existingSubscriptionId && !profile?.stripe_subscription_id;
     const sessionParams: any = {
       customer: customerId ? customerId : undefined,
       customer_email: (!customerId && user.email) ? user.email : undefined,
@@ -159,6 +160,12 @@ export async function POST(req: NextRequest) {
         userId: user.id,
         ...(oldSubscriptionId ? { oldSubscriptionId } : {}),
       },
+      // 3-day free trial for first-time subscribers only
+      ...(isNewSubscriber && !discounts ? {
+        subscription_data: {
+          trial_period_days: 3,
+        },
+      } : {}),
     };
 
     if (discounts) {
@@ -170,6 +177,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ url: session.url });
   } catch (error: any) {
     console.error('Stripe Checkout Error:', error);
-    return new NextResponse(JSON.stringify({ error: error.message }), { status: 500 });
+    return new NextResponse(JSON.stringify({ error: "Checkout service error. Please try again later." }), { status: 500 });
   }
 }
