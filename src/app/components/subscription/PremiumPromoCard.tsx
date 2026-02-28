@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useTransition, useEffect, useRef } from "react";
+import { toast } from "sonner";
 import { downgradeToFree, getAnalysisStatus, syncSubscriptionStatus } from "@/app/actions/analysis";
 import { type AnalysisStatus } from "@/app/actions/constants";
 import { triggerStripeCheckout, triggerStripePortal } from "@/lib/checkout";
@@ -62,7 +63,7 @@ export default function PremiumPromoCard({ initialStatus, onStatusUpdate }: Prop
           await triggerStripeCheckout();
         } catch (e) {
             console.error(e);
-            alert(t('premium.promoCard.error'));
+            toast.error(t('premium.promoCard.error'));
         } finally {
             setIsLoading(false);
         }

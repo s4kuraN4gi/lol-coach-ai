@@ -5,6 +5,7 @@ import { SummonerProvider } from "./providers/SummonerProvider";
 import { AuthProvider } from "./providers/AuthProvider";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import SWRProvider from "./providers/SWRProvider";
+import { Toaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -54,6 +55,7 @@ export default function RootLayout({
             <AuthProvider>
               <SummonerProvider>
                 {children}
+                <Toaster theme="dark" position="top-right" richColors closeButton />
               </SummonerProvider>
             </AuthProvider>
           </SWRProvider>

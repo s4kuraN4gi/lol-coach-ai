@@ -96,7 +96,7 @@ export default function DashboardContent({ summoner }: Props) {
                     <div className="flex justify-end items-center gap-2">
                         <span className="text-xs text-slate-500 flex items-center gap-1">
                             <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>
-                            Loading...
+                            {t('dashboard.loading')}
                         </span>
                     </div>
                 </div>
@@ -126,7 +126,7 @@ export default function DashboardContent({ summoner }: Props) {
                     {isValidating && !isPending && (
                         <span className="text-xs text-slate-500 flex items-center gap-1">
                             <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>
-                            Syncing...
+                            {t('dashboard.syncing')}
                         </span>
                     )}
                     <button

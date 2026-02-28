@@ -1523,7 +1523,7 @@ export default function AnalyzePage() {
             {/* Footer */}
             <footer className="border-t border-slate-800 mt-12 py-8">
                 <div className="max-w-6xl mx-auto px-4 text-center text-slate-500 text-sm">
-                    <p>{t('footer.copyright').replace('{year}', '2024')}</p>
+                    <p>{t('footer.copyright').replace('{year}', new Date().getFullYear().toString())}</p>
                     <div className="mt-2 flex justify-center gap-4">
                         <Link href="/terms" className="hover:text-slate-300">{t('footer.terms')}</Link>
                         <Link href="/privacy" className="hover:text-slate-300">{t('footer.privacy')}</Link>

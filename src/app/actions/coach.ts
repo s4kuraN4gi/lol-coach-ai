@@ -191,8 +191,8 @@ export async function analyzeMatchTimeline(
     if (!user) return { success: false, error: "Not authenticated" };
 
     // --- Logic for Limits & Keys (Shared with analyzeVideo/analyzeMatch) ---
-    const { getAnalysisStatus } = await import("./analysis");
-    const status = await getAnalysisStatus();
+    const { refreshAnalysisStatus } = await import("./analysis");
+    const status = await refreshAnalysisStatus();
     if (!status) return { success: false, error: "User profile not found." };
 
     console.log("DEBUG_AI_COACH_LIMITS:", { 

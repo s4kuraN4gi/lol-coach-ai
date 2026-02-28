@@ -34,13 +34,16 @@
       "privacy": "プライバシー",
       "legal": "特商法"
     },
-    "logout": "ログアウト"
+    "logout": "ログアウト",
+    "reference": "リファレンス"
   },
   "dashboard": {
     "title": "ダッシュボード",
     "subtitle": "あなたの成長センター",
     "refresh": "データを更新",
     "refreshing": "更新中...",
+    "loading": "読み込み中...",
+    "syncing": "同期中...",
     "noData": {
       "title": "対戦データが見つかりませんでした",
       "description": "連携されたアカウントの直近の対戦履歴（過去10戦）が存在しないか、キャッシュされていません。",
@@ -967,9 +970,13 @@
       "microDesc": "操作精度、コンボ、ポジショニングを詳細に分析。",
       "winRateChange": "+12% 今週",
       "aiCoachLabel": "AIコーチ",
-      "activeNow": "オンライン"
+      "activeNow": "オンライン",
+      "badgeAiCoaching": "AI搭載コーチング",
+      "skillLabel": "スキル分析",
+      "winRateLabel": "勝率"
     },
     "features": {
+      "label": "機能紹介",
       "sectionTitlePrefix": "データで",
       "sectionTitle": "勝つ",
       "sectionDesc": "感覚に頼らない、データドリブンな上達を実現します。",
@@ -1012,6 +1019,16 @@
     "googleLogin": "Googleでログイン",
     "orContinueWithEmail": "またはメールで続行"
   },
+  "resetPasswordPage": {
+    "title": "パスワードリセット",
+    "description": "登録済みのメールアドレスを入力してください。パスワードリセット用のリンクをお送りします。",
+    "emailLabel": "メールアドレス",
+    "emailPlaceholder": "your@email.com",
+    "sendButton": "リセットリンクを送信",
+    "sending": "送信中...",
+    "successMessage": "リセットリンクを送信しました。メールをご確認ください。",
+    "backToLogin": "ログインに戻る"
+  },
   "signupPage": {
     "allFieldsRequired": "全ての項目を入力してください",
     "passwordMismatch": "パスワードが一致しません。",
@@ -1044,7 +1061,12 @@
     "changed": "変更しました",
     "verifySuccess": "認証成功！ダッシュボードへ移動します...",
     "logout": "ログアウトして戻る",
-    "timeRemaining": "残り時間:"
+    "timeRemaining": "残り時間:",
+    "welcomeTitle": "ようこそ、サモナー",
+    "enterRiotId": "Riot IDを入力",
+    "currentIcon": "現在",
+    "newIcon": "変更先",
+    "targetBadge": "目標"
   },
   "pricingPage": {
     "header": {

@@ -1,7 +1,7 @@
 "use strict";
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { VideoProcessor } from "@/lib/videoProcessor";
 import {
     startVisionAnalysis,
@@ -462,24 +462,26 @@ export function VisionAnalysisProvider({ children }: { children: React.ReactNode
     };
 
 
+    const contextValue = useMemo<VisionAnalysisContextType>(() => ({
+        isVisionAnalyzing: isAnalyzing,
+        isVerifying,
+        asyncStatus,
+        visionProgress: progress,
+        visionMsg: statusMessage,
+        visionError: errorMsg,
+        globalVisionResult: visionResult,
+        debugFrames,
+        currentMatchId: matchId,
+        startGlobalAnalysis: startAnalysis,
+        verifyVideo,
+        resetAnalysis,
+        clearError,
+        setIsVerifying,
+        restoreResultForMatch
+    }), [isAnalyzing, isVerifying, asyncStatus, progress, statusMessage, errorMsg, visionResult, debugFrames, matchId, startAnalysis, verifyVideo, resetAnalysis, clearError, setIsVerifying, restoreResultForMatch]);
+
     return (
-        <VisionAnalysisContext.Provider value={{
-            isVisionAnalyzing: isAnalyzing,
-            isVerifying,
-            asyncStatus,
-            visionProgress: progress,
-            visionMsg: statusMessage,
-            visionError: errorMsg,
-            globalVisionResult: visionResult,
-            debugFrames,
-            currentMatchId: matchId,
-            startGlobalAnalysis: startAnalysis,
-            verifyVideo,
-            resetAnalysis,
-            clearError,
-            setIsVerifying,
-            restoreResultForMatch
-        }}>
+        <VisionAnalysisContext.Provider value={contextValue}>
             {children}
         </VisionAnalysisContext.Provider>
     );

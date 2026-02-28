@@ -112,7 +112,7 @@ export async function fetchRankByPuuid(puuid: string): Promise<LeagueEntryDTO[]>
     try {
         const res = await fetch(url, {
             headers: { "X-Riot-Token": RIOT_API_KEY },
-            cache: 'no-store'
+            next: { revalidate: 300 } // 5 min cache - rank changes per game
         });
 
         if (!res.ok) {
@@ -148,9 +148,9 @@ export async function fetchRank(summonerId: string): Promise<LeagueEntryDTO[]> {
     try {
         const res = await fetch(url, {
             headers: { "X-Riot-Token": RIOT_API_KEY },
-            cache: 'no-store'
+            next: { revalidate: 300 } // 5 min cache - rank changes per game
         });
-        
+
         if (!res.ok) {
             console.error(`League API Error: ${res.status}`);
             return [];
@@ -217,7 +217,7 @@ export async function fetchMatchDetail(matchId: string, retries = 3): Promise<{ 
     try {
         const res = await fetch(url, {
             headers: { "X-Riot-Token": RIOT_API_KEY },
-            cache: 'no-store'
+            next: { revalidate: 86400 } // 24h cache - match data is immutable
         });
 
         if (res.status === 429 && retries > 0) {
@@ -315,7 +315,7 @@ export async function fetchThirdPartyCode(summonerId: string): Promise<string | 
 // 8. Get Latest Version
 export async function fetchLatestVersion(): Promise<string> {
     try {
-        const res = await fetch("https://ddragon.leagueoflegends.com/api/versions.json", { cache: 'no-store' });
+        const res = await fetch("https://ddragon.leagueoflegends.com/api/versions.json", { next: { revalidate: 3600 } });
         if (!res.ok) return "14.24.1"; // Fallback
         const versions = await res.json();
         return versions[0] || "14.24.1";

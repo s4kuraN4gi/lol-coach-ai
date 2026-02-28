@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useTransition, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import LoadingAnimation from "../components/LoadingAnimation";
 import { useSummoner } from "../providers/SummonerProvider";
@@ -55,7 +56,7 @@ export default function AccountPage() {
     setNotification(null);
     if (!inputName.trim()) return;
     if (!inputName.includes('#')) {
-        alert(t('accountPage.messages.formatError'));
+        toast.warning(t('accountPage.messages.formatError'));
         return;
     }
 
@@ -65,7 +66,7 @@ export default function AccountPage() {
         
         const res = await lookupSummoner(inputName.trim());
         if(res.error) {
-            alert(t('accountPage.messages.error') + res.error);
+            toast.error(t('accountPage.messages.error') + res.error);
             return;
         }
         // Success
@@ -82,7 +83,7 @@ export default function AccountPage() {
           // No code needed, just verify the icon change
           const res = await verifyAndAddSummoner(candidate);
           if(res.error) {
-              alert(res.error);
+              toast.error(res.error);
               // Fatal errors -> Close verification screen
               if (res.error.includes("有効期限") || 
                   res.error.includes("無効です") || 
@@ -91,7 +92,7 @@ export default function AccountPage() {
               }
               return;
           }
-          alert(t('accountPage.messages.verificationSuccess'));
+          toast.success(t('accountPage.messages.verificationSuccess'));
           // Reset
           setInputName("");
           setCandidate(null);
@@ -126,7 +127,7 @@ export default function AccountPage() {
       startTransition(async () => {
           const res = await switchSummoner(id);
           if(res.error) {
-              alert(t('accountPage.messages.switchFailed') + res.error);
+              toast.error(t('accountPage.messages.switchFailed') + res.error);
               return;
           }
           await refreshSummoner();
@@ -142,7 +143,7 @@ export default function AccountPage() {
       startTransition(async () => {
           const res = await removeSummoner(id);
           if(res.error) {
-              alert(t('accountPage.messages.deleteFailed') + res.error);
+              toast.error(t('accountPage.messages.deleteFailed') + res.error);
               return;
           }
           await Promise.all([refreshSummoner(), fetchAccounts()]);

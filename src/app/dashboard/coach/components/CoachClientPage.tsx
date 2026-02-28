@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition, useCallback, useRef } from "react";
+import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import DashboardLayout from "@/app/components/layout/DashboardLayout";
@@ -163,7 +164,7 @@ export default function CoachClientPage({ puuid }: CoachClientPageProps) {
     const loadYoutubeVideo = () => {
         const videoId = extractVideoId(youtubeUrl);
         if (!videoId) {
-            alert(t('coachPage.controls.invalidYoutube'));
+            toast.warning(t('coachPage.controls.invalidYoutube'));
             return;
         }
         setVideoSourceType("YOUTUBE");
@@ -200,18 +201,18 @@ export default function CoachClientPage({ puuid }: CoachClientPageProps) {
 
     const runMicroAnalysis = async () => {
         if (!localFile && !youtubeUrl) {
-            alert(t('coachPage.controls.selectVideo'));
+            toast.warning(t('coachPage.controls.selectVideo'));
             return;
         }
         if (!selectedMatch || !activeSummoner?.puuid) {
-            alert(t('coachPage.list.selectMatch'));
+            toast.warning(t('coachPage.list.selectMatch'));
             return;
         }
         if (localFile) {
             await startGlobalAnalysis(localFile, selectedMatch, activeSummoner.puuid, specificQuestion, startTime);
             refreshStatus();
         } else if (youtubeUrl) {
-            alert(t('coachPage.micro.youtubeNotSupported'));
+            toast.warning(t('coachPage.micro.youtubeNotSupported'));
             return;
         }
     };
@@ -267,7 +268,7 @@ export default function CoachClientPage({ puuid }: CoachClientPageProps) {
     return (
         <DashboardLayout>
             <div className="max-w-7xl mx-auto h-[calc(100vh-100px)] flex flex-col animate-fadeIn relative">
-                <header className="mb-6 flex justify-between items-center bg-slate-900/50 p-4 rounded-xl border border-white/5 backdrop-blur-sm">
+                <header className="mb-6 flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-slate-900/50 p-4 rounded-xl border border-white/5 backdrop-blur-sm">
                     <div>
                         <h1 className="text-3xl font-black italic tracking-tighter text-foreground">
                             AI COACH <span className="text-sm not-italic font-normal text-slate-500 ml-2 border border-slate-700 px-2 rounded">{t('coachPage.header.subtitle')}</span>
@@ -304,8 +305,8 @@ export default function CoachClientPage({ puuid }: CoachClientPageProps) {
                     </div>
                 </header>
 
-                <div className="flex-1 grid grid-cols-12 gap-6 overflow-hidden">
-                    <div className="col-span-8 flex flex-col gap-4 h-full overflow-y-auto pr-2 custom-scrollbar">
+                <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-hidden">
+                    <div className="lg:col-span-8 flex flex-col gap-4 h-full overflow-y-auto lg:pr-2 custom-scrollbar">
                         {isRestoring ? (
                             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 h-full flex items-center justify-center min-h-[300px]">
                                 <div className="flex flex-col items-center gap-4">
@@ -399,7 +400,7 @@ export default function CoachClientPage({ puuid }: CoachClientPageProps) {
                                 </div>
 
                                 {/* Controls Bar */}
-                                <div className="flex items-center gap-4 bg-slate-900 border border-slate-800 p-3 rounded-xl mt-2">
+                                <div className="flex flex-wrap items-center gap-3 sm:gap-4 bg-slate-900 border border-slate-800 p-3 rounded-xl mt-2">
                                     <button
                                         onClick={() => {
                                             setSelectedMatch(null);
@@ -696,7 +697,7 @@ export default function CoachClientPage({ puuid }: CoachClientPageProps) {
                     </div>
 
                     {/* Right Column - Tips */}
-                    <div className="col-span-4 flex flex-col gap-6 h-full overflow-y-auto pb-10 custom-scrollbar">
+                    <div className="lg:col-span-4 flex flex-col gap-6 h-full overflow-y-auto pb-10 custom-scrollbar">
                         <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800">
                             <h3 className="text-sm font-bold text-slate-300 mb-3">{t('coachPage.tips.title', '使い方')}</h3>
                             <ul className="text-xs text-slate-400 space-y-2">

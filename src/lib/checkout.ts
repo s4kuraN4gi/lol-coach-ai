@@ -1,3 +1,5 @@
+import { toast } from "sonner";
+
 export async function triggerStripeCheckout(tier: 'premium' | 'extra' = 'premium') {
     try {
         const priceId = tier === 'extra'
@@ -16,7 +18,7 @@ export async function triggerStripeCheckout(tier: 'premium' | 'extra' = 'premium
 
         if (!response.ok) {
             console.error('Checkout error:', response.statusText);
-            alert('決済の開始に失敗しました。');
+            toast.error('Checkout failed. Please try again.');
             return;
         }
 
@@ -25,11 +27,11 @@ export async function triggerStripeCheckout(tier: 'premium' | 'extra' = 'premium
             window.location.href = url;
         } else {
              console.error('No checkout URL returned');
-             alert('決済URLの取得に失敗しました。');
+             toast.error('Checkout failed. Please try again.');
         }
     } catch (error) {
         console.error('Checkout error:', error);
-        alert('エラーが発生しました。');
+        toast.error('An error occurred. Please try again.');
     }
 }
 
@@ -45,7 +47,7 @@ export async function triggerStripePortal() {
         if (!response.ok) {
             const errText = await response.text();
             console.error('Portal error:', response.statusText, errText);
-            alert(`ポータルの起動に失敗しました: ${errText}`);
+            toast.error('Failed to open billing portal.');
             return;
         }
 
@@ -54,10 +56,10 @@ export async function triggerStripePortal() {
             window.location.href = url;
         } else {
              console.error('No portal URL returned');
-             alert('ポータルURLの取得に失敗しました。');
+             toast.error('Failed to open billing portal.');
         }
     } catch (error) {
         console.error('Portal error:', error);
-        alert('エラーが発生しました。');
+        toast.error('An error occurred. Please try again.');
     }
 }

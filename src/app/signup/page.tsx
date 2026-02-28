@@ -34,7 +34,8 @@ export default function SignupPage() {
         }
     };
 
-    const handleSignup = async () => {
+    const handleSignup = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
         setError("");
 
         if (!LoginID.trim() || !password.trim() || !passwordConfirm.trim()){
@@ -114,13 +115,13 @@ export default function SignupPage() {
                     </div>
                 </div>
 
-                <div className="space-y-4">
+                <form onSubmit={handleSignup} className="space-y-4">
                     <div>
                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
                             {t('signupPage.emailLabel')}
                         </label>
                         <input
-                        type="text"
+                        type="email"
                         placeholder="name@example.com"
                         value={LoginID}
                         onChange={(e) => setLoginId(e.target.value)}
@@ -152,16 +153,16 @@ export default function SignupPage() {
                         className="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3 text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition placeholder-slate-600"
                         />
                     </div>
-                </div>
 
-                {error && <p className="text-red-400 text-sm mt-3 font-medium bg-red-900/20 p-2 rounded border border-red-900/50">{error}</p>}
-                
-                <button
-                    onClick={handleSignup}
-                    className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold py-3.5 mt-6 rounded-lg hover:from-blue-500 hover:to-cyan-500 transition shadow-lg shadow-blue-900/20 active:scale-95 transform"
-                >
-                    {t('signupPage.registerButton')}
-                </button>
+                    {error && <p className="text-red-400 text-sm mt-3 font-medium bg-red-900/20 p-2 rounded border border-red-900/50">{error}</p>}
+
+                    <button
+                        type="submit"
+                        className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold py-3.5 mt-6 rounded-lg hover:from-blue-500 hover:to-cyan-500 transition shadow-lg shadow-blue-900/20 active:scale-95 transform"
+                    >
+                        {t('signupPage.registerButton')}
+                    </button>
+                </form>
                 {/* アカウント誘導 */}
                 <div className="mt-8 text-center space-y-4">
                     <p className="text-sm text-slate-500">

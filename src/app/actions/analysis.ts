@@ -7,8 +7,32 @@ import { FREE_WEEKLY_ANALYSIS_LIMIT, PREMIUM_WEEKLY_ANALYSIS_LIMIT, type Analysi
 
 // Weekly limit constant is imported from ./constants
 
-// ユーザーのクレジット情報などを取得
+// ユーザーのクレジット情報を取得（純粋なREAD - 副作用なし）
 export async function getAnalysisStatus(): Promise<AnalysisStatus | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data } = await supabase
+    .from("profiles")
+    .select("is_premium, analysis_credits, subscription_tier, daily_analysis_count, last_analysis_date, subscription_end_date, auto_renew, last_credit_update, last_reward_ad_date, weekly_analysis_count, weekly_reset_date")
+    .eq("id", user.id)
+    .single();
+
+  if (!data) return null;
+
+  // Ensure defaults if null
+  if (data.weekly_analysis_count === null || data.weekly_analysis_count === undefined) {
+      data.weekly_analysis_count = 0;
+  }
+
+  return data as AnalysisStatus;
+}
+
+// クレジット補充・期限チェック等のWRITE処理を実行してから最新ステータスを返す
+export async function refreshAnalysisStatus(): Promise<AnalysisStatus | null> {
   const supabase = await createClient();
   const adminDb = createServiceRoleClient();
   const {
@@ -16,8 +40,6 @@ export async function getAnalysisStatus(): Promise<AnalysisStatus | null> {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  // Note: We select last_credit_update. If it doesn't exist in DB yet, it might be ignored or return null depending on Supabase leniency.
-  // The migration SQL provided should be run by the user to add this column.
   const { data } = await supabase
     .from("profiles")
     .select("is_premium, analysis_credits, subscription_tier, daily_analysis_count, last_analysis_date, subscription_end_date, auto_renew, last_credit_update, last_reward_ad_date, weekly_analysis_count, weekly_reset_date")
@@ -31,14 +53,12 @@ export async function getAnalysisStatus(): Promise<AnalysisStatus | null> {
       const now = new Date();
       const nextMonth = new Date(now);
       nextMonth.setMonth(nextMonth.getMonth() + 1);
-      
-      // Update DB to have valid subscription data
+
       await adminDb.from("profiles").update({
           subscription_end_date: nextMonth.toISOString(),
           auto_renew: true
       }).eq("id", user.id);
 
-      // Update local data object
       data.subscription_end_date = nextMonth.toISOString();
       data.auto_renew = true;
   }
@@ -46,26 +66,20 @@ export async function getAnalysisStatus(): Promise<AnalysisStatus | null> {
   // --- WEEKLY CREDIT REPLENISHMENT LOGIC ---
   if (!data.is_premium) {
       const now = new Date();
-      // default to now if null (for new migration) so we don't grant immediately on first load unless intended.
-      const lastUpdate = data.last_credit_update ? new Date(data.last_credit_update) : now; 
-      
+      const lastUpdate = data.last_credit_update ? new Date(data.last_credit_update) : now;
+
       const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
       const timeDiff = now.getTime() - lastUpdate.getTime();
 
-      // If last_credit_update is missing (null), we set it to NOW to start the timer.
-      // If it exists, we check if 1 week has passed.
       if (!data.last_credit_update) {
           await adminDb.from("profiles").update({ last_credit_update: now.toISOString() }).eq("id", user.id);
           data.last_credit_update = now.toISOString();
       } else if (timeDiff >= oneWeekMs) {
-          // Calculate how many weeks passed (e.g. 2 weeks = 2 credits)
           const weeksPassed = Math.floor(timeDiff / oneWeekMs);
           const currentCredits = data.analysis_credits || 0;
-          
+
           if (currentCredits < 3) {
              const newCredits = Math.min(currentCredits + weeksPassed, 3);
-             
-             // Update Date: Move forward by EXACT weeks to keep cycle consistent
              const newLastUpdate = new Date(lastUpdate.getTime() + (weeksPassed * oneWeekMs));
 
              await adminDb.from("profiles").update({
@@ -76,12 +90,6 @@ export async function getAnalysisStatus(): Promise<AnalysisStatus | null> {
              data.analysis_credits = newCredits;
              data.last_credit_update = newLastUpdate.toISOString();
           } else {
-             // Already at max, update timestamp to now to reset 'idle' timer or keep it? 
-             // Logic: If user uses credit tomorrow, they should wait 1 week from tomorrow? 
-             // OR 1 week from 'last schedule'? 
-             // Typically in these systems, if you are full, the timer stops.
-             // When you use a credit, the timer starts.
-             // So if full, we set last_credit_update to NOW.
              await adminDb.from("profiles").update({
                  last_credit_update: now.toISOString()
              }).eq("id", user.id);
@@ -95,9 +103,7 @@ export async function getAnalysisStatus(): Promise<AnalysisStatus | null> {
       const now = new Date();
       const resetDate = data.weekly_reset_date ? new Date(data.weekly_reset_date) : null;
 
-      // If no reset date set, or if we've passed the reset date, reset the counter
       if (!resetDate || now >= resetDate) {
-          // Calculate next Monday 00:00 JST
           const nextMonday = getNextMonday(now);
 
           await adminDb.from("profiles").update({
@@ -109,7 +115,6 @@ export async function getAnalysisStatus(): Promise<AnalysisStatus | null> {
           data.weekly_reset_date = nextMonday.toISOString();
       }
 
-      // Ensure defaults if null
       if (data.weekly_analysis_count === null || data.weekly_analysis_count === undefined) {
           data.weekly_analysis_count = 0;
       }
@@ -120,7 +125,6 @@ export async function getAnalysisStatus(): Promise<AnalysisStatus | null> {
       const now = new Date();
       const end = new Date(data.subscription_end_date);
       if (end < now) {
-          // 有効期限切れ: ステータスを更新してリターン
           await adminDb.from("profiles").update({ is_premium: false, auto_renew: false }).eq("id", user.id);
           data.is_premium = false;
           data.auto_renew = false;
@@ -436,7 +440,7 @@ export async function analyzeVideo(formData: FormData, userApiKey?: string, mode
 
   try {
     // Current Status Check (for Limits/Credits)
-    const status = await getAnalysisStatus();
+    const status = await refreshAnalysisStatus();
     if (!status) throw new Error("User not found");
 
     // Fetch Summoner Rank for Persona
@@ -605,7 +609,7 @@ export async function analyzeMatchQuick(
   }
 
   // 2. Check Limits
-  const status = await getAnalysisStatus();
+  const status = await refreshAnalysisStatus();
   if (!status) return { error: "User profile not found." };
 
   let useEnvKey = false;
@@ -769,7 +773,7 @@ export async function analyzeMatch(
   }
 
   // --- Logic for Limits & Keys ---
-  const status = await getAnalysisStatus();
+  const status = await refreshAnalysisStatus();
   if (!status) return { error: "User profile not found." };
 
   let useEnvKey = false;
@@ -1062,7 +1066,7 @@ export async function checkWeeklyLimit(): Promise<{
     resetDate: string;
     isPremium: boolean;
 }> {
-    const status = await getAnalysisStatus();
+    const status = await refreshAnalysisStatus();
 
     if (!status) {
         return {

@@ -34,13 +34,16 @@
       "privacy": "개인정보처리방침",
       "legal": "법적 고지"
     },
-    "logout": "로그아웃"
+    "logout": "로그아웃",
+    "reference": "참고자료"
   },
   "dashboard": {
     "title": "대시보드",
     "subtitle": "당신의 성장 센터",
     "refresh": "데이터 새로고침",
     "refreshing": "새로고침 중...",
+    "loading": "로딩 중...",
+    "syncing": "동기화 중...",
     "noData": {
       "title": "매치 데이터를 찾을 수 없습니다",
       "description": "연결된 계정의 최근 매치 기록(최근 10게임)이 없거나 캐시되지 않았습니다.",
@@ -967,9 +970,13 @@
       "microDesc": "조작 정밀도, 콤보, 포지셔닝을 상세하게 분석합니다.",
       "winRateChange": "+12% 이번 주",
       "aiCoachLabel": "AI 코치",
-      "activeNow": "활동 중"
+      "activeNow": "활동 중",
+      "badgeAiCoaching": "AI 기반 코칭",
+      "skillLabel": "스킬 분석",
+      "winRateLabel": "승률"
     },
     "features": {
+      "label": "기능",
       "sectionTitlePrefix": "데이터로 ",
       "sectionTitle": "승리",
       "sectionDesc": "감에 의존하지 않는 데이터 기반 실력 향상을 실현합니다.",
@@ -1012,6 +1019,16 @@
     "googleLogin": "Google로 로그인",
     "orContinueWithEmail": "또는 이메일로 계속"
   },
+  "resetPasswordPage": {
+    "title": "비밀번호 재설정",
+    "description": "등록된 이메일 주소를 입력하세요. 비밀번호 재설정 링크를 보내드립니다.",
+    "emailLabel": "이메일",
+    "emailPlaceholder": "your@email.com",
+    "sendButton": "재설정 링크 보내기",
+    "sending": "전송 중...",
+    "successMessage": "재설정 링크를 보냈습니다. 이메일을 확인하세요.",
+    "backToLogin": "로그인으로 돌아가기"
+  },
   "signupPage": {
     "allFieldsRequired": "모든 항목을 입력해주세요",
     "passwordMismatch": "비밀번호가 일치하지 않습니다.",
@@ -1044,7 +1061,12 @@
     "changed": "변경했습니다",
     "verifySuccess": "인증 성공! 대시보드로 이동합니다...",
     "logout": "로그아웃하고 돌아가기",
-    "timeRemaining": "남은 시간:"
+    "timeRemaining": "남은 시간:",
+    "welcomeTitle": "환영합니다, 소환사",
+    "enterRiotId": "라이엇 ID 입력",
+    "currentIcon": "현재",
+    "newIcon": "새 아이콘",
+    "targetBadge": "목표"
   },
   "pricingPage": {
     "header": {

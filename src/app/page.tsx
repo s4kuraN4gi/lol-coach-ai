@@ -467,7 +467,7 @@ export default function LandingPage() {
                 }}
                 transition={{ duration: 2, repeat: Infinity }}
               >
-                AI-Powered Coaching
+                {t('landingPage.bento.badgeAiCoaching')}
               </motion.span>
             </motion.div>
 
@@ -590,7 +590,7 @@ export default function LandingPage() {
 
                   {/* Stats Content */}
                   <div className="flex-1">
-                    <div className="text-xs text-cyan-400 font-bold uppercase tracking-wider mb-2">Skill Analysis</div>
+                    <div className="text-xs text-cyan-400 font-bold uppercase tracking-wider mb-2">{t('landingPage.bento.skillLabel')}</div>
                     <h3 className="text-2xl font-bold mb-4">{t('landingPage.bento.skillAnalysis')}</h3>
                     <p className="text-gray-400 text-sm mb-6">{t('landingPage.bento.skillDesc')}</p>
 
@@ -626,7 +626,7 @@ export default function LandingPage() {
                 className="h-full bg-gradient-to-br from-[#0f0f15] to-[#0a0a0f] p-6 rounded-2xl border border-white/5 hover:border-emerald-500/30 transition-colors flex flex-col justify-center items-center"
                 glowColor="emerald"
               >
-                <div className="text-xs text-emerald-400 font-bold uppercase tracking-wider mb-2">Win Rate</div>
+                <div className="text-xs text-emerald-400 font-bold uppercase tracking-wider mb-2">{t('landingPage.bento.winRateLabel')}</div>
                 <div className="text-5xl md:text-6xl font-black text-white mb-2">
                   <StatsCounter value={67} suffix="%" />
                 </div>
@@ -761,7 +761,7 @@ export default function LandingPage() {
             transition={{ duration: 0.8 }}
             className="text-center mb-20"
           >
-            <span className="text-cyan-400 font-bold uppercase tracking-widest text-sm">Features</span>
+            <span className="text-cyan-400 font-bold uppercase tracking-widest text-sm">{t('landingPage.features.label')}</span>
             <h2 className="text-4xl md:text-5xl font-black mt-4 mb-6">
               {t('landingPage.features.sectionTitlePrefix')}<span className="text-cyan-400">{t('landingPage.features.sectionTitle')}</span>
             </h2>

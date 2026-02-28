@@ -11,8 +11,8 @@ async function fetchCoachMatches(puuid: string): Promise<MatchSummary[]> {
 }
 
 async function fetchAnalysisStatus(): Promise<AnalysisStatus | null> {
-    const { getAnalysisStatus } = await import("@/app/actions/analysis");
-    return getAnalysisStatus();
+    const { refreshAnalysisStatus } = await import("@/app/actions/analysis");
+    return refreshAnalysisStatus();
 }
 
 async function fetchAnalyzedMatchIds(): Promise<string[]> {

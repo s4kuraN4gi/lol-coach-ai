@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import {
     startVideoMacroAnalysis,
     getVideoMacroJobStatus,
@@ -247,8 +247,8 @@ export function VideoMacroAnalysisProvider({ children }: { children: React.React
         }
     }, []);
 
-    // --- Context Value ---
-    const contextValue: VideoMacroAnalysisContextType = {
+    // --- Context Value (memoized to prevent unnecessary re-renders) ---
+    const contextValue = useMemo<VideoMacroAnalysisContextType>(() => ({
         isAnalyzing,
         asyncStatus,
         progress,
@@ -261,7 +261,7 @@ export function VideoMacroAnalysisProvider({ children }: { children: React.React
         resetAnalysis,
         clearError,
         restoreResultForMatch
-    };
+    }), [isAnalyzing, asyncStatus, progress, statusMessage, error, result, jobId, matchId, startAnalysis, resetAnalysis, clearError, restoreResultForMatch]);
 
     return (
         <VideoMacroAnalysisContext.Provider value={contextValue}>

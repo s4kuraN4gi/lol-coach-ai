@@ -2,7 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { isExtraTier } from "./constants";
-import { getAnalysisStatus } from "./analysis";
+import { refreshAnalysisStatus } from "./analysis";
 
 export type DamageAnalysisInput = {
     attacker: {
@@ -198,7 +198,7 @@ export async function analyzeDamageMatchup(input: DamageAnalysisInput): Promise<
     if (!user) return { success: false, error: "Not authenticated" };
 
     // Extra tier check
-    const status = await getAnalysisStatus();
+    const status = await refreshAnalysisStatus();
     if (!isExtraTier(status)) {
         return { success: false, error: "Extra plan required for AI damage analysis" };
     }

@@ -8,6 +8,7 @@ import { createClient } from "@/utils/supabase/client";
 import Footer from "../components/layout/Footer";
 import { useTranslation } from "@/contexts/LanguageContext";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { toast } from "sonner";
 
 
 export default function LoginPage() {
@@ -32,7 +33,7 @@ export default function LoginPage() {
       },
     });
     if (error) {
-      alert(error.message);
+      toast.error(error.message);
       setGoogleLoading(false);
     }
   };
@@ -41,7 +42,7 @@ export default function LoginPage() {
     e.preventDefault();
 
     if (!LoginId.trim() || !password.trim()) {
-      alert(t('loginPage.emptyFields'));
+      toast.warning(t('loginPage.emptyFields'));
       return;
     }
 
@@ -53,14 +54,14 @@ export default function LoginPage() {
     });
 
     if (error) {
-      alert(t('loginPage.loginFailed') + error.message);
+      toast.error(t('loginPage.loginFailed') + error.message);
       setLoading(false);
       return;
     }
 
     if (data.user && !data.user.email_confirmed_at) {
         // メール認証未完了の場合
-        alert(t('loginPage.emailNotVerified'));
+        toast.warning(t('loginPage.emailNotVerified'));
         await supabase.auth.signOut(); // セッションを破棄
         setLoading(false);
         return;
@@ -119,7 +120,7 @@ export default function LoginPage() {
                     {t('loginPage.emailLabel')}
                 </label>
                 <input
-                type="text"
+                type="email"
                 onChange={(e) => setLoginId(e.target.value)}
                 className="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3 text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition placeholder-slate-600"
                 placeholder="name@example.com"
@@ -157,7 +158,7 @@ export default function LoginPage() {
                 </p>
 
                 <p className="text-xs text-slate-600">
-                    <a href="/react-password" className="hover:text-slate-400 transition">
+                    <a href="/reset-password" className="hover:text-slate-400 transition">
                     {t('loginPage.forgotPassword')}
                     </a>
                 </p>

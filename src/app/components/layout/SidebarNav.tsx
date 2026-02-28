@@ -88,7 +88,7 @@ export default function SidebarNav() {
 
               {/* Reference Pages */}
               <div className="mt-6 pt-4 border-t border-slate-800/50">
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-slate-600 px-4 mb-2">Reference</div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-slate-600 px-4 mb-2">{t('sidebar.reference')}</div>
                   <nav className="flex flex-col gap-1 text-slate-500">
                       {referenceItems.map((item) => (
                           <Link

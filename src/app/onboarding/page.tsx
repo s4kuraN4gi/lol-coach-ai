@@ -141,7 +141,7 @@ export default function OnboardingPage() {
                 {/* Header */}
                 <div className="text-center mb-8">
                     <h1 className="text-3xl font-black text-foreground mb-2">
-                        WELCOME, SUMMONER
+                        {t('onboardingPage.welcomeTitle')}
                     </h1>
                     <p className="text-slate-400">
                         {t('onboardingPage.welcome')}
@@ -161,7 +161,7 @@ export default function OnboardingPage() {
                     {step === 1 ? (
                         <div className="space-y-6 animate-fadeIn">
                             <div>
-                                <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Enter Riot ID</label>
+                                <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">{t('onboardingPage.enterRiotId')}</label>
                                 <input
                                     type="text"
                                     placeholder="GameName #TagLine"
@@ -197,15 +197,15 @@ export default function OnboardingPage() {
                                         <div className="w-16 h-16 rounded-full bg-slate-800 border-2 border-slate-600 flex items-center justify-center grayscale opacity-50 mb-2">
                                             <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/profileicon/${candidate?.profileIconId}.png`} className="w-full h-full rounded-full" />
                                         </div>
-                                        <span className="text-xs text-slate-500">Current</span>
+                                        <span className="text-xs text-slate-500">{t('onboardingPage.currentIcon')}</span>
                                     </div>
                                     <div className="text-2xl text-blue-500">→</div>
                                     <div className="flex flex-col items-center relative">
                                         <div className="w-20 h-20 rounded-full border-4 border-blue-500 shadow-[0_0_20px_blue] overflow-hidden mb-2">
                                             <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/profileicon/${candidate?.targetIconId}.png`} className="w-full h-full" />
                                         </div>
-                                        <span className="text-xs text-blue-400 font-bold">New Icon</span>
-                                        <div className="absolute -top-1 -right-2 bg-blue-600 text-[10px] px-1.5 py-0.5 rounded text-white font-bold">Target</div>
+                                        <span className="text-xs text-blue-400 font-bold">{t('onboardingPage.newIcon')}</span>
+                                        <div className="absolute -top-1 -right-2 bg-blue-600 text-[10px] px-1.5 py-0.5 rounded text-white font-bold">{t('onboardingPage.targetBadge')}</div>
                                     </div>
                                 </div>
 

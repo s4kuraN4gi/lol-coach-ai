@@ -1,10 +1,11 @@
 'use server';
 
+import { after } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import fs from 'fs/promises';
 import path from 'path';
-import { getAnalysisStatus } from "./analysis";
+import { refreshAnalysisStatus } from "./analysis";
 import { FREE_WEEKLY_ANALYSIS_LIMIT, PREMIUM_WEEKLY_ANALYSIS_LIMIT } from "./constants";
 import { fetchMatchDetail, fetchLatestVersion, fetchMatchTimeline, extractMatchEvents, getChampionAttributes } from "./riot";
 
@@ -141,7 +142,7 @@ export async function startVisionAnalysis(
     console.log("[startVisionAnalysis] User authenticated:", user.id);
 
     // 1. Initial Limit/Auth Check (Fail fast)
-    const status = await getAnalysisStatus();
+    const status = await refreshAnalysisStatus();
     if (!status) return { success: false, error: "User profile not found." };
 
     // Micro analysis is Premium-only (unless user provides their own API key)
@@ -180,16 +181,15 @@ export async function startVisionAnalysis(
         return { success: false, error: "Database Error: Could not start analysis job." };
     }
 
-    // 3. Trigger Async Processing (Fire & Forget)
-    // We explicitly DO NOT await this.
+    // 3. Run analysis in background using Next.js after() to prevent job loss in serverless
     console.log(`[startVisionAnalysis] Starting async job: ${job.id}`);
-    (async () => {
+    after(async () => {
         try {
             await performVisionAnalysis(job.id, request, user.id, userApiKey);
         } catch (e) {
             console.error(`[Vision Job ${job.id}] Uncaught specific error:`, e);
         }
-    })();
+    });
 
     const response = { success: true, jobId: job.id };
     console.log(`[startVisionAnalysis] Returning:`, JSON.stringify(response));
@@ -211,7 +211,7 @@ async function performVisionAnalysis(
     
     try {
         // --- Limit Check Again (Double safe) & Key Setup ---
-        status = await getAnalysisStatus();
+        status = await refreshAnalysisStatus();
         if (!status) throw new Error("User profile missing during processing.");
         
         const weeklyCount = status.weekly_analysis_count || 0;
@@ -697,7 +697,7 @@ export async function verifyMatchVideo(
     if (!user) return { success: false, error: "Not authenticated" };
 
     // [GUARD] Weekly Limit Check: Ensure user has remaining analyses
-    const status = await getAnalysisStatus();
+    const status = await refreshAnalysisStatus();
     if (!status) return { success: false, error: "User profile not found." };
     const weeklyCount = status.weekly_analysis_count || 0;
     const limit = status.is_premium ? PREMIUM_WEEKLY_ANALYSIS_LIMIT : FREE_WEEKLY_ANALYSIS_LIMIT;

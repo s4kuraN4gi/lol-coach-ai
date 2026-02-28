@@ -3,7 +3,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import { getGuestCreditStatus, useGuestCredit, isGuestUser } from "./guestCredits";
-import { getAnalysisStatus } from "./analysis";
+import { refreshAnalysisStatus } from "./analysis";
 import { FREE_WEEKLY_ANALYSIS_LIMIT, PREMIUM_WEEKLY_ANALYSIS_LIMIT } from "./constants";
 import { GUEST_FIXED_SEGMENTS, type GuestSegment } from "./guestConstants";
 import { fetchLatestVersion, fetchMatchDetail, fetchMatchTimeline, extractMatchEvents, getChampionAttributes } from "./riot";
@@ -107,7 +107,7 @@ export async function canPerformGuestAnalysis(): Promise<{
         };
     } else {
         // Logged in user - check their analysis status
-        const status = await getAnalysisStatus();
+        const status = await refreshAnalysisStatus();
         if (!status) {
             return {
                 canAnalyze: false,
@@ -391,7 +391,7 @@ export async function performGuestAnalysis(
             };
         }
 
-        const status = await getAnalysisStatus();
+        const status = await refreshAnalysisStatus();
         if (!status) {
             return {
                 success: false,
@@ -604,7 +604,7 @@ export async function performGuestMicroAnalysis(
             return { success: false, error: "認証が必要です", isGuest: false, remainingCredits: 0 };
         }
 
-        const status = await getAnalysisStatus();
+        const status = await refreshAnalysisStatus();
         if (!status) {
             return { success: false, error: "プロフィールが見つかりません", isGuest: false, remainingCredits: 0 };
         }

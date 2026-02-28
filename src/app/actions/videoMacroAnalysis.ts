@@ -1,9 +1,10 @@
 'use server';
 
+import { after } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { fetchMatchDetail, fetchMatchTimeline, fetchLatestVersion, extractMatchEvents, TruthEvent, fetchDDItemData } from "./riot";
-import { getAnalysisStatus } from "./analysis";
+import { refreshAnalysisStatus } from "./analysis";
 import { getWeeklyLimit } from "./constants";
 import macroKnowledge from "@/data/macro_knowledge.json";
 
@@ -576,7 +577,7 @@ export async function analyzeVideoMacro(
     }
 
     // Check limits
-    const status = await getAnalysisStatus();
+    const status = await refreshAnalysisStatus();
     if (!status) {
         return { success: false, matchId: request.matchId, analyzedAt: '', segments: [], overallSummary: { mainIssue: '', homework: { title: '', description: '', howToCheck: '', relatedTimestamps: [] } }, error: "User profile not found" };
     }
@@ -1203,7 +1204,7 @@ export async function startVideoMacroAnalysis(
     }
 
     // Check limits before starting
-    const status = await getAnalysisStatus();
+    const status = await refreshAnalysisStatus();
     if (!status) {
         return { success: false, error: "User profile not found" };
     }
@@ -1260,8 +1261,8 @@ export async function startVideoMacroAnalysis(
         return { success: false, error: "Database error: Could not start analysis job" };
     }
 
-    // Fire-and-forget: Run analysis in background
-    (async () => {
+    // Run analysis in background using Next.js after() to prevent job loss in serverless
+    after(async () => {
         try {
             await performVideoMacroAnalysisInBackground(
                 job.id,
@@ -1275,7 +1276,8 @@ export async function startVideoMacroAnalysis(
         } catch (e) {
             console.error(`[VideoMacro Job ${job.id}] Uncaught error:`, e);
             // Update job status to failed
-            await supabase
+            const adminClient = await createClient();
+            await adminClient
                 .from("video_analyses")
                 .update({
                     status: "failed",
@@ -1283,7 +1285,7 @@ export async function startVideoMacroAnalysis(
                 })
                 .eq("id", job.id);
         }
-    })();
+    });
 
     return { success: true, jobId: job.id };
 }
