@@ -144,13 +144,15 @@ export async function startVisionAnalysis(
     const status = await getAnalysisStatus();
     if (!status) return { success: false, error: "User profile not found." };
 
-    // Check availability only (Consumption happens later or we assume success)
+    // Micro analysis is Premium-only (unless user provides their own API key)
+    if (!status.is_premium && !userApiKey) {
+        return { success: false, error: "ミクロ分析はPremiumプラン限定です。プレミアムプランへアップグレードしてご利用ください。" };
+    }
+
+    // Check weekly limit
     const weeklyCount = status.weekly_analysis_count || 0;
     if (status.is_premium) {
         if (weeklyCount >= PREMIUM_WEEKLY_ANALYSIS_LIMIT) return { success: false, error: `週間制限に達しました (${weeklyCount}/${PREMIUM_WEEKLY_ANALYSIS_LIMIT})。月曜日にリセットされます。` };
-    } else {
-        // Free users: 3 analyses per week (unless using own API key)
-        if (!userApiKey && weeklyCount >= FREE_WEEKLY_ANALYSIS_LIMIT) return { success: false, error: `無料プランの週間制限に達しました (${weeklyCount}/${FREE_WEEKLY_ANALYSIS_LIMIT})。月曜日にリセットされます。プレミアムプランへのアップグレードで週20回まで分析できます。` };
     }
 
     // 2. Create Job Record
@@ -216,20 +218,15 @@ async function performVisionAnalysis(
         if (status.is_premium) {
             useEnvKey = true;
             shouldIncrementCount = true;
-            // Weekly limit check for premium
             if (weeklyCount >= PREMIUM_WEEKLY_ANALYSIS_LIMIT) {
                 throw new Error(`週間制限に達しました (${weeklyCount}/${PREMIUM_WEEKLY_ANALYSIS_LIMIT})。月曜日にリセットされます。`);
             }
+        } else if (userApiKey) {
+            // Free user with own API key: allow but don't use env key
+            useEnvKey = false;
         } else {
-             if (userApiKey) { useEnvKey = false; }
-             else {
-                 // Free user using env key: check weekly limit
-                 if (weeklyCount >= FREE_WEEKLY_ANALYSIS_LIMIT) {
-                     throw new Error(`無料プランの週間制限に達しました (${weeklyCount}/${FREE_WEEKLY_ANALYSIS_LIMIT})。月曜日にリセットされます。`);
-                 }
-                 useEnvKey = true;
-                 shouldIncrementCount = true;
-             }
+            // Micro analysis is Premium-only for free users
+            throw new Error("ミクロ分析はPremiumプラン限定です。");
         }
 
         const apiKeyToUse = useEnvKey ? GEMINI_API_KEY_ENV : userApiKey;

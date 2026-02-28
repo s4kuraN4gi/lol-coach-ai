@@ -468,8 +468,16 @@ export default function CoachClientPage({ puuid }: CoachClientPageProps) {
                                         <div className="absolute -top-10 -right-10 w-40 h-40 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
                                         <h3 className="font-bold text-purple-300 mb-2 flex items-center gap-2">
                                             <FaMagic /> {t('coachPage.micro.title')}
+                                            {!status?.is_premium && (
+                                                <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full font-bold">Premium</span>
+                                            )}
                                         </h3>
                                         <p className="text-xs text-slate-400 mb-4">{t('coachPage.micro.description')}</p>
+                                        {!status?.is_premium && (
+                                            <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-center">
+                                                <p className="text-yellow-400 text-sm font-bold">{t('coachPage.micro.premiumOnly')}</p>
+                                            </div>
+                                        )}
 
                                         {localFile && (
                                             <div className="mb-4 bg-slate-950 p-2 rounded border border-slate-800">

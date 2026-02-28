@@ -406,6 +406,7 @@
       "finalAdvice": "Final Verdict",
       "analyzeAnother": "Analyze Another Scene",
       "visionError": "Vision Analysis Error",
+      "premiumOnly": "Micro Analysis is a Premium-only feature. Please upgrade to use it.",
       "youtubeNotSupported": "YouTube Vision Analysis is coming soon. Please use a local file.",
       "situationSnapshot": "Situation Snapshot",
       "myStatus": "You",

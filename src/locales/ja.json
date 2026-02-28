@@ -406,6 +406,7 @@
       "finalAdvice": "総評",
       "analyzeAnother": "別の場面を解析する",
       "visionError": "Vision解析エラー",
+      "premiumOnly": "ミクロ分析はPremiumプラン限定機能です。アップグレードしてご利用ください。",
       "youtubeNotSupported": "YouTube動画のVision解析は現在準備中です。ローカルファイルを使用してください。",
       "situationSnapshot": "状況スナップショット",
       "myStatus": "自分",

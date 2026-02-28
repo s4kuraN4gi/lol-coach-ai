@@ -2,7 +2,7 @@
 // Note: This file is separate from server actions because "use server" files can only export async functions
 
 // Weekly analysis limits by plan
-export const FREE_WEEKLY_ANALYSIS_LIMIT = 3;      // Free users: 3 analyses per week
+export const FREE_WEEKLY_ANALYSIS_LIMIT = 1;      // Free users: 1 analysis per week
 export const PREMIUM_WEEKLY_ANALYSIS_LIMIT = 20;  // Premium users: 20 analyses per week
 export const EXTRA_WEEKLY_ANALYSIS_LIMIT = 50;    // Extra users: 50 analyses per week
 
