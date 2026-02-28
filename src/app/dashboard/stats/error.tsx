@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 export default function StatsError({
     error,
@@ -10,6 +11,8 @@ export default function StatsError({
     error: Error & { digest?: string };
     reset: () => void;
 }) {
+    const { t } = useTranslation();
+
     useEffect(() => {
         console.error("[Stats Error]", error);
     }, [error]);
@@ -22,18 +25,17 @@ export default function StatsError({
                 </div>
 
                 <h2 className="text-xl font-bold text-white mb-2">
-                    統計データの読み込みに失敗しました
+                    {t('errorBoundary.statsTitle')}
                 </h2>
 
                 <p className="text-slate-400 text-sm mb-6">
-                    統計情報の取得中にエラーが発生しました。
-                    もう一度お試しください。
+                    {t('errorBoundary.statsDescription')}
                 </p>
 
                 {process.env.NODE_ENV === "development" && (
                     <details className="mb-4 text-left">
                         <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-400">
-                            エラー詳細
+                            {t('errorBoundary.errorDetails')}
                         </summary>
                         <pre className="mt-2 p-2 bg-slate-950 rounded text-xs text-red-400 overflow-x-auto">
                             {error.message}
@@ -46,13 +48,13 @@ export default function StatsError({
                         onClick={reset}
                         className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold text-sm transition"
                     >
-                        再試行
+                        {t('errorBoundary.retry')}
                     </button>
                     <Link
                         href="/dashboard"
                         className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold text-sm transition"
                     >
-                        ダッシュボード
+                        {t('errorBoundary.dashboard')}
                     </Link>
                 </div>
             </div>

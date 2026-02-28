@@ -7,7 +7,8 @@
     "readMore": "Read Guide →",
     "goldReward": "Gold Reward",
     "priority": "Priority",
-    "buffEffect": "( + Buff Effect )"
+    "buffEffect": "( + Buff Effect )",
+    "loading": "Loading..."
   },
   "footer": {
     "terms": "Terms of Service",
@@ -157,12 +158,16 @@
   },
   "matchDetail": {
     "errorTitle": "Failed to Load Match",
+    "errorDesc": "Failed to load match details.",
     "returnToDashboard": "Return to Dashboard",
+    "returnToStats": "Return to Stats",
     "backToStats": "← Back to Stats",
     "matchReport": "MATCH REPORT",
     "aiBeta": "AI BETA",
     "victory": "VICTORY",
     "defeat": "DEFEAT",
+    "loading": "Loading...",
+    "syncing": "Syncing...",
     "patch": "PATCH",
     "teamsOverview": "Teams Overview",
     "blueTeam": "BLUE TEAM",
@@ -893,6 +898,18 @@
     },
     "defaultHow": "Establish vision (wards) and start the objective when your laners have priority (pushed lanes). Always keep track of your Smite damage.",
     "defaultWhy": "Securing this objective gives your entire team a stat advantage beyond the gold difference. The effect becomes more significant as the game progresses."
+  },
+  "errorBoundary": {
+    "title": "An Error Occurred",
+    "description": "Something went wrong while loading the page. Please try again or return to the dashboard.",
+    "descriptionGeneric": "An unexpected error occurred. Please try again.",
+    "statsTitle": "Failed to Load Stats",
+    "statsDescription": "An error occurred while fetching stats. Please try again.",
+    "errorDetails": "Error Details",
+    "errorDetailsShow": "Show Error Details",
+    "retry": "Retry",
+    "dashboard": "Dashboard",
+    "topPage": "Home"
   },
   "settings": {
     "language": "Language",

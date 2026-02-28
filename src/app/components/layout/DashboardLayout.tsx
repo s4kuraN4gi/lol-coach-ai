@@ -8,6 +8,7 @@ import Footer from "./Footer";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useSummoner } from "../../providers/SummonerProvider";
 import { useAuth } from "@/app/providers/AuthProvider";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 type DashboardLayoutProps = {
   children: React.ReactNode
@@ -19,6 +20,7 @@ export default function DashboardLayout({children}: DashboardLayoutProps) {
 
   const { user, loading: authLoading } = useAuth();
   const { activeSummoner, loading: summonerLoading } = useSummoner();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if(authLoading) return;
@@ -36,7 +38,7 @@ export default function DashboardLayout({children}: DashboardLayoutProps) {
   }, [user, router, authLoading, activeSummoner, summonerLoading]);
 
   if(authLoading || !user) {
-    return <div className="text-center mt-10">読み込み中...</div>
+    return <div className="text-center mt-10">{t('common.loading')}</div>
   }
 
   return (

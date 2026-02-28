@@ -7,7 +7,8 @@
     "readMore": "解説を読む →",
     "goldReward": "獲得ゴールド (REWARD)",
     "priority": "優先度 (Priority)",
-    "buffEffect": "( + バフ効果 )"
+    "buffEffect": "( + バフ効果 )",
+    "loading": "読み込み中..."
   },
   "footer": {
     "terms": "利用規約",
@@ -157,12 +158,16 @@
   },
   "matchDetail": {
     "errorTitle": "試合の読み込みに失敗しました",
+    "errorDesc": "試合の詳細を読み込めませんでした。",
     "returnToDashboard": "ダッシュボードに戻る",
+    "returnToStats": "戦績に戻る",
     "backToStats": "← 戦績に戻る",
     "matchReport": "マッチレポート",
     "aiBeta": "AI BETA",
     "victory": "勝利",
     "defeat": "敗北",
+    "loading": "読み込み中...",
+    "syncing": "同期中...",
     "patch": "パッチ",
     "teamsOverview": "チーム概要",
     "blueTeam": "ブルーチーム",
@@ -893,6 +898,18 @@
     },
     "defaultHow": "視界を確保（ワード）し、味方のレーナーが主導権（プッシュ）を握っているタイミングで狩り始めましょう。スマイトのダメージ量を常に確認しておくことが重要です。",
     "defaultWhy": "このオブジェクトを獲得することで、ゴールド差以上のステータス有利をチーム全員が得られます。特に試合が長引くほどその効果は大きくなります。"
+  },
+  "errorBoundary": {
+    "title": "エラーが発生しました",
+    "description": "ページの読み込み中に問題が発生しました。もう一度お試しいただくか、ダッシュボードに戻ってください。",
+    "descriptionGeneric": "予期しないエラーが発生しました。もう一度お試しください。",
+    "statsTitle": "統計データの読み込みに失敗しました",
+    "statsDescription": "統計情報の取得中にエラーが発生しました。もう一度お試しください。",
+    "errorDetails": "エラー詳細",
+    "errorDetailsShow": "エラー詳細を表示",
+    "retry": "再試行",
+    "dashboard": "ダッシュボード",
+    "topPage": "トップページ"
   },
   "settings": {
     "language": "言語",

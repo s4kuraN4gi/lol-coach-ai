@@ -7,7 +7,8 @@
     "readMore": "가이드 보기 →",
     "goldReward": "획득 골드",
     "priority": "우선순위",
-    "buffEffect": "( + 버프 효과 )"
+    "buffEffect": "( + 버프 효과 )",
+    "loading": "로딩 중..."
   },
   "footer": {
     "terms": "이용약관",
@@ -157,12 +158,16 @@
   },
   "matchDetail": {
     "errorTitle": "매치 로딩 실패",
+    "errorDesc": "매치 상세 정보를 불러오지 못했습니다.",
     "returnToDashboard": "대시보드로 돌아가기",
+    "returnToStats": "전적으로 돌아가기",
     "backToStats": "← 전적으로 돌아가기",
     "matchReport": "매치 리포트",
     "aiBeta": "AI BETA",
     "victory": "승리",
     "defeat": "패배",
+    "loading": "로딩 중...",
+    "syncing": "동기화 중...",
     "patch": "패치",
     "teamsOverview": "팀 개요",
     "blueTeam": "블루팀",
@@ -893,6 +898,18 @@
     },
     "defaultHow": "시야를 확보(와드)하고, 라이너가 주도권(푸시)을 잡고 있을 때 오브젝트를 시작하세요. 항상 스마이트 데미지를 확인하세요.",
     "defaultWhy": "이 오브젝트를 확보하면 골드 차이 이상의 스탯 우위를 팀 전체가 얻습니다. 게임이 길어질수록 효과가 커집니다."
+  },
+  "errorBoundary": {
+    "title": "오류가 발생했습니다",
+    "description": "페이지를 로드하는 중 문제가 발생했습니다. 다시 시도하거나 대시보드로 돌아가세요.",
+    "descriptionGeneric": "예기치 않은 오류가 발생했습니다. 다시 시도해주세요.",
+    "statsTitle": "통계 데이터 로드 실패",
+    "statsDescription": "통계 정보를 가져오는 중 오류가 발생했습니다. 다시 시도해주세요.",
+    "errorDetails": "오류 상세",
+    "errorDetailsShow": "오류 상세 표시",
+    "retry": "다시 시도",
+    "dashboard": "대시보드",
+    "topPage": "홈페이지"
   },
   "settings": {
     "language": "언어",
