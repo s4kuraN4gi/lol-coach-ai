@@ -4,15 +4,20 @@ import { ChampionStat } from "@/app/actions/stats";
 import Link from "next/link";
 import Image from "next/image";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { useDDragonVersion } from "@/hooks/useDDragonVersion";
 
 export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }) {
     const { t } = useTranslation();
+    const version = useDDragonVersion();
     
     if (!stats || stats.length === 0) {
         return (
              <div className="glass-panel rounded-xl p-4 flex flex-col items-center justify-center min-h-[200px] text-center h-full w-full">
-                 <div className="text-slate-500 font-bold mb-2">{t('widgets.championPerformance.noData')}</div>
-                 <div className="text-xs text-slate-600">{t('widgets.championPerformance.noDataDesc')}</div>
+                 <div className="text-slate-400 font-bold mb-2">{t('widgets.championPerformance.noData')}</div>
+                 <div className="text-xs text-slate-600 mb-3">{t('widgets.championPerformance.noDataDesc')}</div>
+                 <Link href="/dashboard/champions" className="text-xs text-blue-400 hover:text-blue-300 font-bold transition">
+                     {t('widgets.common.viewChampions', 'View Champion Stats →')}
+                 </Link>
             </div>
         )
     }
@@ -45,7 +50,7 @@ export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }
                  <Link href={`/dashboard/champion/${encodeURIComponent(topChamp.name)}`} className="flex items-center gap-4 mb-4 hover:bg-white/5 p-2 -ml-2 rounded-lg transition overflow-visible group/top cursor-pointer">
                      <div className="w-16 h-16 rounded-lg border-2 border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.3)] overflow-hidden relative">
                          <Image
-                            src={`https://ddragon.leagueoflegends.com/cdn/14.23.1/img/champion/${topChamp.name}.png`}
+                            src={`https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${topChamp.name}.png`}
                             alt={topChamp.name}
                             width={64}
                             height={64}
@@ -59,7 +64,7 @@ export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }
                              <span className={topChamp.winRate >= 60 ? "text-yellow-400 font-bold" : topChamp.winRate >= 50 ? "text-blue-400 font-bold" : "text-slate-400"}>
                                  {topChamp.winRate}% WR
                              </span>
-                             <span className="text-slate-500">•</span>
+                             <span className="text-slate-400">•</span>
                              <span className="text-slate-300">{topChamp.games} {t('widgets.championPerformance.games')}</span>
                          </div>
                          <div className="text-xs text-slate-400 mt-0.5 font-mono">
@@ -78,7 +83,7 @@ export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }
                              <div className="flex items-center gap-3">
                                  <div className="w-8 h-8 rounded border border-slate-600 overflow-hidden">
                                     <Image
-                                        src={`https://ddragon.leagueoflegends.com/cdn/14.23.1/img/champion/${champ.name}.png`}
+                                        src={`https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${champ.name}.png`}
                                         alt={champ.name}
                                         width={32}
                                         height={32}
@@ -87,7 +92,7 @@ export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }
                                  </div>
                                  <div className="flex-1">
                                      <div className="text-sm font-bold text-slate-200 group-hover/list:text-blue-400 transition-colors">{champ.name}</div>
-                                     <div className="text-[10px] text-slate-500">{champ.games} {t('widgets.championPerformance.games')}</div>
+                                     <div className="text-[10px] text-slate-400">{champ.games} {t('widgets.championPerformance.games')}</div>
                                  </div>
                              </div>
                              <div className="flex items-center gap-3">
@@ -95,7 +100,7 @@ export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }
                                     <div className={`text-sm font-black tabular-nums ${champ.winRate >= 50 ? 'text-blue-400' : 'text-slate-400'}`}>
                                         {champ.winRate}%
                                     </div>
-                                    <div className="text-[10px] text-slate-500 font-mono">
+                                    <div className="text-[10px] text-slate-400 font-mono">
                                         {champ.avgKda} KDA
                                     </div>
                                 </div>

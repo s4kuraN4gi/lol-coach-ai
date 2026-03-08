@@ -1,20 +1,21 @@
 "use client";
 
 import { useState, useEffect, useTransition, useCallback, useRef } from "react";
+import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import DashboardLayout from "@/app/Components/layout/DashboardLayout";
+import DashboardLayout from "@/app/components/layout/DashboardLayout";
 import { type MatchSummary, type BuildItem } from "@/app/actions/coach";
-import { useSummoner } from "@/app/Providers/SummonerProvider";
+import { useSummoner } from "@/app/providers/SummonerProvider";
 import { type AnalysisStatus, FREE_WEEKLY_ANALYSIS_LIMIT, PREMIUM_WEEKLY_ANALYSIS_LIMIT, getWeeklyLimit } from "@/app/actions/constants";
 import { triggerStripeCheckout } from "@/lib/checkout";
-import PlanStatusBadge from "@/app/Components/subscription/PlanStatusBadge";
+import PlanStatusBadge from "@/app/components/subscription/PlanStatusBadge";
 import VideoMacroAnalysis from "@/app/dashboard/components/Analysis/VideoMacroAnalysis";
 import MicroAnalysisResult from "@/app/dashboard/components/Analysis/MicroAnalysisResult";
 import { type VideoMacroAnalysisResult } from "@/app/actions/videoMacroAnalysis";
-import { useVisionAnalysis } from "@/app/Providers/VisionAnalysisProvider";
-import { useVideoMacroAnalysis } from "@/app/Providers/VideoMacroAnalysisProvider";
-import { useCoachUI } from "@/app/Providers/CoachUIProvider";
+import { useVisionAnalysis } from "@/app/providers/VisionAnalysisProvider";
+import { useVideoMacroAnalysis } from "@/app/providers/VideoMacroAnalysisProvider";
+import { useCoachUI } from "@/app/providers/CoachUIProvider";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { useCoachData } from "@/hooks/useCoachData";
 import { FaEye, FaChartBar, FaUpload, FaYoutube, FaMagic, FaClock } from "react-icons/fa";
@@ -22,8 +23,8 @@ import CoachPageSkeleton from "./CoachPageSkeleton";
 
 declare global {
   interface Window {
-    YT: any;
-    onYouTubeIframeAPIReady: any;
+    YT: { Player: new (id: string, config: Record<string, unknown>) => { seekTo: (t: number) => void; getCurrentTime: () => number; destroy: () => void } };
+    onYouTubeIframeAPIReady: (() => void) | undefined;
   }
 }
 
@@ -163,7 +164,7 @@ export default function CoachClientPage({ puuid }: CoachClientPageProps) {
     const loadYoutubeVideo = () => {
         const videoId = extractVideoId(youtubeUrl);
         if (!videoId) {
-            alert(t('coachPage.controls.invalidYoutube'));
+            toast.warning(t('coachPage.controls.invalidYoutube'));
             return;
         }
         setVideoSourceType("YOUTUBE");
@@ -176,7 +177,7 @@ export default function CoachClientPage({ puuid }: CoachClientPageProps) {
                 videoId: videoId,
                 playerVars: { 'playsinline': 1 },
                 events: {
-                    'onReady': (event: any) => {
+                    'onReady': (event: { target: { seekTo: (t: number) => void; getCurrentTime: () => number; destroy: () => void } }) => {
                         setYtPlayer(event.target);
                         setVideoReady(true);
                     }
@@ -200,18 +201,18 @@ export default function CoachClientPage({ puuid }: CoachClientPageProps) {
 
     const runMicroAnalysis = async () => {
         if (!localFile && !youtubeUrl) {
-            alert(t('coachPage.controls.selectVideo'));
+            toast.warning(t('coachPage.controls.selectVideo'));
             return;
         }
         if (!selectedMatch || !activeSummoner?.puuid) {
-            alert(t('coachPage.list.selectMatch'));
+            toast.warning(t('coachPage.list.selectMatch'));
             return;
         }
         if (localFile) {
             await startGlobalAnalysis(localFile, selectedMatch, activeSummoner.puuid, specificQuestion, startTime);
             refreshStatus();
         } else if (youtubeUrl) {
-            alert(t('coachPage.micro.youtubeNotSupported'));
+            toast.warning(t('coachPage.micro.youtubeNotSupported'));
             return;
         }
     };
@@ -267,10 +268,10 @@ export default function CoachClientPage({ puuid }: CoachClientPageProps) {
     return (
         <DashboardLayout>
             <div className="max-w-7xl mx-auto h-[calc(100vh-100px)] flex flex-col animate-fadeIn relative">
-                <header className="mb-6 flex justify-between items-center bg-slate-900/50 p-4 rounded-xl border border-white/5 backdrop-blur-sm">
+                <header className="mb-6 flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-slate-900/50 p-4 rounded-xl border border-white/5 backdrop-blur-sm">
                     <div>
                         <h1 className="text-3xl font-black italic tracking-tighter text-foreground">
-                            AI COACH <span className="text-sm not-italic font-normal text-slate-500 ml-2 border border-slate-700 px-2 rounded">{t('coachPage.header.subtitle')}</span>
+                            AI COACH <span className="text-sm not-italic font-normal text-slate-400 ml-2 border border-slate-700 px-2 rounded">{t('coachPage.header.subtitle')}</span>
                         </h1>
                         <p className="text-slate-400 text-sm">{t('coachPage.header.description')}</p>
                     </div>
@@ -304,8 +305,8 @@ export default function CoachClientPage({ puuid }: CoachClientPageProps) {
                     </div>
                 </header>
 
-                <div className="flex-1 grid grid-cols-12 gap-6 overflow-hidden">
-                    <div className="col-span-8 flex flex-col gap-4 h-full overflow-y-auto pr-2 custom-scrollbar">
+                <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-hidden">
+                    <div className="lg:col-span-8 flex flex-col gap-4 h-full overflow-y-auto lg:pr-2 custom-scrollbar">
                         {isRestoring ? (
                             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 h-full flex items-center justify-center min-h-[300px]">
                                 <div className="flex flex-col items-center gap-4">
@@ -317,7 +318,7 @@ export default function CoachClientPage({ puuid }: CoachClientPageProps) {
                             <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
                                 <h2 className="text-xl font-bold text-slate-200 mb-4">{t('coachPage.list.selectMatch')}</h2>
                                 {matches.length === 0 ? (
-                                    <div className="text-slate-500">{t('coachPage.list.noMatches', 'No matches found. Play some games first!')}</div>
+                                    <div className="text-slate-400">{t('coachPage.list.noMatches', 'No matches found. Play some games first!')}</div>
                                 ) : (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {matches.map(m => (
@@ -399,7 +400,7 @@ export default function CoachClientPage({ puuid }: CoachClientPageProps) {
                                 </div>
 
                                 {/* Controls Bar */}
-                                <div className="flex items-center gap-4 bg-slate-900 border border-slate-800 p-3 rounded-xl mt-2">
+                                <div className="flex flex-wrap items-center gap-3 sm:gap-4 bg-slate-900 border border-slate-800 p-3 rounded-xl mt-2">
                                     <button
                                         onClick={() => {
                                             setSelectedMatch(null);
@@ -423,7 +424,7 @@ export default function CoachClientPage({ puuid }: CoachClientPageProps) {
                                                 onClick={() => setVideoSourceType("LOCAL")}
                                                 className={`px-3 py-1 rounded text-xs font-bold ${videoSourceType === "LOCAL" ? "bg-slate-600 text-white" : "text-slate-400"}`}
                                             >
-                                                Local File
+                                                {t('coachPage.controls.localFile')}
                                             </button>
                                         </div>
 
@@ -468,8 +469,16 @@ export default function CoachClientPage({ puuid }: CoachClientPageProps) {
                                         <div className="absolute -top-10 -right-10 w-40 h-40 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
                                         <h3 className="font-bold text-purple-300 mb-2 flex items-center gap-2">
                                             <FaMagic /> {t('coachPage.micro.title')}
+                                            {!status?.is_premium && (
+                                                <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full font-bold">{t('coachPage.micro.premiumBadge')}</span>
+                                            )}
                                         </h3>
                                         <p className="text-xs text-slate-400 mb-4">{t('coachPage.micro.description')}</p>
+                                        {!status?.is_premium && (
+                                            <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-center">
+                                                <p className="text-yellow-400 text-sm font-bold">{t('coachPage.micro.premiumOnly')}</p>
+                                            </div>
+                                        )}
 
                                         {localFile && (
                                             <div className="mb-4 bg-slate-950 p-2 rounded border border-slate-800">
@@ -509,13 +518,13 @@ export default function CoachClientPage({ puuid }: CoachClientPageProps) {
                                                         <div className="w-full bg-slate-800 rounded-full h-2">
                                                             <div className="bg-purple-500 h-2 rounded-full transition-all" style={{ width: `${visionProgress}%` }}></div>
                                                         </div>
-                                                        <p className="text-center text-xs text-slate-500 mt-2 animate-pulse">{visionMsg}</p>
+                                                        <p className="text-center text-xs text-slate-400 mt-2 animate-pulse">{visionMsg}</p>
                                                     </div>
                                                 )}
                                                 {visionError && !visionError.includes("MATCH_INTEGRITY_ERROR:") && (
                                                     <div className="mt-2 p-2 bg-red-900/20 text-red-300 text-xs rounded border border-red-500/20 flex justify-between items-center">
                                                         <span>{t('coachPage.micro.visionError')}: {visionError}</span>
-                                                        <button onClick={clearVisionError} className="text-white hover:text-red-200">✕</button>
+                                                        <button onClick={clearVisionError} className="text-white hover:text-red-200" aria-label={t('common.close', 'Close')}>✕</button>
                                                     </div>
                                                 )}
                                             </div>
@@ -584,14 +593,14 @@ export default function CoachClientPage({ puuid }: CoachClientPageProps) {
                                                                     runMicroAnalysis();
                                                                 } else {
                                                                     startTransition(async () => {
-                                                                        await triggerStripeCheckout();
+                                                                        await triggerStripeCheckout('premium', t);
                                                                     });
                                                                 }
                                                             }}
                                                             disabled={!videoReady || !canAnalyze}
                                                             className={`w-full px-4 py-2.5 rounded font-bold text-sm transition shadow-lg whitespace-nowrap flex items-center justify-center gap-2 group h-10
                                                                 ${!videoReady || !canAnalyze
-                                                                    ? "bg-slate-800 text-slate-500 cursor-not-allowed"
+                                                                    ? "bg-slate-800 text-slate-400 cursor-not-allowed"
                                                                     : isPremium
                                                                         ? "bg-purple-600 hover:bg-purple-500 text-white shadow-purple-500/20"
                                                                         : "bg-gradient-to-r from-blue-600 to-cyan-500 text-white hover:scale-105 shadow-cyan-500/20"
@@ -607,7 +616,7 @@ export default function CoachClientPage({ puuid }: CoachClientPageProps) {
                                                         </button>
                                                         {!canAnalyze && !isPremium && (
                                                             <button
-                                                                onClick={() => startTransition(async () => { await triggerStripeCheckout(); })}
+                                                                onClick={() => startTransition(async () => { await triggerStripeCheckout('premium', t); })}
                                                                 className="w-full px-3 py-1.5 rounded text-xs font-medium bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:scale-105 transition"
                                                             >
                                                                 {t('statusBadge.upgradeToPremium')}
@@ -677,7 +686,7 @@ export default function CoachClientPage({ puuid }: CoachClientPageProps) {
                                     )}
 
                                     {!videoReady && (
-                                        <div className="absolute inset-0 flex items-center justify-center text-slate-500 flex-col gap-2 pointer-events-none bg-slate-950/80 z-10">
+                                        <div className="absolute inset-0 flex items-center justify-center text-slate-400 flex-col gap-2 pointer-events-none bg-slate-950/80 z-10">
                                             <span className="text-4xl">📺</span>
                                             <span>{t('coachPage.results.placeholder')}</span>
                                         </div>
@@ -688,7 +697,7 @@ export default function CoachClientPage({ puuid }: CoachClientPageProps) {
                     </div>
 
                     {/* Right Column - Tips */}
-                    <div className="col-span-4 flex flex-col gap-6 h-full overflow-y-auto pb-10 custom-scrollbar">
+                    <div className="lg:col-span-4 flex flex-col gap-6 h-full overflow-y-auto pb-10 custom-scrollbar">
                         <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800">
                             <h3 className="text-sm font-bold text-slate-300 mb-3">{t('coachPage.tips.title', '使い方')}</h3>
                             <ul className="text-xs text-slate-400 space-y-2">

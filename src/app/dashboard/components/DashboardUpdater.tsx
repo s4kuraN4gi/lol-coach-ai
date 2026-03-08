@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { checkForUpdates, performFullUpdate } from "@/app/actions/stats";
 import { useRouter } from "next/navigation";
+import { logger } from "@/lib/logger";
 
 export default function DashboardUpdater({ puuid }: { puuid: string }) {
     const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -21,7 +22,7 @@ export default function DashboardUpdater({ puuid }: { puuid: string }) {
                     setNewGameCount(res.newGameCount);
                 }
             } catch (e) {
-                console.error("Background Update Check Warning:", e);
+                logger.error("Background Update Check Warning:", e);
             }
         };
 
@@ -49,7 +50,7 @@ export default function DashboardUpdater({ puuid }: { puuid: string }) {
             // For now, we reload the page or we expose a "onUpdate" prop.
             location.reload(); // Simplest way to ensure full sync for now
         } catch (e) {
-            console.error("Update Failed:", e);
+            logger.error("Update Failed:", e);
         } finally {
             setIsUpdating(false);
         }

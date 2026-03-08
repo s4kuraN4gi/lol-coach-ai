@@ -105,11 +105,11 @@ export class VideoProcessor {
                     // Use WebP for better compression at same quality
                     // WebP is ~25-35% smaller than JPEG at equivalent quality
                     // Falls back to JPEG if WebP not supported
-                    let dataUrl = this.canvas.toDataURL("image/webp", 0.92);
+                    let dataUrl = this.canvas.toDataURL("image/webp", 0.7);
 
                     // Fallback to JPEG if WebP not supported (dataUrl will be PNG in that case)
                     if (!dataUrl.startsWith("data:image/webp")) {
-                        dataUrl = this.canvas.toDataURL("image/jpeg", 0.95);
+                        dataUrl = this.canvas.toDataURL("image/jpeg", 0.8);
                     }
                     
                     frames.push({

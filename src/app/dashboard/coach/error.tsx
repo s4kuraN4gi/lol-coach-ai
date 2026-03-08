@@ -1,11 +1,10 @@
 "use client";
 
-// error.tsx - Error boundary for coach page
-// Must be a client component to handle errors
-
-import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
+import { useEffect, useState } from "react";
 import { FaExclamationTriangle, FaRedo, FaHome } from "react-icons/fa";
 import Link from "next/link";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 export default function CoachError({
     error,
@@ -14,9 +13,12 @@ export default function CoachError({
     error: Error & { digest?: string };
     reset: () => void;
 }) {
+    const { t } = useTranslation();
+    const [eventId, setEventId] = useState<string | null>(null);
+
     useEffect(() => {
-        // Log error to console (could also send to error tracking service)
-        console.error("[CoachPage Error]", error);
+        const id = Sentry.captureException(error);
+        setEventId(id);
     }, [error]);
 
     return (
@@ -27,19 +29,23 @@ export default function CoachError({
                 </div>
 
                 <h2 className="text-xl font-bold text-white mb-2">
-                    エラーが発生しました
+                    {t('errorBoundary.title')}
                 </h2>
 
                 <p className="text-slate-400 text-sm mb-4">
-                    ページの読み込み中に問題が発生しました。
-                    もう一度お試しいただくか、ダッシュボードに戻ってください。
+                    {t('errorBoundary.description')}
                 </p>
 
-                {/* Error details (development only) */}
+                {process.env.NODE_ENV === "development" && eventId && (
+                    <p className="text-xs text-slate-600 mb-4">
+                        Error ID: <code className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-400">{eventId}</code>
+                    </p>
+                )}
+
                 {process.env.NODE_ENV === "development" && (
                     <details className="mb-4 text-left">
-                        <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-400">
-                            エラー詳細を表示
+                        <summary className="text-xs text-slate-400 cursor-pointer hover:text-slate-400">
+                            {t('errorBoundary.errorDetailsShow')}
                         </summary>
                         <pre className="mt-2 p-2 bg-slate-950 rounded text-xs text-red-400 overflow-x-auto">
                             {error.message}
@@ -53,13 +59,13 @@ export default function CoachError({
                         onClick={reset}
                         className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold text-sm transition"
                     >
-                        <FaRedo /> 再試行
+                        <FaRedo /> {t('errorBoundary.retry')}
                     </button>
                     <Link
                         href="/dashboard"
                         className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold text-sm transition"
                     >
-                        <FaHome /> ダッシュボード
+                        <FaHome /> {t('errorBoundary.dashboard')}
                     </Link>
                 </div>
             </div>

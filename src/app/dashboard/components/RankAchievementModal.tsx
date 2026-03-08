@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { createPortal } from "react-dom";
 
@@ -33,6 +33,7 @@ export default function RankAchievementModal({ tier, rank, onClose }: Props) {
     const [phase, setPhase] = useState<'enter' | 'show' | 'exit'>('enter');
     const [mounted, setMounted] = useState(false);
 
+    const dialogRef = useRef<HTMLDivElement>(null);
     const colors = TIER_COLORS[tier.toUpperCase()] || TIER_COLORS['GOLD'];
     const isMasterPlus = ['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(tier.toUpperCase());
 
@@ -46,9 +47,16 @@ export default function RankAchievementModal({ tier, rank, onClose }: Props) {
             setTimeout(onClose, 500);
         }, 4000);
 
+        // Escape key handler
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') handleClose();
+        };
+        document.addEventListener('keydown', handleKeyDown);
+
         return () => {
             clearTimeout(enterTimer);
             clearTimeout(autoCloseTimer);
+            document.removeEventListener('keydown', handleKeyDown);
         };
     }, [onClose]);
 
@@ -61,6 +69,10 @@ export default function RankAchievementModal({ tier, rank, onClose }: Props) {
 
     const modalContent = (
         <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="rank-achievement-title"
             className={`fixed inset-0 z-[9999] flex items-center justify-center transition-all duration-500 ${
                 phase === 'enter' ? 'opacity-0' :
                 phase === 'exit' ? 'opacity-0' : 'opacity-100'
@@ -141,6 +153,7 @@ export default function RankAchievementModal({ tier, rank, onClose }: Props) {
                     }`}
                 >
                     <h2
+                        id="rank-achievement-title"
                         className="text-4xl font-black tracking-wider mb-2"
                         style={{ color: colors.primary, textShadow: `0 0 20px ${colors.glow}` }}
                     >

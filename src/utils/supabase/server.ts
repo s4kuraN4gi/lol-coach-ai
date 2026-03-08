@@ -1,8 +1,9 @@
+import { cache } from "react";
 import { createServerClient } from "@supabase/ssr";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
-export async function createClient() {
+export const createClient = cache(async () => {
   const cookieStore = await cookies();
 
   return createServerClient(
@@ -16,7 +17,11 @@ export async function createClient() {
         setAll(cookiesToSet) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
+              cookieStore.set(name, value, {
+                ...options,
+                sameSite: 'lax',
+                secure: process.env.NODE_ENV === 'production',
+              })
             );
           } catch {
             // The `setAll` method was called from a Server Component.
@@ -27,7 +32,18 @@ export async function createClient() {
       },
     }
   );
-}
+});
+
+/**
+ * Cached getUser — deduplicates supabase.auth.getUser() within a single
+ * server request (RSC render, Server Action, or Route Handler).
+ * Uses React.cache so the actual auth call runs at most once per request.
+ */
+export const getUser = cache(async () => {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  return user;
+});
 
 // Service Role client — bypasses RLS for admin-level DB updates
 export function createServiceRoleClient() {

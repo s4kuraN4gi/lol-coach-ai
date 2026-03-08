@@ -3,9 +3,10 @@
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import DOMPurify from "isomorphic-dompurify";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { fetchDDItemData } from "@/app/actions/riot";
-import AdSenseBanner from "@/app/Components/ads/AdSenseBanner";
+import AdSenseBanner from "@/app/components/ads/AdSenseBanner";
 import { useBackUrl } from "@/hooks/useBackUrl";
 
 const CATEGORIES = [
@@ -16,7 +17,7 @@ const CATEGORIES = [
     { key: "boots" },
 ] as const;
 
-function categorizeItem(item: any): string[] {
+function categorizeItem(item: { stats?: Record<string, number>; tags?: string[] }): string[] {
     const cats: string[] = [];
     const stats = item.stats || {};
     const tags = item.tags || [];
@@ -37,7 +38,7 @@ function categorizeItem(item: any): string[] {
 }
 
 type Props = {
-    itemDataMap: Record<string, any>;
+    itemDataMap: Record<string, { name: string; description?: string; gold?: { total: number; purchasable: boolean }; stats?: Record<string, number>; tags?: string[]; image?: { full: string }; from?: string[] }>;
     version: string;
 };
 
@@ -62,7 +63,7 @@ export default function ItemDatabaseClient({ itemDataMap: initialItemDataMap, ve
     // Filter to completed items, deduplicate by name (keep highest ID)
     const completedItems = useMemo(() => {
         const entries = Object.entries(itemDataMap);
-        const nameMap = new Map<string, { id: string; item: any }>();
+        const nameMap = new Map<string, { id: string; item: { name: string; description?: string; gold?: { total: number; purchasable: boolean }; stats?: Record<string, number>; tags?: string[]; image?: { full: string }; from?: string[] } }>();
 
         for (const [id, item] of entries) {
             const gold = item.gold?.total || 0;
@@ -241,7 +242,7 @@ export default function ItemDatabaseClient({ itemDataMap: initialItemDataMap, ve
                                 <div
                                     className="text-sm text-gray-400 leading-relaxed [&_br]:hidden [&_stats]:text-cyan-400 [&_attention]:text-amber-400 [&_active]:text-green-400 [&_passive]:text-purple-400 [&_unique]:text-yellow-400"
                                     dangerouslySetInnerHTML={{
-                                        __html: selectedDetail.item.description,
+                                        __html: DOMPurify.sanitize(selectedDetail.item.description),
                                     }}
                                 />
                             </div>

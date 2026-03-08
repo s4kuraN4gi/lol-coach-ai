@@ -8,15 +8,19 @@ import {
     registerVerificationTimeout,
     getActiveSummoner 
 } from "../actions/profile";
-import LoadingAnimation from "../Components/LoadingAnimation";
-import { useAuth } from "../Providers/AuthProvider";
+import LoadingAnimation from "../components/LoadingAnimation";
+import { useAuth } from "../providers/AuthProvider";
 import { signOut } from "../actions/auth";
-import Footer from "../Components/layout/Footer";
+import Footer from "../components/layout/Footer";
 import { useTranslation } from "@/contexts/LanguageContext";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { useDDragonVersion } from "@/hooks/useDDragonVersion";
+import { logger } from "@/lib/logger";
+import VerificationTimer from "../components/VerificationTimer";
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const ddVersion = useDDragonVersion();
   const { user, loading: authLoading } = useAuth();
   const { t } = useTranslation();
   const [initLoading, setInitLoading] = useState(true);
@@ -60,10 +64,14 @@ export default function OnboardingPage() {
 
     startTransition(async () => {
         setCandidate(null);
-        
+
         const res = await lookupSummoner(inputName.trim());
         if(res.error) {
-            setNotification({ type: 'error', message: t('onboardingPage.error') + res.error });
+            let errorMsg = t(`verification.errors.${res.error}`, res.error);
+            if (res.error === 'VERIFICATION_LOCKED' && 'meta' in res && res.meta?.lockedUntil) {
+                errorMsg += `\n${t('accountPage.messages.unlockAt', '解除日時')}: ${res.meta.lockedUntil}`;
+            }
+            setNotification({ type: 'error', message: errorMsg });
             return;
         }
         // Success
@@ -79,20 +87,24 @@ export default function OnboardingPage() {
       startTransition(async () => {
           const res = await verifyAndAddSummoner(candidate);
           if(res.error) {
-              setNotification({ type: 'error', message: res.error });
-              // Fatal errors logic
-              if (res.error.includes("有効期限") || 
-                  res.error.includes("無効です") || 
-                  res.error.includes("ロックしました")) {
+              let errorMsg = t(`verification.errors.${res.error}`, res.error);
+              if (res.error === 'ICON_NOT_CHANGED' && 'meta' in res && res.meta) {
+                  errorMsg += `\n(${t('accountPage.verification.current', '現在')}: ${res.meta.current} / ${t('accountPage.verification.target', '指定')}: ${res.meta.target})`;
+                  errorMsg += `\n${t('accountPage.messages.remainingAttempts', '残り試行回数')}: ${res.meta.remaining}`;
+              }
+              setNotification({ type: 'error', message: errorMsg });
+              // Fatal errors -> Close verification screen
+              const FATAL_ERRORS = ['SESSION_EXPIRED', 'INVALID_SESSION', 'LOCKED_TRIPLE_FAIL', 'VERIFICATION_LOCKED'];
+              if (FATAL_ERRORS.includes(res.error)) {
                   handleCancel();
               }
               return;
           }
-          
+
           // Success!
           setNotification({ type: 'success', message: t('onboardingPage.verifySuccess') });
           setTimeout(() => {
-              window.location.href = "/dashboard"; // Hard reload to force context updates
+              window.location.href = "/dashboard?welcome=1"; // Hard reload to force context updates
           }, 1500);
       });
   }
@@ -101,9 +113,18 @@ export default function OnboardingPage() {
       startTransition(async () => {
           try {
             const res = await registerVerificationTimeout();
-            if(res.message) setNotification({ type: 'error', message: res.message });
+            if (res.errorCode) {
+                let errorMsg = t(`verification.errors.${res.errorCode}`, res.errorCode);
+                if (res.errorCode === 'TIMEOUT' && 'meta' in res && res.meta?.remaining != null) {
+                    errorMsg += `\n${t('accountPage.messages.remainingAttempts', '残り試行回数')}: ${res.meta.remaining}`;
+                }
+                setNotification({ type: 'error', message: errorMsg });
+            } else if (res.error) {
+                const errorMsg = t(`verification.errors.${res.error}`, res.error);
+                setNotification({ type: 'error', message: errorMsg });
+            }
           } catch(e) {
-            console.error(e);
+            logger.error(e);
           } finally {
             handleCancel();
           }
@@ -139,7 +160,7 @@ export default function OnboardingPage() {
                 {/* Header */}
                 <div className="text-center mb-8">
                     <h1 className="text-3xl font-black text-foreground mb-2">
-                        WELCOME, SUMMONER
+                        {t('onboardingPage.welcomeTitle')}
                     </h1>
                     <p className="text-slate-400">
                         {t('onboardingPage.welcome')}
@@ -159,7 +180,7 @@ export default function OnboardingPage() {
                     {step === 1 ? (
                         <div className="space-y-6 animate-fadeIn">
                             <div>
-                                <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Enter Riot ID</label>
+                                <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">{t('onboardingPage.enterRiotId')}</label>
                                 <input
                                     type="text"
                                     placeholder="GameName #TagLine"
@@ -168,15 +189,18 @@ export default function OnboardingPage() {
                                     className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition"
                                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                                 />
-                                <p className="text-xs text-slate-500 mt-2">
-                                    {t('onboardingPage.jpOnly')}
-                                </p>
+                                <div className="mt-3 flex items-center gap-2 bg-amber-900/30 border border-amber-600/40 rounded-lg px-3 py-2">
+                                    <span className="text-amber-400 text-sm">⚠️</span>
+                                    <p className="text-xs text-amber-300/90 font-medium">
+                                        {t('onboardingPage.jpOnly')}
+                                    </p>
+                                </div>
                             </div>
                             
                             <button
                                 onClick={handleSearch}
                                 disabled={isPending || !inputName.trim()}
-                                className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold py-3 rounded-lg shadow-lg shadow-blue-500/20 transition-all flex justify-center items-center"
+                                className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-400 text-white font-bold py-3 rounded-lg shadow-lg shadow-blue-500/20 transition-all flex justify-center items-center"
                             >
                                 {isPending ? <div className="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full" /> : t('onboardingPage.startLink')}
                             </button>
@@ -193,21 +217,21 @@ export default function OnboardingPage() {
                                     {/* Arrow */}
                                     <div className="flex flex-col items-center">
                                         <div className="w-16 h-16 rounded-full bg-slate-800 border-2 border-slate-600 flex items-center justify-center grayscale opacity-50 mb-2">
-                                            <img src={`https://ddragon.leagueoflegends.com/cdn/15.24.1/img/profileicon/${candidate?.profileIconId}.png`} className="w-full h-full rounded-full" />
+                                            <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/profileicon/${candidate?.profileIconId}.png`} className="w-full h-full rounded-full" />
                                         </div>
-                                        <span className="text-xs text-slate-500">Current</span>
+                                        <span className="text-xs text-slate-400">{t('onboardingPage.currentIcon')}</span>
                                     </div>
                                     <div className="text-2xl text-blue-500">→</div>
                                     <div className="flex flex-col items-center relative">
                                         <div className="w-20 h-20 rounded-full border-4 border-blue-500 shadow-[0_0_20px_blue] overflow-hidden mb-2">
-                                            <img src={`https://ddragon.leagueoflegends.com/cdn/15.24.1/img/profileicon/${candidate?.targetIconId}.png`} className="w-full h-full" />
+                                            <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/profileicon/${candidate?.targetIconId}.png`} className="w-full h-full" />
                                         </div>
-                                        <span className="text-xs text-blue-400 font-bold">New Icon</span>
-                                        <div className="absolute -top-1 -right-2 bg-blue-600 text-[10px] px-1.5 py-0.5 rounded text-white font-bold">Target</div>
+                                        <span className="text-xs text-blue-400 font-bold">{t('onboardingPage.newIcon')}</span>
+                                        <div className="absolute -top-1 -right-2 bg-blue-600 text-[10px] px-1.5 py-0.5 rounded text-white font-bold">{t('onboardingPage.targetBadge')}</div>
                                     </div>
                                 </div>
 
-                                <Timer expiresAt={candidate?.expiresAt} onExpire={handleTimeout} />
+                                <VerificationTimer expiresAt={candidate?.expiresAt} onExpire={handleTimeout} compact />
                             </div>
 
                             <div className="flex gap-3">
@@ -239,15 +263,23 @@ export default function OnboardingPage() {
                     )}
                 </div>
                 
-                <div className="mt-8 text-center">
-                    <button 
-                        onClick={async () => {
-                            await signOut(); 
-                        }} 
-                        className="text-xs text-slate-600 hover:text-slate-400 underline"
+                <div className="mt-6 text-center space-y-3">
+                    <button
+                        onClick={() => router.push("/dashboard")}
+                        className="text-sm text-slate-400 hover:text-slate-200 underline underline-offset-4 transition"
                     >
-                        {t('onboardingPage.logout')}
+                        {t('onboardingPage.skipForNow')}
                     </button>
+                    <div>
+                        <button
+                            onClick={async () => {
+                                await signOut();
+                            }}
+                            className="text-xs text-slate-600 hover:text-slate-400 underline"
+                        >
+                            {t('onboardingPage.logout')}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -256,43 +288,5 @@ export default function OnboardingPage() {
   );
 }
 
-function Timer({ expiresAt, onExpire }: { expiresAt: number, onExpire?: () => void }) {
-    const { t } = useTranslation();
-    const [timeLeft, setTimeLeft] = useState(0);
-    const hasExpiredRef = React.useRef(false);
-
-    useEffect(() => {
-        if(!expiresAt) return;
-        hasExpiredRef.current = false;
-        
-        const update = () => {
-            const val = Math.max(0, expiresAt - Date.now());
-            setTimeLeft(val);
-            if (val <= 0 && !hasExpiredRef.current) {
-                hasExpiredRef.current = true;
-                if(onExpire) onExpire();
-            }
-        };
-        update();
-        const timer = setInterval(update, 1000);
-        return () => clearInterval(timer);
-    }, [expiresAt, onExpire]);
-
-    const format = (ms: number) => {
-        const totalSec = Math.floor(ms / 1000);
-        const m = Math.floor(totalSec / 60);
-        const s = totalSec % 60;
-        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-    };
-
-    return (
-        <div className="bg-slate-950/50 rounded px-4 py-2 inline-block border border-slate-800">
-            <span className="text-slate-500 text-xs mr-2">{t('onboardingPage.timeRemaining')}</span>
-            <span className={`font-mono font-bold ${timeLeft < 60000 ? 'text-red-400' : 'text-slate-200'}`}>
-                {format(timeLeft)}
-            </span>
-        </div>
-    );
-}
 
 

@@ -2,14 +2,15 @@
 import { createClient } from "@/utils/supabase/server";
 import { fetchMatchIds, fetchMatchDetail } from "@/app/actions/riot";
 import { pruneMatchData } from "@/utils/optimizer";
+import type { MatchV5Response } from "@/app/actions/riot/types";
 
 // Rate limit safe fetcher
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-export async function fetchAndCacheMatches(puuid: string, count: number = 20): Promise<{ matches: any[], logs: string[] }> {
+export async function fetchAndCacheMatches(puuid: string, count: number = 20): Promise<{ matches: MatchV5Response[], logs: string[] }> {
     const logs: string[] = [];
-    const log = (msg: string) => { console.log(msg); logs.push(msg); };
-    const matches: any[] = [];
+    const log = (msg: string) => { logs.push(msg); };
+    const matches: MatchV5Response[] = [];
 
     try {
         const supabase = await createClient();
@@ -22,10 +23,10 @@ export async function fetchAndCacheMatches(puuid: string, count: number = 20): P
         }
 
         const matchIds = idsRes.data;
-        log(`[Service] Found ${matchIds.length} match IDs for ${puuid.slice(0, 8)}...`);
+        log(`[Service] Found ${matchIds.length} match IDs`);
 
         // 2. Cache Check
-        const cachedMap = new Map<string, any>();
+        const cachedMap = new Map<string, MatchV5Response>();
         
         try {
             // Query Supabase for existing matches
@@ -37,7 +38,7 @@ export async function fetchAndCacheMatches(puuid: string, count: number = 20): P
             if (cacheError) {
                 log(`[Service] Cache Lookup Failed: ${cacheError.message}`);
             } else if (cachedMatches) {
-                cachedMatches.forEach((row: any) => {
+                cachedMatches.forEach((row) => {
                     // Cache Validation: Check if CS metrics exist
                     const p = row.data.info?.participants?.[0];
                     const hasCsData = p?.challenges && (
@@ -51,8 +52,8 @@ export async function fetchAndCacheMatches(puuid: string, count: number = 20): P
                 });
                 log(`[Service] Cache Hit (Valid): ${cachedMap.size} / ${cachedMatches.length}`);
             }
-        } catch (dbErr: any) {
-            log(`[Service] Unexpected DB Error: ${dbErr.message}`);
+        } catch (dbErr) {
+            log(`[Service] Unexpected DB Error: ${dbErr instanceof Error ? dbErr.message : String(dbErr)}`);
         }
 
         const missingIds = matchIds.filter(id => !cachedMap.has(id));
@@ -63,7 +64,7 @@ export async function fetchAndCacheMatches(puuid: string, count: number = 20): P
         const matchesToFetch = missingIds; // Removed .slice(0, 10)
         if (matchesToFetch.length > 0) log(`[Service] Fetching ${matchesToFetch.length} new matches...`);
 
-        const newMatches: any[] = [];
+        const newMatches: MatchV5Response[] = [];
         if (matchesToFetch.length > 0) {
             const chunkSize = 8; // Increased from 5 -> 8 for speed
             const chunkedIds = [];
@@ -78,6 +79,7 @@ export async function fetchAndCacheMatches(puuid: string, count: number = 20): P
 
                 const failedIds: string[] = [];
                 let hasRateLimitError = false;
+                let maxRetryAfterMs = 0;
 
                 // Process Results & Identify Failures
                 results.forEach((detail, idx) => {
@@ -88,19 +90,26 @@ export async function fetchAndCacheMatches(puuid: string, count: number = 20): P
                         cachedMap.set(matchId, optimized);
                     } else {
                         failedIds.push(matchId);
-                        if (detail.error?.includes('429')) hasRateLimitError = true;
+                        if (detail.error?.includes('429')) {
+                            hasRateLimitError = true;
+                            if (detail.retryAfterMs && detail.retryAfterMs > maxRetryAfterMs) {
+                                maxRetryAfterMs = detail.retryAfterMs;
+                            }
+                        }
                         log(`[Service] Failed to fetch match ${matchId}: ${detail.error}`);
                     }
                 });
 
-                // BACKOFF & RETRY LOGIC (User Requested)
+                // BACKOFF & RETRY LOGIC
                 if (failedIds.length > 0) {
                     if (hasRateLimitError) {
-                        log(`[Service] ⚠️ 429 Rate Limit Detected. Init Backoff (5s)...`);
-                        await delay(5000); // 5s Backoff
+                        const MIN_RATE_LIMIT_BACKOFF = 3000;
+                        const backoffMs = Math.max(maxRetryAfterMs > 0 ? maxRetryAfterMs + 1000 : 5000, MIN_RATE_LIMIT_BACKOFF);
+                        log(`[Service] ⚠️ 429 Rate Limit Detected. Backoff ${Math.round(backoffMs / 1000)}s${maxRetryAfterMs > 0 ? ' (Retry-After)' : ' (fallback)'}...`);
+                        await delay(backoffMs);
                     } else {
                         // For non-429 errors (network blip?), small wait
-                        await delay(1000); 
+                        await delay(1000);
                     }
 
                     log(`[Service] 🔄 Retrying ${failedIds.length} failed matches...`);
@@ -139,8 +148,8 @@ export async function fetchAndCacheMatches(puuid: string, count: number = 20): P
                 
                 if (insertError) log(`[Service] Cache Insert Error: ${insertError.message}`);
                 else log(`[Service] Cached ${rows.length} new matches`);
-            } catch (dbErr: any) {
-                log(`[Service] Cache Insert Exception: ${dbErr.message}`);
+            } catch (dbErr) {
+                log(`[Service] Cache Insert Exception: ${dbErr instanceof Error ? dbErr.message : String(dbErr)}`);
             }
         }
 
@@ -153,16 +162,14 @@ export async function fetchAndCacheMatches(puuid: string, count: number = 20): P
 
         return { matches, logs };
 
-        return { matches, logs };
-
-    } catch (e: any) {
-        log(`[Service] Critical Error: ${e.message}`);
+    } catch (e) {
+        log(`[Service] Critical Error: ${e instanceof Error ? e.message : String(e)}`);
         return { matches: [], logs };
     }
 }
 
 // Check cache for specific IDs (No API Fetch)
-export async function getCachedMatchesByIds(matchIds: string[]): Promise<any[]> {
+export async function getCachedMatchesByIds(matchIds: string[]): Promise<MatchV5Response[]> {
     if (!matchIds.length) return [];
     
     const supabase = await createClient();

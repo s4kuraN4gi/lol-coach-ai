@@ -210,8 +210,8 @@ export default function TermsOfServiceEnglishPage() {
         </p>
         <p className="mt-4">
           <strong>Email:</strong>{" "}
-          <a href="mailto:s4kuran4gi@gmail.com" className="text-blue-400 hover:underline">
-            s4kuran4gi@gmail.com
+          <a href="mailto:support@lolcoachai.com" className="text-blue-400 hover:underline">
+            support@lolcoachai.com
           </a>
         </p>
       </section>

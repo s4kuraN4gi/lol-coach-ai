@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { RadarStats } from "@/app/actions/stats";
 import { useTranslation } from "@/contexts/LanguageContext";
 
@@ -11,8 +12,11 @@ export default function SkillRadar({ stats }: { stats: RadarStats | null }) {
              <div className="glass-panel rounded-xl p-4 flex items-center justify-center h-full w-full relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-pink-500/5"></div>
                  <div className="text-center relative z-10">
-                     <div className="text-slate-500 font-bold mb-2">{t('widgets.skillRadar.noData')}</div>
-                     <div className="text-xs text-slate-600">{t('widgets.skillRadar.noDataDesc')}</div>
+                     <div className="text-slate-400 font-bold mb-2">{t('widgets.skillRadar.noData')}</div>
+                     <div className="text-xs text-slate-600 mb-3">{t('widgets.skillRadar.noDataDesc')}</div>
+                     <Link href="/dashboard/coach" className="text-xs text-blue-400 hover:text-blue-300 font-bold transition">
+                         {t('widgets.common.tryCoaching', 'Try AI Coaching →')}
+                     </Link>
                  </div>
             </div>
         )
@@ -58,7 +62,7 @@ export default function SkillRadar({ stats }: { stats: RadarStats | null }) {
                     <span className="flex items-center gap-1 text-slate-300">
                         <span className="w-2 h-2 rounded-full bg-blue-500/50"></span> {t('widgets.skillRadar.you')}
                     </span>
-                    <span className="flex items-center gap-1 text-slate-500">
+                    <span className="flex items-center gap-1 text-slate-400">
                         <span className="w-2 h-2 rounded-full bg-slate-700"></span> {t('widgets.skillRadar.avg')}
                     </span>
                 </div>

@@ -4,8 +4,7 @@ import { useMemo } from "react";
 import { useTranslation } from "@/contexts/LanguageContext";
 import DashboardCard from "../components/DashboardCard";
 import { type RadarStats, type CoachFeedbackSummary } from "@/app/actions/stats";
-import { FaLightbulb } from "react-icons/fa";
-import { GiSwordClash, GiEyeTarget, GiGoldBar, GiHeartShield, GiCrossedSwords } from "react-icons/gi";
+import { LuSword, LuEye, LuCoins, LuShield, LuSwords, LuLightbulb } from "react-icons/lu";
 
 type Props = {
     radarStats: RadarStats | null;
@@ -35,7 +34,7 @@ function generateFocusTips(
         // Vision Score is low
         if (radarStats.vision < 50) {
             tips.push({
-                icon: <GiEyeTarget className="text-blue-400" />,
+                icon: <LuEye className="text-blue-400" />,
                 title: t('widgets.nextFocus.tips.vision.title'),
                 description: t('widgets.nextFocus.tips.vision.desc'),
                 priority: radarStats.vision < 30 ? 'high' : 'medium',
@@ -46,7 +45,7 @@ function generateFocusTips(
         // Farming is low
         if (radarStats.farming < 50) {
             tips.push({
-                icon: <GiGoldBar className="text-yellow-400" />,
+                icon: <LuCoins className="text-yellow-400" />,
                 title: t('widgets.nextFocus.tips.farming.title'),
                 description: t('widgets.nextFocus.tips.farming.desc'),
                 priority: radarStats.farming < 30 ? 'high' : 'medium',
@@ -57,7 +56,7 @@ function generateFocusTips(
         // Survival is low (dies too much)
         if (radarStats.survival < 50) {
             tips.push({
-                icon: <GiHeartShield className="text-red-400" />,
+                icon: <LuShield className="text-red-400" />,
                 title: t('widgets.nextFocus.tips.survival.title'),
                 description: t('widgets.nextFocus.tips.survival.desc'),
                 priority: radarStats.survival < 30 ? 'high' : 'medium',
@@ -68,7 +67,7 @@ function generateFocusTips(
         // Objective damage is low
         if (radarStats.objective < 40) {
             tips.push({
-                icon: <GiCrossedSwords className="text-purple-400" />,
+                icon: <LuSwords className="text-purple-400" />,
                 title: t('widgets.nextFocus.tips.objective.title'),
                 description: t('widgets.nextFocus.tips.objective.desc'),
                 priority: 'medium',
@@ -83,7 +82,7 @@ function generateFocusTips(
         if (coachFeedback.macroIssues.length > 0) {
             const topMacro = coachFeedback.macroIssues[0];
             tips.push({
-                icon: <FaLightbulb className="text-emerald-400" />,
+                icon: <LuLightbulb className="text-emerald-400" />,
                 title: `${t('widgets.nextFocus.tips.macro.title')}: ${topMacro.concept}`,
                 description: t('widgets.nextFocus.tips.macro.desc'),
                 priority: topMacro.count >= 3 ? 'high' : 'medium',
@@ -95,7 +94,7 @@ function generateFocusTips(
         if (coachFeedback.microIssues.length > 0) {
             const topMicro = coachFeedback.microIssues[0];
             tips.push({
-                icon: <GiSwordClash className="text-orange-400" />,
+                icon: <LuSword className="text-orange-400" />,
                 title: `${t('widgets.nextFocus.tips.micro.title')}: ${topMicro.category}`,
                 description: t('widgets.nextFocus.tips.micro.desc'),
                 priority: topMicro.count >= 3 ? 'high' : 'medium',
@@ -107,7 +106,7 @@ function generateFocusTips(
     // Losing streak tip
     if (recentWinRate < 40) {
         tips.push({
-            icon: <GiHeartShield className="text-cyan-400" />,
+            icon: <LuShield className="text-cyan-400" />,
             title: t('widgets.nextFocus.tips.mental.title'),
             description: t('widgets.nextFocus.tips.mental.desc'),
             priority: 'high',
@@ -156,7 +155,7 @@ export default function NextGameFocus({ radarStats, coachFeedback, recentWinRate
                     <h3 className="text-sm font-bold text-slate-200">
                         {t('widgets.nextFocus.title')}
                     </h3>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-400">
                         {t('widgets.nextFocus.subtitle')}
                     </p>
                 </div>
@@ -199,7 +198,7 @@ export default function NextGameFocus({ radarStats, coachFeedback, recentWinRate
                     <p className="text-sm text-slate-400">
                         {t('widgets.nextFocus.noTips')}
                     </p>
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-slate-400 mt-1">
                         {t('widgets.nextFocus.keepPlaying')}
                     </p>
                 </div>

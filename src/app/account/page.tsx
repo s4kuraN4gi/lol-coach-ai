@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useTransition, useEffect, useCallback } from "react";
-import DashboardLayout from "../Components/layout/DashboardLayout";
-import LoadingAnimation from "../Components/LoadingAnimation";
-import { useSummoner } from "../Providers/SummonerProvider";
+import { toast } from "sonner";
+import DashboardLayout from "../components/layout/DashboardLayout";
+import LoadingAnimation from "../components/LoadingAnimation";
+import { useSummoner } from "../providers/SummonerProvider";
 import { 
     lookupSummoner,
     verifyAndAddSummoner,
@@ -15,9 +16,12 @@ import {
 } from "../actions/profile";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { useDDragonVersion } from "@/hooks/useDDragonVersion";
+import { logger } from "@/lib/logger";
+import VerificationTimer from "../components/VerificationTimer";
 
 export default function AccountPage() {
-  console.log("Account Page Mounting");
+  const ddVersion = useDDragonVersion();
   const [inputName, setInputName] = useState("");
   const { activeSummoner, refreshSummoner } = useSummoner();
   const [myAccounts, setMyAccounts] = useState<SummonerAccount[]>([]);
@@ -38,7 +42,7 @@ export default function AccountPage() {
           const data = await getSummoners();
           setMyAccounts(data);
       } catch (e) {
-          console.error("Failed to fetch accounts", e);
+          logger.error("Failed to fetch accounts", e);
       } finally {
           setLoading(false);
       }
@@ -54,17 +58,21 @@ export default function AccountPage() {
     setNotification(null);
     if (!inputName.trim()) return;
     if (!inputName.includes('#')) {
-        alert(t('accountPage.messages.formatError'));
+        toast.warning(t('accountPage.messages.formatError'));
         return;
     }
 
     startTransition(async () => {
         // Clear previous state
         setCandidate(null);
-        
+
         const res = await lookupSummoner(inputName.trim());
         if(res.error) {
-            alert(t('accountPage.messages.error') + res.error);
+            let errorMsg = t(`verification.errors.${res.error}`, res.error);
+            if (res.error === 'VERIFICATION_LOCKED' && 'meta' in res && res.meta?.lockedUntil) {
+                errorMsg += `\n${t('accountPage.messages.unlockAt', '解除日時')}: ${res.meta.lockedUntil}`;
+            }
+            toast.error(errorMsg);
             return;
         }
         // Success
@@ -81,21 +89,25 @@ export default function AccountPage() {
           // No code needed, just verify the icon change
           const res = await verifyAndAddSummoner(candidate);
           if(res.error) {
-              alert(res.error);
+              let errorMsg = t(`verification.errors.${res.error}`, res.error);
+              if (res.error === 'ICON_NOT_CHANGED' && 'meta' in res && res.meta) {
+                  errorMsg += `\n(${t('accountPage.verification.current', '現在')}: ${res.meta.current} / ${t('accountPage.verification.target', '指定')}: ${res.meta.target})`;
+                  errorMsg += `\n${t('accountPage.messages.remainingAttempts', '残り試行回数')}: ${res.meta.remaining}`;
+              }
+              toast.error(errorMsg);
               // Fatal errors -> Close verification screen
-              if (res.error.includes("有効期限") || 
-                  res.error.includes("無効です") || 
-                  res.error.includes("ロックしました")) {
+              const FATAL_ERRORS = ['SESSION_EXPIRED', 'INVALID_SESSION', 'LOCKED_TRIPLE_FAIL', 'VERIFICATION_LOCKED'];
+              if (FATAL_ERRORS.includes(res.error)) {
                   handleCancel();
               }
               return;
           }
-          alert(t('accountPage.messages.verificationSuccess'));
+          toast.success(t('accountPage.messages.verificationSuccess'));
           // Reset
           setInputName("");
           setCandidate(null);
           setStep(1);
-          
+
           await Promise.all([refreshSummoner(), fetchAccounts()]);
       });
   }
@@ -104,10 +116,18 @@ export default function AccountPage() {
       startTransition(async () => {
           try {
             const res = await registerVerificationTimeout();
-            if(res.message) setNotification({ type: 'error', message: res.message });
-            else if(res.error) setNotification({ type: 'error', message: t('accountPage.messages.error') + res.error });
+            if (res.errorCode) {
+                let errorMsg = t(`verification.errors.${res.errorCode}`, res.errorCode);
+                if (res.errorCode === 'TIMEOUT' && 'meta' in res && res.meta?.remaining != null) {
+                    errorMsg += `\n${t('accountPage.messages.remainingAttempts', '残り試行回数')}: ${res.meta.remaining}`;
+                }
+                setNotification({ type: 'error', message: errorMsg });
+            } else if (res.error) {
+                const errorMsg = t(`verification.errors.${res.error}`, res.error);
+                setNotification({ type: 'error', message: errorMsg });
+            }
           } catch(e) {
-            console.error(e);
+            logger.error(e);
             setNotification({ type: 'error', message: t('accountPage.messages.unexpectedError') });
           } finally {
             handleCancel();
@@ -125,7 +145,7 @@ export default function AccountPage() {
       startTransition(async () => {
           const res = await switchSummoner(id);
           if(res.error) {
-              alert(t('accountPage.messages.switchFailed') + res.error);
+              toast.error(t('accountPage.messages.switchFailed') + res.error);
               return;
           }
           await refreshSummoner();
@@ -141,7 +161,7 @@ export default function AccountPage() {
       startTransition(async () => {
           const res = await removeSummoner(id);
           if(res.error) {
-              alert(t('accountPage.messages.deleteFailed') + res.error);
+              toast.error(t('accountPage.messages.deleteFailed') + res.error);
               return;
           }
           await Promise.all([refreshSummoner(), fetchAccounts()]);
@@ -172,7 +192,7 @@ export default function AccountPage() {
                     <p className="font-bold mb-1">{notification.type === 'error' ? t('accountPage.notice') : t('accountPage.success')}</p>
                     <p className="whitespace-pre-wrap text-sm opacity-90">{notification.message}</p>
                 </div>
-                <button onClick={() => setNotification(null)} className="text-white/50 hover:text-white transition">✕</button>
+                <button onClick={() => setNotification(null)} className="text-white/50 hover:text-white transition" aria-label={t('common.close', 'Close')}>✕</button>
             </div>
         )}
 
@@ -220,11 +240,11 @@ export default function AccountPage() {
                           {/* Current */}
                           <div className="relative opacity-50 grayscale">
                               <img 
-                                  src={`https://ddragon.leagueoflegends.com/cdn/15.24.1/img/profileicon/${candidate?.profileIconId}.png`} 
+                                  src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/profileicon/${candidate?.profileIconId}.png`} 
                                   alt="current"
                                   className="w-20 h-20 rounded-full border-2 border-slate-600"
                               />
-                              <p className="text-xs text-slate-500 mt-2 font-mono">{t('accountPage.verification.current')}</p>
+                              <p className="text-xs text-slate-400 mt-2 font-mono">{t('accountPage.verification.current')}</p>
                           </div>
 
                           <div className="text-2xl text-blue-500 animate-pulse">➡️</div>
@@ -232,7 +252,7 @@ export default function AccountPage() {
                           {/* Target */}
                           <div className="relative">
                               <img 
-                                  src={`https://ddragon.leagueoflegends.com/cdn/15.24.1/img/profileicon/${candidate?.targetIconId}.png`} 
+                                  src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/profileicon/${candidate?.targetIconId}.png`} 
                                   alt="target"
                                   className="w-24 h-24 rounded-full border-4 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.5)]"
                               />
@@ -244,12 +264,12 @@ export default function AccountPage() {
                           </div>
                       </div>
 
-                      <Timer expiresAt={candidate?.expiresAt} onExpire={handleTimeout} />
+                      <VerificationTimer expiresAt={candidate?.expiresAt} onExpire={handleTimeout} />
 
                       {(candidate?.failedCount || 0) > 0 && (
                           <div className="mt-4 text-xs font-bold text-red-400 bg-red-900/20 py-1 px-3 rounded-full inline-flex items-center gap-2">
                               <span>⚠️</span> 
-                              <span>Failed Attempts: {candidate.failedCount} / 3</span>
+                              <span>{t('accountPage.verification.failedAttempts')}: {candidate.failedCount} / 3</span>
                           </div>
                       )}
                   </div>
@@ -294,7 +314,7 @@ export default function AccountPage() {
             </h2>
             <ul>
                 {myAccounts.length === 0 && (
-                    <li className="p-8 text-center text-slate-500 italic">{t('accountPage.noAccountsLinked')}</li>
+                    <li className="p-8 text-center text-slate-400 italic">{t('accountPage.noAccountsLinked')}</li>
                 )}
                 {myAccounts.map(acc => {
                     const isActive = activeSummoner?.id === acc.id;
@@ -305,7 +325,7 @@ export default function AccountPage() {
                                 <div>
                                     <p className={`font-bold text-lg ${isActive ? 'text-white' : 'text-slate-400'}`}>{acc.summoner_name}</p>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-xs text-slate-500 font-mono bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">{acc.region}</span>
+                                        <span className="text-xs text-slate-400 font-mono bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800">{acc.region}</span>
                                         {isActive && <span className="text-xs text-blue-300 font-bold border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 rounded-full">{t('accountPage.active')}</span>}
                                     </div>
                                 </div>
@@ -351,43 +371,4 @@ export default function AccountPage() {
   );
 }
 
-function Timer({ expiresAt, onExpire }: { expiresAt: number, onExpire?: () => void }) {
-    const [timeLeft, setTimeLeft] = useState(0);
-    const hasExpiredRef = React.useRef(false);
-    const { t } = useTranslation();
-
-    useEffect(() => {
-        if(!expiresAt) return;
-        hasExpiredRef.current = false;
-        
-        const update = () => {
-            const val = Math.max(0, expiresAt - Date.now());
-            setTimeLeft(val);
-            if (val <= 0 && !hasExpiredRef.current) {
-                hasExpiredRef.current = true;
-                if(onExpire) onExpire();
-            }
-        };
-        update();
-        const timer = setInterval(update, 1000);
-        return () => clearInterval(timer);
-    }, [expiresAt, onExpire]);
-
-    const format = (ms: number) => {
-        const totalSec = Math.floor(ms / 1000);
-        const m = Math.floor(totalSec / 60);
-        const s = totalSec % 60;
-        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-    };
-
-    return (
-        <div className="bg-slate-900/50 rounded p-3 inline-block">
-            <p className="text-xs text-slate-500 mb-1">{t('accountPage.verification.timeLimit')}</p>
-            <p className={`text-xl font-mono font-bold tracking-widest ${timeLeft < 60000 ? 'text-red-500 animate-pulse' : 'text-slate-200'}`}>
-                {format(timeLeft)}
-            </p>
-            <p className="text-[10px] text-slate-600">{t('accountPage.verification.verifyWithin')}</p>
-        </div>
-    );
-}
 

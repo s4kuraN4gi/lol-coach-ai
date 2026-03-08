@@ -1,5 +1,5 @@
 // loading.tsx - Shows immediately while page loads (Streaming SSR)
-import DashboardLayout from "@/app/Components/layout/DashboardLayout";
+import DashboardLayout from "@/app/components/layout/DashboardLayout";
 import MatchSkeleton from "../../components/skeletons/MatchSkeleton";
 
 export default function MatchLoading() {

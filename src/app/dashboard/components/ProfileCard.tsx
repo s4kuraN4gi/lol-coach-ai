@@ -3,6 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { useDDragonVersion } from '@/hooks/useDDragonVersion';
 import { FaChartLine, FaLightbulb, FaMap, FaCrosshairs } from 'react-icons/fa';
 
 type RankInfo = {
@@ -100,7 +101,8 @@ export default function ProfileCard({
     topChampions = []
 }: ProfileCardProps) {
     const { t } = useTranslation();
-    const iconUrl = `https://ddragon.leagueoflegends.com/cdn/14.23.1/img/profileicon/${summoner.profileIconId}.png`;
+    const version = useDDragonVersion();
+    const iconUrl = `https://ddragon.leagueoflegends.com/cdn/${version}/img/profileicon/${summoner.profileIconId}.png`;
 
     // Calculate recent form (last 10 games)
     const last10 = recentMatches.slice(0, 10);
@@ -180,7 +182,7 @@ export default function ProfileCard({
                                 {summoner.name}
                             </h2>
                             {summoner.tagLine && (
-                                <p className="text-sm text-slate-500 font-medium font-mono">#{summoner.tagLine}</p>
+                                <p className="text-sm text-slate-400 font-medium font-mono">#{summoner.tagLine}</p>
                             )}
                         </div>
                     </div>
@@ -239,7 +241,7 @@ export default function ProfileCard({
                             ))}
                         </div>
                         <div className="flex justify-between mt-1">
-                            <span className="text-[10px] text-slate-500">
+                            <span className="text-[10px] text-slate-400">
                                 {recentWins}W {last10.length - recentWins}L
                             </span>
                         </div>
@@ -274,7 +276,7 @@ export default function ProfileCard({
                                 {/* Most Played */}
                                 {mostPlayedRole && (
                                     <div className="flex items-center justify-between">
-                                        <span className="text-[10px] text-slate-500">{t('widgets.profileCard.mostPlayed')}</span>
+                                        <span className="text-[10px] text-slate-400">{t('widgets.profileCard.mostPlayed')}</span>
                                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${ROLE_CONFIG[mostPlayedRole[0]].color} text-white`}>
                                             {ROLE_CONFIG[mostPlayedRole[0]].label} ({Math.round((mostPlayedRole[1] / totalRoleGames) * 100)}%)
                                         </span>
@@ -282,7 +284,7 @@ export default function ProfileCard({
                                 )}
                             </div>
                         ) : (
-                            <div className="text-center text-slate-500 text-[10px] py-2">
+                            <div className="text-center text-slate-400 text-[10px] py-2">
                                 {t('widgets.profileCard.noData')}
                             </div>
                         )}
@@ -299,7 +301,7 @@ export default function ProfileCard({
                                 {topChampions.slice(0, 3).map((champ, i) => (
                                     <div key={champ.name} className="relative group/champ">
                                         <Image
-                                            src={`https://ddragon.leagueoflegends.com/cdn/14.23.1/img/champion/${champ.name}.png`}
+                                            src={`https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${champ.name}.png`}
                                             alt={champ.name}
                                             width={40}
                                             height={40}
@@ -322,7 +324,7 @@ export default function ProfileCard({
                                 ))}
                             </div>
                         ) : (
-                            <div className="text-center text-slate-500 text-[10px] py-2">
+                            <div className="text-center text-slate-400 text-[10px] py-2">
                                 {t('widgets.profileCard.noData')}
                             </div>
                         )}
@@ -340,20 +342,20 @@ export default function ProfileCard({
                         {monthlyStats && monthlyStats.rankedGames > 0 ? (
                             <div className="space-y-1">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-[10px] text-slate-500">{formatMonth(monthlyStats.month)}</span>
+                                    <span className="text-[10px] text-slate-400">{formatMonth(monthlyStats.month)}</span>
                                     <span className={`text-sm font-bold ${monthlyStats.winRate >= 50 ? 'text-green-400' : 'text-red-400'}`}>
                                         {monthlyStats.winRate}%
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2 text-xs">
                                     <span className="text-green-400">{monthlyStats.wins}W</span>
-                                    <span className="text-slate-500">/</span>
+                                    <span className="text-slate-400">/</span>
                                     <span className="text-red-400">{monthlyStats.losses}L</span>
-                                    <span className="text-slate-500 ml-auto">{monthlyStats.rankedGames} {t('widgets.profileCard.games')}</span>
+                                    <span className="text-slate-400 ml-auto">{monthlyStats.rankedGames} {t('widgets.profileCard.games')}</span>
                                 </div>
                             </div>
                         ) : (
-                            <div className="text-center text-slate-500 text-[10px] py-2">
+                            <div className="text-center text-slate-400 text-[10px] py-2">
                                 {t('widgets.profileCard.noMonthlyData')}
                             </div>
                         )}
@@ -388,7 +390,7 @@ export default function ProfileCard({
                                             ))}
                                         </div>
                                     ) : (
-                                        <span className="text-[10px] text-slate-500">{t('widgets.profileCard.noData')}</span>
+                                        <span className="text-[10px] text-slate-400">{t('widgets.profileCard.noData')}</span>
                                     )}
                                 </div>
 
@@ -413,17 +415,17 @@ export default function ProfileCard({
                                             ))}
                                         </div>
                                     ) : (
-                                        <span className="text-[10px] text-slate-500">{t('widgets.profileCard.noData')}</span>
+                                        <span className="text-[10px] text-slate-400">{t('widgets.profileCard.noData')}</span>
                                     )}
                                 </div>
 
                                 {/* Analysis Count */}
-                                <div className="text-[10px] text-slate-500 text-right pt-1 border-t border-slate-700/50">
+                                <div className="text-[10px] text-slate-400 text-right pt-1 border-t border-slate-700/50">
                                     {coachFeedback.macroAnalyses + coachFeedback.microAnalyses} {t('widgets.profileCard.analysesCompleted')}
                                 </div>
                             </div>
                         ) : (
-                            <div className="text-center text-slate-500 text-[10px] py-2">
+                            <div className="text-center text-slate-400 text-[10px] py-2">
                                 {t('widgets.profileCard.noCoachData')}
                             </div>
                         )}
@@ -432,7 +434,7 @@ export default function ProfileCard({
 
                 {/* Empty state if no data */}
                 {last10.length === 0 && !rankInfo && !monthlyStats && !coachFeedback && (
-                    <div className="text-center text-slate-500 text-sm py-4">
+                    <div className="text-center text-slate-400 text-sm py-4">
                         {t('widgets.profileCard.noData')}
                     </div>
                 )}

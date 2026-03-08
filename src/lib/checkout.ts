@@ -1,8 +1,19 @@
-export async function triggerStripeCheckout(tier: 'premium' | 'extra' = 'premium') {
+import { toast } from "sonner";
+
+type TranslationFn = (key: string, fallback?: string) => string;
+
+export async function triggerStripeCheckout(tier: 'premium' | 'extra' = 'premium', t?: TranslationFn, billing: 'monthly' | 'annual' = 'monthly') {
     try {
-        const priceId = tier === 'extra'
-            ? process.env.NEXT_PUBLIC_STRIPE_EXTRA_PRICE_ID
-            : process.env.NEXT_PUBLIC_STRIPE_PRICE_ID;
+        let priceId: string | undefined;
+        if (tier === 'extra') {
+            priceId = billing === 'annual'
+                ? process.env.NEXT_PUBLIC_STRIPE_EXTRA_ANNUAL_PRICE_ID
+                : process.env.NEXT_PUBLIC_STRIPE_EXTRA_PRICE_ID;
+        } else {
+            priceId = billing === 'annual'
+                ? process.env.NEXT_PUBLIC_STRIPE_PREMIUM_ANNUAL_PRICE_ID
+                : process.env.NEXT_PUBLIC_STRIPE_PRICE_ID;
+        }
 
         const response = await fetch('/api/checkout', {
             method: 'POST',
@@ -15,8 +26,7 @@ export async function triggerStripeCheckout(tier: 'premium' | 'extra' = 'premium
         });
 
         if (!response.ok) {
-            console.error('Checkout error:', response.statusText);
-            alert('決済の開始に失敗しました。');
+            toast.error(t?.('checkoutErrors.failed', 'Checkout failed. Please try again.') ?? 'Checkout failed. Please try again.');
             return;
         }
 
@@ -24,16 +34,14 @@ export async function triggerStripeCheckout(tier: 'premium' | 'extra' = 'premium
         if (url) {
             window.location.href = url;
         } else {
-             console.error('No checkout URL returned');
-             alert('決済URLの取得に失敗しました。');
+            toast.error(t?.('checkoutErrors.failed', 'Checkout failed. Please try again.') ?? 'Checkout failed. Please try again.');
         }
-    } catch (error) {
-        console.error('Checkout error:', error);
-        alert('エラーが発生しました。');
+    } catch {
+        toast.error(t?.('checkoutErrors.error', 'An error occurred. Please try again.') ?? 'An error occurred. Please try again.');
     }
 }
 
-export async function triggerStripePortal() {
+export async function triggerStripePortal(t?: TranslationFn) {
     try {
         const response = await fetch('/api/billing', {
             method: 'POST',
@@ -43,9 +51,7 @@ export async function triggerStripePortal() {
         });
 
         if (!response.ok) {
-            const errText = await response.text();
-            console.error('Portal error:', response.statusText, errText);
-            alert(`ポータルの起動に失敗しました: ${errText}`);
+            toast.error(t?.('checkoutErrors.portalFailed', 'Failed to open billing portal.') ?? 'Failed to open billing portal.');
             return;
         }
 
@@ -53,11 +59,9 @@ export async function triggerStripePortal() {
         if (url) {
             window.location.href = url;
         } else {
-             console.error('No portal URL returned');
-             alert('ポータルURLの取得に失敗しました。');
+            toast.error(t?.('checkoutErrors.portalFailed', 'Failed to open billing portal.') ?? 'Failed to open billing portal.');
         }
-    } catch (error) {
-        console.error('Portal error:', error);
-        alert('エラーが発生しました。');
+    } catch {
+        toast.error(t?.('checkoutErrors.error', 'An error occurred. Please try again.') ?? 'An error occurred. Please try again.');
     }
 }

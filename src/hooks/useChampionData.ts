@@ -1,6 +1,7 @@
 "use client";
 
 import useSWR from "swr";
+import type { MatchV5Response } from "@/app/actions/riot/types";
 
 // Fetcher for match IDs filtered by champion
 async function fetchChampionMatchIds(
@@ -28,10 +29,10 @@ async function fetchChampionMatchIds(
 }
 
 // Fetcher for individual match detail
-async function fetchMatchDetail(matchId: string): Promise<any> {
+async function fetchMatchDetail(matchId: string) {
     const { fetchMatchDetail: fetchDetail } = await import("@/app/actions/riot");
     const res = await fetchDetail(matchId);
-    return res.success ? res.data : null;
+    return res.success ? res.data ?? null : null;
 }
 
 /**
@@ -92,11 +93,11 @@ export function useChampionMatchDetails(matchIds: string[]) {
             const results = await Promise.all(
                 matchIds.map(async (id) => {
                     const res = await fetchDetail(id);
-                    return res.success ? res.data : null;
+                    return res.success ? res.data ?? null : null;
                 })
             );
 
-            return results.filter(Boolean);
+            return results.filter((r): r is MatchV5Response => r != null);
         },
         {
             dedupingInterval: 60000, // 1 minute

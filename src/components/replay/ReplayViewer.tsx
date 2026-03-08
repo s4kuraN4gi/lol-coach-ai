@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useMemo } from "react";
 import { ReplayData } from "@/app/actions/replay";
+import { useDDragonVersion } from "@/hooks/useDDragonVersion";
 
 type ReplayViewerProps = {
     data: ReplayData;
@@ -17,7 +18,7 @@ type ReplayViewerProps = {
 const MAX_COORD = 14820; // More precise edge
 
 export default function ReplayViewer({ data }: ReplayViewerProps) {
-    console.log("ReplayViewer MOUNTED", { data });
+    const ddVersion = useDDragonVersion();
     const [currentTime, setCurrentTime] = useState(0); // in milliseconds
     const [isPlaying, setIsPlaying] = useState(false);
     const [speed, setSpeed] = useState(1);
@@ -75,11 +76,11 @@ export default function ReplayViewer({ data }: ReplayViewerProps) {
                 {/* Background Map */}
                 <div 
                     className="absolute inset-0 bg-cover bg-center opacity-80"
-                    style={{ backgroundImage: `url('https://ddragon.leagueoflegends.com/cdn/15.24.1/img/map/map11.png')` }}
+                    style={{ backgroundImage: `url('https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/map/map11.png')` }}
                 ></div>
 
                 {/* Champions */}
-                {participants.map((p: any) => {
+                {participants.map((p: { participantId: number; championName: string; teamId: number }) => {
                     // Get position from frame
                     if (!currentFrame?.participantFrames) return null;
                     const pFrame = currentFrame.participantFrames[p.participantId.toString()];
@@ -109,7 +110,7 @@ export default function ReplayViewer({ data }: ReplayViewerProps) {
                         >
                             <div className={`relative w-full h-full rounded-full overflow-hidden border-2 ${isBlue ? 'border-blue-500 shadow-[0_0_10px_blue]' : 'border-red-500 shadow-[0_0_10px_red]'} bg-black`}>
                                 <img 
-                                    src={`https://ddragon.leagueoflegends.com/cdn/15.24.1/img/champion/${p.championName}.png`} 
+                                    src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/champion/${p.championName}.png`} 
                                     alt={p.championName}
                                     className="w-full h-full object-cover scale-110"
                                 />

@@ -16,12 +16,38 @@ export default function ChampionSelectorModal({ isOpen, onClose, onSelect, champ
   const [search, setSearch] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (isOpen) {
       setSearch("");
       setTimeout(() => searchRef.current?.focus(), 100);
     }
   }, [isOpen]);
+
+  // Focus trap + Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key !== 'Tab') return;
+      const focusable = dialog.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last?.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first?.focus(); }
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   const filtered = useMemo(() => {
     if (!search) return championList;
@@ -43,15 +69,19 @@ export default function ChampionSelectorModal({ isOpen, onClose, onSelect, champ
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="champion-selector-title"
         className="bg-slate-900 border border-slate-700 rounded-xl w-[520px] max-h-[70vh] flex flex-col shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="p-3 border-b border-slate-800 flex items-center justify-between">
-          <h3 className="font-bold text-white text-sm">
+          <h3 id="champion-selector-title" className="font-bold text-white text-sm">
             {language === "ja" ? "チャンピオン選択" : language === "ko" ? "챔피언 선택" : "Select Champion"}
           </h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-white text-lg leading-none">&times;</button>
+          <button onClick={onClose} className="text-slate-400 hover:text-white text-lg leading-none" aria-label="Close">&times;</button>
         </div>
 
         {/* Search */}
@@ -96,7 +126,7 @@ export default function ChampionSelectorModal({ isOpen, onClose, onSelect, champ
           </div>
 
           {filtered.length === 0 && (
-            <div className="text-center text-slate-500 text-sm py-8">
+            <div className="text-center text-slate-400 text-sm py-8">
               {language === "ja" ? "チャンピオンが見つかりません" : language === "ko" ? "챔피언을 찾을 수 없습니다" : "No champions found"}
             </div>
           )}

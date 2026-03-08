@@ -192,7 +192,7 @@ export default function MicroAnalysisResult({ result, onReanalyze }: Props) {
                     <h5 className="font-bold text-white flex items-center gap-2">
                         <span className="text-purple-400">📊</span>
                         {t('coachPage.micro.situationSnapshot', '状況スナップショット')}
-                        <span className="text-xs text-slate-500">@ {enhanced.situationSnapshot.gameTime}</span>
+                        <span className="text-xs text-slate-400">@ {enhanced.situationSnapshot.gameTime}</span>
                     </h5>
                     {expandedSections.situation ? <FaChevronUp className="text-slate-400" /> : <FaChevronDown className="text-slate-400" />}
                 </button>
@@ -224,7 +224,7 @@ export default function MicroAnalysisResult({ result, onReanalyze }: Props) {
                                         <span className="text-slate-400">Ult</span>
                                         <span>{enhanced.situationSnapshot.myStatus.ultimateReady === true ? '✓' : enhanced.situationSnapshot.myStatus.ultimateReady === false ? '✗' : '?'}</span>
                                     </div>
-                                    <div className="text-xs text-slate-500 mt-1">
+                                    <div className="text-xs text-slate-400 mt-1">
                                         {enhanced.situationSnapshot.myStatus.keyAbilitiesReady}
                                     </div>
                                 </div>
@@ -254,7 +254,7 @@ export default function MicroAnalysisResult({ result, onReanalyze }: Props) {
                                         <span className="text-slate-400">Ult</span>
                                         <span>{enhanced.situationSnapshot.enemyStatus.ultimateReady === true ? '✓' : enhanced.situationSnapshot.enemyStatus.ultimateReady === false ? '✗' : '?'}</span>
                                     </div>
-                                    <div className="text-xs text-slate-500 mt-1">
+                                    <div className="text-xs text-slate-400 mt-1">
                                         {enhanced.situationSnapshot.enemyStatus.keyAbilitiesReady}
                                     </div>
                                 </div>
@@ -266,19 +266,19 @@ export default function MicroAnalysisResult({ result, onReanalyze }: Props) {
                             <h6 className="text-xs font-bold text-slate-400 mb-2">{t('coachPage.micro.environment', '環境')}</h6>
                             <div className="grid grid-cols-2 gap-2 text-xs">
                                 <div>
-                                    <span className="text-slate-500">Minions:</span>{' '}
+                                    <span className="text-slate-400">Minions:</span>{' '}
                                     <span className="text-slate-300">{enhanced.situationSnapshot.environment.minionAdvantage}</span>
                                 </div>
                                 <div>
-                                    <span className="text-slate-500">Wave:</span>{' '}
+                                    <span className="text-slate-400">Wave:</span>{' '}
                                     <span className="text-slate-300">{enhanced.situationSnapshot.environment.wavePosition}</span>
                                 </div>
                                 <div>
-                                    <span className="text-slate-500">JG Threat:</span>{' '}
+                                    <span className="text-slate-400">JG Threat:</span>{' '}
                                     <span className="text-slate-300">{enhanced.situationSnapshot.environment.junglerThreat}</span>
                                 </div>
                                 <div>
-                                    <span className="text-slate-500">Vision:</span>{' '}
+                                    <span className="text-slate-400">Vision:</span>{' '}
                                     <span className="text-slate-300">{enhanced.situationSnapshot.environment.visionControl}</span>
                                 </div>
                             </div>
@@ -315,7 +315,7 @@ export default function MicroAnalysisResult({ result, onReanalyze }: Props) {
                                         <div className="text-xs text-slate-400">{t('coachPage.micro.damageGiven', '与ダメージ')}</div>
                                         <div className="text-lg font-bold text-green-400">{enhanced.tradeAnalysis.hpExchanged.damageGiven}</div>
                                     </div>
-                                    <div className="text-slate-500">vs</div>
+                                    <div className="text-slate-400">vs</div>
                                     <div className="flex-1 p-3 bg-red-900/20 rounded border border-red-500/30 text-center">
                                         <div className="text-xs text-slate-400">{t('coachPage.micro.damageTaken', '被ダメージ')}</div>
                                         <div className="text-lg font-bold text-red-400">{enhanced.tradeAnalysis.hpExchanged.damageTaken}</div>
@@ -472,7 +472,7 @@ export default function MicroAnalysisResult({ result, onReanalyze }: Props) {
                     <h5 className="font-bold text-white flex items-center gap-2">
                         <span className="text-green-400">📝</span>
                         {t('coachPage.micro.improvements', '改善ポイント')}
-                        <span className="text-xs text-slate-500">({enhanced.improvements.length})</span>
+                        <span className="text-xs text-slate-400">({enhanced.improvements.length})</span>
                     </h5>
                     {expandedSections.improvements ? <FaChevronUp className="text-slate-400" /> : <FaChevronDown className="text-slate-400" />}
                 </button>

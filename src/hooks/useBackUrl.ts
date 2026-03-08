@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@/app/Providers/AuthProvider";
+import { useAuth } from "@/app/providers/AuthProvider";
 
 /**
  * Returns the appropriate "back" URL based on auth state.

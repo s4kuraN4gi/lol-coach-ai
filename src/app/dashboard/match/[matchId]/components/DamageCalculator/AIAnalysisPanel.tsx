@@ -118,8 +118,8 @@ export default function AIAnalysisPanel({
       } else {
         setError(res.error || t('damageCalculator.aiAnalysis.error'));
       }
-    } catch (e: any) {
-      setError(e.message || t('damageCalculator.aiAnalysis.error'));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('damageCalculator.aiAnalysis.error'));
     } finally {
       setIsLoading(false);
     }
@@ -143,7 +143,7 @@ export default function AIAnalysisPanel({
             </p>
             <Link
               href="/pricing"
-              className="text-xs text-slate-500 hover:text-slate-300 transition"
+              className="text-xs text-slate-400 hover:text-slate-300 transition"
             >
               {t('premium.featureGate.viewPlans', '料金プランを見る')}
             </Link>
@@ -212,7 +212,7 @@ export default function AIAnalysisPanel({
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="border-b border-slate-700 text-slate-500">
+                  <tr className="border-b border-slate-700 text-slate-400">
                     <th className="text-left py-1.5 px-2">#</th>
                     <th className="text-left py-1.5 px-2">{t('damageCalculator.aiAnalysis.action', 'アクション')}</th>
                     <th className="text-right py-1.5 px-2">{t('damageCalculator.aiAnalysis.damage', 'ダメージ')}</th>
@@ -224,7 +224,7 @@ export default function AIAnalysisPanel({
                 <tbody>
                   {result.comboBreakdown.map((step) => (
                     <tr key={step.step} className="border-b border-slate-800/50 hover:bg-slate-700/20">
-                      <td className="py-1.5 px-2 text-slate-500">{step.step}</td>
+                      <td className="py-1.5 px-2 text-slate-400">{step.step}</td>
                       <td className="py-1.5 px-2 text-slate-200 font-mono">{step.action}</td>
                       <td className={`py-1.5 px-2 text-right font-bold ${
                         step.type === 'physical' ? 'text-orange-400' :
@@ -241,7 +241,7 @@ export default function AIAnalysisPanel({
                         </span>
                       </td>
                       <td className="py-1.5 px-2 text-right text-slate-300 font-bold">{step.cumulative}</td>
-                      <td className="py-1.5 px-2 text-slate-500 max-w-[200px] truncate">{step.notes}</td>
+                      <td className="py-1.5 px-2 text-slate-400 max-w-[200px] truncate">{step.notes}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -253,7 +253,7 @@ export default function AIAnalysisPanel({
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {/* Total Damage */}
             <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50 text-center">
-              <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">
+              <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">
                 {t('damageCalculator.aiAnalysis.totalDamage', '総合ダメージ')}
               </div>
               <div className="text-xl font-black text-white">{result.totalComboDamage}</div>
@@ -265,7 +265,7 @@ export default function AIAnalysisPanel({
                 ? 'bg-emerald-900/20 border-emerald-500/30'
                 : 'bg-red-900/20 border-red-500/30'
             }`}>
-              <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">
+              <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">
                 {t('damageCalculator.aiAnalysis.killPotential', 'キルポテンシャル')}
               </div>
               <div className={`text-sm font-bold ${result.killPotential.canKill ? 'text-emerald-400' : 'text-red-400'}`}>
@@ -282,18 +282,18 @@ export default function AIAnalysisPanel({
 
             {/* DPS */}
             <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50 text-center">
-              <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">
+              <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">
                 {t('damageCalculator.aiAnalysis.dps', 'DPS')}
               </div>
               <div className="text-xl font-black text-white">{result.extendedTrade.dps}</div>
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-slate-400">
                 {result.extendedTrade.timeToKill > 0 ? `${result.extendedTrade.timeToKill}s` : '-'}
               </div>
             </div>
 
             {/* HP % */}
             <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50 text-center">
-              <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">
+              <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">
                 HP %
               </div>
               <div className="text-xl font-black text-white">

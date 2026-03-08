@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import DOMPurify from "isomorphic-dompurify";
 
 type Props = {
   items: (string | null)[];
@@ -80,7 +81,7 @@ function ItemTooltip({ itemId, itemDataMap }: { itemId: string; itemDataMap: Rec
         {descriptionHtml && (
           <div
             className="text-[10px] text-slate-300 leading-relaxed whitespace-pre-line [&_div]:mb-1"
-            dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(descriptionHtml) }}
           />
         )}
       </div>

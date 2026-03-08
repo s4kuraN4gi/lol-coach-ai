@@ -50,7 +50,7 @@ export default function RankGraph({ rankHistory }: Props) {
                     {/* Current Rank Display */}
                     {currentRankData ? (
                         <div className="text-center mb-4">
-                            <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">
+                            <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">
                                 {t('widgets.rankGraph.currentRank')}
                             </div>
                             <div
@@ -100,7 +100,7 @@ export default function RankGraph({ rankHistory }: Props) {
                                             </svg>
                                         )}
                                     </div>
-                                    <span className={`text-[10px] ${daysCollected >= day ? 'text-slate-300' : 'text-slate-500'}`}>
+                                    <span className={`text-[10px] ${daysCollected >= day ? 'text-slate-300' : 'text-slate-400'}`}>
                                         Day {day}
                                     </span>
                                 </div>
@@ -110,7 +110,7 @@ export default function RankGraph({ rankHistory }: Props) {
 
                     {/* Explanation */}
                     <div className="text-center">
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-slate-400">
                             {daysCollected === 0
                                 ? t('widgets.rankGraph.noRankData')
                                 : t('widgets.rankGraph.howItWorks')

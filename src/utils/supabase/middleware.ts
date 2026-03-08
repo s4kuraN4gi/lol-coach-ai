@@ -1,9 +1,20 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function updateSession(request: NextRequest) {
+export async function updateSession(
+  request: NextRequest,
+  extraRequestHeaders?: Record<string, string>,
+) {
+  // Merge extra headers (e.g. x-nonce) so server components can read them via headers()
+  const requestHeaders = new Headers(request.headers)
+  if (extraRequestHeaders) {
+    for (const [key, value] of Object.entries(extraRequestHeaders)) {
+      requestHeaders.set(key, value)
+    }
+  }
+
   let supabaseResponse = NextResponse.next({
-    request,
+    request: { headers: requestHeaders },
   })
 
   // Create a Supabase client that uses the request cookies for auth
@@ -16,14 +27,18 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
+          cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           )
           supabaseResponse = NextResponse.next({
-            request,
+            request: { headers: requestHeaders },
           })
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, {
+              ...options,
+              sameSite: 'lax',
+              secure: process.env.NODE_ENV === 'production',
+            })
           )
         },
       },
@@ -36,12 +51,16 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   // ROUTE PROTECTION LOGIC
-  
-  // 1. If user is NOT logged in and tries to access /dashboard, redirect to /login
-  if (
-    !user && 
-    request.nextUrl.pathname.startsWith('/dashboard')
-  ) {
+
+  // Protected routes that require authentication
+  const protectedPaths = ['/dashboard', '/api/chat', '/api/checkout', '/api/billing']
+  const isProtectedRoute = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))
+
+  if (!user && isProtectedRoute) {
+    // API routes return 401 JSON, page routes redirect to login
+    if (request.nextUrl.pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)

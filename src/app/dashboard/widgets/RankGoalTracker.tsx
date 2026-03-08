@@ -133,7 +133,7 @@ export default function RankGoalTracker({ puuid, currentRank }: Props) {
                             <h3 className="text-sm font-bold text-slate-200">
                                 {t('widgets.rankGoal.title')}
                             </h3>
-                            <p className="text-xs text-slate-500">
+                            <p className="text-xs text-slate-400">
                                 {t('widgets.rankGoal.subtitle')}
                             </p>
                         </div>
@@ -209,18 +209,18 @@ export default function RankGoalTracker({ puuid, currentRank }: Props) {
                         <div className="flex items-center justify-between">
                             {/* Current Rank */}
                             <div className="text-center">
-                                <div className="text-[10px] text-slate-500 mb-1">{t('widgets.rankGoal.current')}</div>
+                                <div className="text-[10px] text-slate-400 mb-1">{t('widgets.rankGoal.current')}</div>
                                 {currentRank ? (
                                     <div>
                                         <div className="text-sm font-bold text-slate-200">
                                             {currentRank.tier} {currentRank.rank}
                                         </div>
-                                        <div className="text-xs text-slate-500">
+                                        <div className="text-xs text-slate-400">
                                             {currentRank.leaguePoints} LP
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="text-xs text-slate-500">{t('widgets.rankGoal.unranked')}</div>
+                                    <div className="text-xs text-slate-400">{t('widgets.rankGoal.unranked')}</div>
                                 )}
                             </div>
 
@@ -229,7 +229,7 @@ export default function RankGoalTracker({ puuid, currentRank }: Props) {
 
                             {/* Target Rank */}
                             <div className="text-center">
-                                <div className="text-[10px] text-slate-500 mb-1">{t('widgets.rankGoal.target')}</div>
+                                <div className="text-[10px] text-slate-400 mb-1">{t('widgets.rankGoal.target')}</div>
                                 <div className={`text-sm font-bold ${tierColors.text}`}>
                                     {goal.tier} {TIERS.indexOf(goal.tier) < 7 ? goal.rank : ''}
                                 </div>
@@ -240,7 +240,7 @@ export default function RankGoalTracker({ puuid, currentRank }: Props) {
                         {progress && (
                             <div>
                                 <div className="flex justify-between text-[10px] mb-1">
-                                    <span className="text-slate-500">{t('widgets.rankGoal.progress')}</span>
+                                    <span className="text-slate-400">{t('widgets.rankGoal.progress')}</span>
                                     <span className={progress.achieved ? 'text-emerald-400 font-bold' : 'text-slate-400'}>
                                         {progress.achieved ? t('widgets.rankGoal.achieved') : `${progress.progress}%`}
                                     </span>
@@ -256,7 +256,7 @@ export default function RankGoalTracker({ puuid, currentRank }: Props) {
                                     />
                                 </div>
                                 {!progress.achieved && progress.remaining > 0 && (
-                                    <div className="text-[10px] text-slate-500 mt-1 text-right">
+                                    <div className="text-[10px] text-slate-400 mt-1 text-right">
                                         {t('widgets.rankGoal.remaining').replace('{lp}', String(progress.remaining))}
                                     </div>
                                 )}
@@ -267,7 +267,7 @@ export default function RankGoalTracker({ puuid, currentRank }: Props) {
                         {progress?.achieved && (
                             <button
                                 onClick={handleClearGoal}
-                                className="w-full text-xs text-slate-500 hover:text-slate-300 py-2 transition-colors"
+                                className="w-full text-xs text-slate-400 hover:text-slate-300 py-2 transition-colors"
                             >
                                 {t('widgets.rankGoal.setNewGoal')}
                             </button>

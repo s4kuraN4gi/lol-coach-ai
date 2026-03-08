@@ -1,4 +1,33 @@
 {
+  "serverErrors": {
+    "PREMIUM_ONLY": "この機能はPremiumプラン限定です。プレミアムプランへアップグレードしてご利用ください。",
+    "CUSTOM_KEY_PREMIUM_ONLY": "自前APIキーの利用はPremiumプラン限定です。",
+    "WEEKLY_LIMIT_REACHED": "週間制限に達しました。月曜日にリセットされます。",
+    "FREE_WEEKLY_LIMIT_REACHED": "無料プランの週間制限に達しました。プレミアムプランへのアップグレードで週20回まで分析できます。",
+    "CREDITS_INSUFFICIENT": "クレジットが不足しています。プレミアムプランへアップグレードしてご利用ください。",
+    "GUEST_CREDITS_INSUFFICIENT": "クレジットが不足しています。アカウント登録で週3回まで分析できます！",
+    "AUTH_REQUIRED": "認証が必要です",
+    "PROFILE_NOT_FOUND": "プロフィールが見つかりません",
+    "TIME_DETECTION_FAILED": "ゲーム内時間を検出できませんでした",
+    "ANALYSIS_CORRUPTED": "分析結果が破損していました。再度分析してください。",
+    "ANALYSIS_FAILED": "分析に失敗しました。もう一度お試しください。",
+    "DB_ERROR": "データベースエラーが発生しました。もう一度お試しください。",
+    "RIOT_API_ERROR": "Riot APIとの通信に失敗しました。もう一度お試しください。",
+    "REPLAY_FETCH_FAILED": "リプレイデータの取得に失敗しました。",
+    "SEGMENT_SELECTION_FAILED": "分析セグメントの選択に失敗しました。",
+    "REFERRAL_FAILED": "紹介処理に失敗しました。もう一度お試しください。",
+    "INVALID_CREDENTIALS": "メールアドレスまたはパスワードが正しくありません。"
+  },
+  "authCodeError": {
+    "title": "認証エラー",
+    "message": "認証に失敗しました。もう一度お試しください。",
+    "backToLogin": "ログインに戻る"
+  },
+  "checkoutErrors": {
+    "failed": "決済に失敗しました。もう一度お試しください。",
+    "portalFailed": "請求ポータルを開けませんでした。",
+    "error": "エラーが発生しました。もう一度お試しください。"
+  },
   "common": {
     "backToHome": "← ホームに戻る",
     "backToDashboard": "← ダッシュボードに戻る",
@@ -7,7 +36,8 @@
     "readMore": "解説を読む →",
     "goldReward": "獲得ゴールド (REWARD)",
     "priority": "優先度 (Priority)",
-    "buffEffect": "( + バフ効果 )"
+    "buffEffect": "( + バフ効果 )",
+    "loading": "読み込み中..."
   },
   "footer": {
     "terms": "利用規約",
@@ -21,9 +51,11 @@
       "dashboard": "ダッシュボード",
       "stats": "詳細戦績",
       "economy": "ゴールド経済学",
-      "coach": "AIコーチ",
+      "coach": "マッチ分析",
+      "chat": "AIチャット",
       "analysis": "サモナー解析",
       "account": "アカウント",
+      "pricing": "プラン",
       "champions": "チャンピオン図鑑",
       "items": "アイテム図鑑",
       "runeGuide": "ルーンガイド"
@@ -33,13 +65,30 @@
       "privacy": "プライバシー",
       "legal": "特商法"
     },
-    "logout": "ログアウト"
+    "logout": "ログアウト",
+    "reference": "リファレンス"
   },
   "dashboard": {
     "title": "ダッシュボード",
     "subtitle": "あなたの成長センター",
     "refresh": "データを更新",
     "refreshing": "更新中...",
+    "loading": "読み込み中...",
+    "syncing": "同期中...",
+    "upgrade": "アップグレード",
+    "welcome": {
+      "title": "LoL Coach AI へようこそ！",
+      "desc": "セットアップが完了しました。試合履歴の確認やAIコーチングを始めましょう！",
+      "startCoaching": "AIコーチングを始める",
+      "viewPlans": "プランを見る — 7日間無料体験",
+      "dismiss": "ダッシュボードを見る"
+    },
+    "upgradeSuccess": {
+      "title": "プランが有効化されました！",
+      "desc": "すべてのプレミアム機能をお楽しみください。",
+      "tryCoach": "AIマッチ分析を試す",
+      "dismiss": "ダッシュボードを見る"
+    },
     "noData": {
       "title": "対戦データが見つかりませんでした",
       "description": "連携されたアカウントの直近の対戦履歴（過去10戦）が存在しないか、キャッシュされていません。",
@@ -52,6 +101,16 @@
     "errors": {
       "puuidMissing": "アカウント情報が不完全です（PUUID欠落）。アカウントを再連携してください。",
       "loadFailed": "データの読み込みに失敗しました."
+    },
+    "promo": {
+      "weeklyUsage": "AI分析 (今週)",
+      "remaining": "残り{{count}}回",
+      "upgradeTitle": "Premiumで週20回に拡張",
+      "upgradeDesc": "7日間無料体験 — ミクロ分析・AIコーチングも利用可能",
+      "upgradeCta": "7日間無料で試す",
+      "extraTitle": "Extraで週50回に拡張",
+      "extraDesc": "AIダメージ分析も利用可能",
+      "extraCta": "詳細"
     }
   },
   "championsPage": {
@@ -157,12 +216,16 @@
   },
   "matchDetail": {
     "errorTitle": "試合の読み込みに失敗しました",
+    "errorDesc": "試合の詳細を読み込めませんでした。",
     "returnToDashboard": "ダッシュボードに戻る",
+    "returnToStats": "戦績に戻る",
     "backToStats": "← 戦績に戻る",
     "matchReport": "マッチレポート",
     "aiBeta": "AI BETA",
     "victory": "勝利",
     "defeat": "敗北",
+    "loading": "読み込み中...",
+    "syncing": "同期中...",
     "patch": "パッチ",
     "teamsOverview": "チーム概要",
     "blueTeam": "ブルーチーム",
@@ -291,7 +354,9 @@
       "unexpectedError": "予期せぬエラーが発生しました",
       "switchFailed": "切り替え失敗: ",
       "deleteFailed": "削除失敗: ",
-      "deleteConfirm": "{name} を削除しますか？"
+      "deleteConfirm": "{name} を削除しますか？",
+      "remainingAttempts": "残り試行回数",
+      "unlockAt": "解除日時"
     }
   },
   "chatPage": {
@@ -308,7 +373,7 @@
     "you": "あなた",
     "aiCoach": "AIコーチ",
     "aiThinking": "AI 思考中...",
-    "coachTitle": "LOLE COACH AI",
+    "coachTitle": "LOL COACH AI",
     "selectOrStart": "チャット履歴を選択するか、新しい会話を始めてください",
     "inputPlaceholder": "AIコーチに何でも質問してください...",
     "send": "送信",
@@ -333,7 +398,12 @@
       "checkoutFailed": "決済の開始に失敗しました。",
       "error": "エラーが発生しました。",
       "extraOnly": "Extraプラン限定機能",
-      "viewPlans": "料金プランを見る"
+      "viewPlans": "料金プランを見る",
+      "premiumBenefit": "AIコーチング・ミクロ分析などが利用可能に",
+      "extraBenefit": "AIダメージ分析や高度な機能が利用可能に",
+      "upgradeNow": "アップグレード",
+      "processing": "処理中...",
+      "comparePlans": "プラン比較を見る"
     },
     "promoCard": {
       "title": "プレミアムをアンロック",
@@ -385,7 +455,8 @@
       "fileSelected": "動画選択済み",
       "selectFile": "動画ファイルを選択",
       "invalidYoutube": "無効なYouTube URLです",
-      "selectVideo": "解析する動画を選択してください"
+      "selectVideo": "解析する動画を選択してください",
+      "localFile": "ローカルファイル"
     },
     "micro": {
       "title": "ミクロ解析 (Vision Analysis)",
@@ -401,6 +472,8 @@
       "finalAdvice": "総評",
       "analyzeAnother": "別の場面を解析する",
       "visionError": "Vision解析エラー",
+      "premiumBadge": "Premium",
+      "premiumOnly": "ミクロ分析はPremiumプラン限定機能です。アップグレードしてご利用ください。",
       "youtubeNotSupported": "YouTube動画のVision解析は現在準備中です。ローカルファイルを使用してください。",
       "situationSnapshot": "状況スナップショット",
       "myStatus": "自分",
@@ -473,6 +546,7 @@
       }
     },
     "macro": {
+      "startingJob": "分析ジョブを開始中...",
       "modeLabel": "分析モード (Analysis Mode)",
       "timeLabel": "時間 (任意)",
       "timePlaceholder": "例: 12:30",
@@ -803,6 +877,10 @@
       "csPerMin": "CS/分",
       "visionPerMin": "視界/分",
       "avgDamage": "平均ダメージ"
+    },
+    "common": {
+      "tryCoaching": "AI分析を試す →",
+      "viewChampions": "チャンピオン統計を見る →"
     }
   },
   "tooltip": {
@@ -894,6 +972,18 @@
     "defaultHow": "視界を確保（ワード）し、味方のレーナーが主導権（プッシュ）を握っているタイミングで狩り始めましょう。スマイトのダメージ量を常に確認しておくことが重要です。",
     "defaultWhy": "このオブジェクトを獲得することで、ゴールド差以上のステータス有利をチーム全員が得られます。特に試合が長引くほどその効果は大きくなります。"
   },
+  "errorBoundary": {
+    "title": "エラーが発生しました",
+    "description": "ページの読み込み中に問題が発生しました。もう一度お試しいただくか、ダッシュボードに戻ってください。",
+    "descriptionGeneric": "予期しないエラーが発生しました。もう一度お試しください。",
+    "statsTitle": "統計データの読み込みに失敗しました",
+    "statsDescription": "統計情報の取得中にエラーが発生しました。もう一度お試しください。",
+    "errorDetails": "エラー詳細",
+    "errorDetailsShow": "エラー詳細を表示",
+    "retry": "再試行",
+    "dashboard": "ダッシュボード",
+    "topPage": "トップページ"
+  },
   "settings": {
     "language": "言語",
     "selectLanguage": "言語を選択"
@@ -926,13 +1016,16 @@
       "getStarted": "無料で始める"
     },
     "hero": {
+      "titleLine1": "LEVEL UP",
+      "titleLine2": "YOUR RANK",
       "subtitlePrefix": "AIが",
       "subtitle": "Riot APIからリアルタイムでデータを取得。",
       "subtitleHighlight": "あなた専用",
       "subtitleEnd": "の改善点を分析し、最短でランクアップへ導きます。",
       "ctaStart": "今すぐ始める →",
       "ctaAnalyze": "🎥 無料で動画分析を試す",
-      "freeBadge": "ログイン不要・3回まで無料で分析"
+      "freeBadge": "ログイン不要・3回まで無料で分析",
+      "freeSubText": "無料で始められます — 週3回のAI分析"
     },
     "bento": {
       "skillAnalysis": "あなたのスキルを可視化",
@@ -949,9 +1042,13 @@
       "microDesc": "操作精度、コンボ、ポジショニングを詳細に分析。",
       "winRateChange": "+12% 今週",
       "aiCoachLabel": "AIコーチ",
-      "activeNow": "オンライン"
+      "activeNow": "オンライン",
+      "badgeAiCoaching": "AI搭載コーチング",
+      "skillLabel": "スキル分析",
+      "winRateLabel": "勝率"
     },
     "features": {
+      "label": "機能紹介",
       "sectionTitlePrefix": "データで",
       "sectionTitle": "勝つ",
       "sectionDesc": "感覚に頼らない、データドリブンな上達を実現します。",
@@ -968,6 +1065,22 @@
       "chatFeature2": "試合データ連携",
       "chatFeature3": "個別最適化アドバイス"
     },
+    "howItWorks": {
+      "label": "使い方",
+      "title": "3ステップで上達を始めよう",
+      "stepLabel": "STEP",
+      "step1Title": "Riot IDを連携",
+      "step1Desc": "30秒で完了。パスワードは一切共有しません。",
+      "step2Title": "AIが試合を分析",
+      "step2Desc": "タイムライン・CS・視界・マクロ判断をAIが自動レビュー。",
+      "step3Title": "改善点を提案",
+      "step3Desc": "あなたのデータに基づく、具体的で実践しやすいアドバイス。",
+      "badgeRiotApi": "Riot公式API連携",
+      "badgeAi": "Gemini 2.0 Flash AI",
+      "badgeFree": "週3回 無料分析",
+      "cta": "無料で分析してみる →",
+      "ctaSub": "アカウント登録不要。60秒で結果が出ます。"
+    },
     "cta": {
       "titlePrefix": "今すぐ、",
       "title": "次のランク",
@@ -982,6 +1095,8 @@
   "loginPage": {
     "emptyFields": "ログインIDとパスワードを入力してください",
     "loginFailed": "ログイン失敗：",
+    "tooManyAttempts": "ログイン試行回数が上限に達しました。60秒後に再試行してください。",
+    "googleAuthFailed": "Google認証に失敗しました。もう一度お試しください。",
     "emailNotVerified": "メール認証が完了していません。\n届いたメール内のリンクをクリックしてください。",
     "welcomeBack": "おかえりなさい",
     "initializing": "初期化中...",
@@ -992,13 +1107,36 @@
     "emailLabel": "メールアドレス",
     "passwordLabel": "パスワード",
     "googleLogin": "Googleでログイン",
-    "orContinueWithEmail": "またはメールで続行"
+    "orContinueWithEmail": "またはメールで続行",
+    "invalidCredentials": "メールアドレスまたはパスワードが正しくありません",
+    "rsoPasswordBlocked": "Riotアカウント連携ユーザーはRSO認証でログインしてください"
+  },
+  "resetPasswordPage": {
+    "title": "パスワードリセット",
+    "description": "登録済みのメールアドレスを入力してください。パスワードリセット用のリンクをお送りします。",
+    "emailLabel": "メールアドレス",
+    "emailPlaceholder": "your@email.com",
+    "sendButton": "リセットリンクを送信",
+    "sending": "送信中...",
+    "successMessage": "リセットリンクを送信しました。メールをご確認ください。",
+    "backToLogin": "ログインに戻る",
+    "resetFailed": "リセットリンクの送信に失敗しました。メールアドレスをご確認ください。"
   },
   "signupPage": {
     "allFieldsRequired": "全ての項目を入力してください",
+    "passwordTooShort": "パスワードは8文字以上で入力してください。",
+    "passwordWeak": "弱い — 大文字と数字を追加してください",
+    "passwordMedium": "普通 — 大文字または数字を追加してください",
+    "passwordStrong": "強い",
     "passwordMismatch": "パスワードが一致しません。",
     "alreadyRegistered": "このメールアドレスは既に登録されています。ログインしてください。",
     "registrationFailed": "登録失敗：",
+    "errors": {
+      "invalidEmail": "メールアドレスの形式が正しくありません。",
+      "weakPassword": "パスワードは8文字以上で入力してください。",
+      "tooManyRequests": "リクエストが多すぎます。しばらくしてからお試しください。",
+      "generic": "登録に失敗しました。しばらくしてからお試しください。"
+    },
     "emailSent": "確認メールを送信しました。",
     "checkEmail": "メール内のリンクをクリックして登録を完了してください。",
     "alreadyRegisteredNote": "※ メールが届かない場合は、既に登録済みの可能性があります。\nその場合はログイン画面へお進みください。",
@@ -1011,7 +1149,13 @@
     "passwordLabel": "パスワード",
     "confirmPasswordLabel": "パスワード確認",
     "googleSignup": "Googleで登録",
-    "orRegisterWithEmail": "またはメールで登録"
+    "orRegisterWithEmail": "またはメールで登録",
+    "googleAuthFailed": "Google認証に失敗しました。もう一度お試しください。",
+    "loading": "読み込み中...",
+    "termsAgreement": "登録することで、{terms}および{privacy}に同意したものとみなされます。",
+    "termsOfService": "利用規約",
+    "privacyPolicy": "プライバシーポリシー",
+    "reservedDomain": "このメールドメインは使用できません"
   },
   "onboardingPage": {
     "welcome": "まずは、あなたのアカウントを連携して分析を開始しましょう。",
@@ -1026,7 +1170,25 @@
     "changed": "変更しました",
     "verifySuccess": "認証成功！ダッシュボードへ移動します...",
     "logout": "ログアウトして戻る",
-    "timeRemaining": "残り時間:"
+    "skipForNow": "スキップしてダッシュボードを見る",
+    "timeRemaining": "残り時間:",
+    "welcomeTitle": "ようこそ、サモナー",
+    "enterRiotId": "Riot IDを入力",
+    "currentIcon": "現在",
+    "newIcon": "変更先",
+    "targetBadge": "目標"
+  },
+  "referral": {
+    "title": "友達を招待",
+    "description": "友達が登録してPremiumに加入すると、あなたのサブスクが1週間延長。招待された友達もトライアルが14日間に延長されます！",
+    "descFriend": "招待された友達は14日間の無料体験（通常7日間）で全Premium機能が使えます。",
+    "descYou": "友達がPremiumに加入すると、あなたのサブスクが1週間延長されます！",
+    "copied": "リンクをコピーしました",
+    "copyFailed": "コピーに失敗しました",
+    "copiedShort": "OK",
+    "copy": "コピー",
+    "invited": "招待済み",
+    "rewarded": "特典獲得"
   },
   "pricingPage": {
     "header": {
@@ -1037,6 +1199,19 @@
     },
     "title": "プラン",
     "subtitle": "あなたに合ったプランを選択してください",
+    "billing": {
+      "monthly": "月額",
+      "annual": "年額",
+      "discount": "最大50%OFF",
+      "perYear": "/年",
+      "premiumMonthly": "¥650/月相当 — 34%OFF",
+      "extraMonthly": "¥733/月相当 — 50%OFF",
+      "perMonthEquivalent": "/月相当",
+      "percentOff": "%OFF",
+      "annualSave": "年間プランなら{discount}%OFF",
+      "withAnnual": "年間プランなら",
+      "annualSaving": "年間プランなら {price} (-{discount}%)"
+    },
     "features": {
       "analysisCount": "動画分析回数",
       "segmentCount": "分析セグメント数",
@@ -1088,13 +1263,15 @@
       "name": "プレミアム",
       "priceUnit": "/月",
       "desc": "本気で上達したい方へ",
+      "popularBadge": "人気No.1",
+      "trialBadge": "7日間無料体験",
       "weeklyAnalysis": "週20回",
       "fourSegments": "4セグメント",
       "autoSegments": "自動選択4個",
       "buildAdvice": "ビルドアドバイス",
       "noAds": "広告なし",
       "processing": "処理中...",
-      "subscribe": "プレミアムに登録",
+      "subscribe": "7日間無料で試す",
       "unsubscribe": "登録解除"
     },
     "extra": {
@@ -1104,7 +1281,12 @@
       "weeklyAnalysis": "週50回",
       "fiveSegments": "5セグメント",
       "autoSegments": "自動選択5個",
+      "buildAdvice": "ビルドアドバイス",
+      "noAds": "広告なし",
       "aiDamageAnalysis": "AIダメージ分析",
+      "aiDamageDesc": "ダメージ計算・ルーン・アイテムの最適化をAIが提案",
+      "badge": "BEST VALUE",
+      "recommended": "おすすめ",
       "subscribe": "Extraに登録",
       "processing": "処理中...",
       "unsubscribe": "登録解除"
@@ -1113,21 +1295,35 @@
       "title": "機能比較表",
       "feature": "機能"
     },
+    "fallbackNotice": "表示価格は概算です。正確な金額はチェックアウト時にご確認いただけます。",
     "faq": {
       "title": "よくある質問",
-      "q1": "ゲストと無料会員の違いは？",
-      "a1": "ゲストは登録不要ですぐに試せますが、分析は固定の3シーンのみです。無料会員になると、Riot API連携により試合データから重要なシーンを自動選択し、より的確な分析が受けられます。また、分析履歴も保存されます。",
-      "q2": "プレミアムの解約はいつでもできますか？",
-      "a2": "はい、いつでも解約できます。解約後も期間終了まではプレミアム機能をご利用いただけます。解約後は自動的に無料会員として継続できます。",
-      "q3": "分析回数はいつリセットされますか？",
-      "a3": "無料会員・プレミアムの週間回数は毎週月曜日にリセットされます。ゲストのクレジットは最後の使用から3日後に1回分回復します（最大3回分まで）。",
-      "q4": "支払い方法は何がありますか？",
-      "a4": "クレジットカード（Visa, Mastercard, JCB, American Express）に対応しています。Stripeによる安全な決済処理を行っています。"
+      "q1": "解約はいつでも可能ですか？",
+      "a1": "はい、いつでもキャンセルできます。解約後も現在の請求期間が終了するまではプレミアム機能をご利用いただけます。解約後は自動的に無料会員として継続できます。",
+      "q2": "無料トライアルはありますか？",
+      "a2": "はい、初めてのご利用の方に7日間の無料トライアルをご用意しています。トライアル期間中はプレミアムの全機能をお試しいただけます。",
+      "q3": "プラン変更はできますか？",
+      "a3": "はい、いつでもアップグレード・ダウングレードが可能です。プラン変更時は日割り計算で差額が調整されますので、無駄なくご利用いただけます。",
+      "q4": "年間プランのメリットは？",
+      "a4": "年間プランでは最大50%オフでご利用いただけます。解約後も現在の請求期間が終了するまではプレミアム機能をご利用いただけます。",
+      "q5": "支払い方法は？",
+      "a5": "クレジットカード（Visa, Mastercard, JCB, American Express）に対応しています。すべての決済はStripe経由で安全に処理されます。",
+      "q6": "無料会員でもどこまで使えますか？",
+      "a6": "無料会員は週3回のAI分析が可能です。Riot API連携によるマッチ履歴の閲覧や基本的なスタッツ分析は無制限でご利用いただけます。",
+      "q7": "対応しているリージョン（サーバー）は？",
+      "a7": "現在は日本（JP）サーバーに対応しています。今後、他のリージョンへの対応も予定しています。",
+      "q8": "PremiumとExtraの違いは？",
+      "a8": "Premiumでは週20回のAI分析、4セグメント自動選択、AIコーチングなどが利用可能です。Extraではさらにダメージ分析、5セグメント選択、週50回のAI分析が追加されます。",
+      "q9": "トライアル中にキャンセルしたら課金されますか？",
+      "a9": "いいえ、トライアル期間中にキャンセルすれば一切課金されません。トライアル終了日までに解約すれば無料のまま終了できます。",
+      "q10": "一時停止（Pause）はできますか？",
+      "a10": "はい、1〜3ヶ月のサブスクリプション一時停止が可能です。一時停止中は課金されず、期間終了後に自動で再開します。"
     },
     "ctaPremium": {
       "title": "プレミアムプランをご利用中です",
-      "desc": "全機能をお楽しみください",
-      "button": "ダッシュボードへ"
+      "desc": "Extraプランならダメージ分析やセグメント追加など、さらに充実した機能が使えます",
+      "button": "ダッシュボードへ",
+      "upgradeToExtra": "Extraにアップグレード"
     },
     "ctaExtra": {
       "title": "Extraプランをご利用中です",
@@ -1136,7 +1332,7 @@
     },
     "ctaUpgrade": {
       "title": "プレミアムプランでさらに上達",
-      "desc": "週20回の分析と5セグメント自動選択で効率的に改善"
+      "desc": "週20回の分析と4セグメント自動選択で効率的に改善"
     },
     "ctaGuest": {
       "title": "まずは無料で試してみませんか？",
@@ -1160,7 +1356,18 @@
       "situationSnapshot": "状況スナップショット",
       "tradeAnalysis": "トレード分析",
       "mechanics": "メカニクス評価",
-      "improvements": "改善ポイント"
+      "improvements": "改善ポイント",
+      "damageGiven": "与ダメージ",
+      "damageTaken": "被ダメージ",
+      "cdContext": "CD状況",
+      "optimalAction": "最適な行動",
+      "positioning": "ポジショニング",
+      "comboExecution": "コンボ精度",
+      "autoAttackWeaving": "AA挟み込み",
+      "skills": "スキル",
+      "hit": "命中",
+      "missed": "ミス",
+      "na": "N/A"
     },
     "rewardAd": {
       "title": "広告を視聴して分析を開始",
@@ -1193,6 +1400,8 @@
       "pricing": "料金プラン",
       "login": "ログイン"
     },
+    "usagePromo": "今週の分析残り{n}回 — Premiumなら週20回",
+    "usagePromoCta": "アップグレード",
     "hero": {
       "free": "無料",
       "desc": "LoLのプレイ動画をアップロードして、AIがマクロ戦術をアドバイス"
@@ -1214,7 +1423,7 @@
     "analysis": {
       "macroTitle": "マクロ分析",
       "guestNoCredits": "ゲストのクレジットを使い切りました。次の回復まで少々お待ちください。",
-      "weeklyLimit": "今週の分析回数に達しました。月曜日にリセットされます。",
+      "weeklyLimit": "分析回数の上限に達しました。次のリセットまでお待ちください。",
       "freeRegister": "無料会員登録で週3回",
       "comparePlans": "プラン比較",
       "viewPlans": "他のプランを見る →"
@@ -1244,7 +1453,46 @@
       "reanalyze": "再分析する",
       "remainingCredits": "残りクレジット: {remaining}回",
       "viewPlans": "料金プランを見る →"
+    },
+    "blur": {
+      "message": "無料登録で詳細を確認",
+      "cta": "無料で会員登録",
+      "segmentTitle": "シーン分析の詳細を見るには",
+      "segmentDesc": "各シーンの勝ちパターン・改善点を確認できます",
+      "microTitle": "詳細分析を見るには",
+      "microDesc": "トレード分析・操作精度・改善点を確認できます"
+    },
+    "inlineCta": {
+      "title": "登録してもっと詳しく分析",
+      "desc": "Riot API連携・分析履歴保存・AIコーチング",
+      "cta": "無料登録"
+    },
+    "upsell": {
+      "title": "会員登録で分析をもっと活用",
+      "desc": "分析履歴の保存・AIコーチング・試合データ連携が利用可能に",
+      "cta": "無料で会員登録",
+      "trial": "Premiumは7日間無料体験あり"
+    },
+    "upgradeCta": {
+      "title": "Premiumにアップグレード",
+      "desc": "週20回の分析・AIコーチング・動画分析などが利用可能に",
+      "cta": "プランを見る"
+    },
+    "upgradeModal": {
+      "title": "分析回数を使い切りました",
+      "desc": "Premiumなら週20回まで分析可能。7日間無料でお試しいただけます。",
+      "signupCta": "無料で会員登録",
+      "upgradeCta": "Premiumにアップグレード",
+      "dismiss": "閉じる"
     }
+  },
+  "videoMacroProvider": {
+    "restoringBackground": "バックグラウンド解析を復元中...",
+    "analysisFailed": "分析に失敗しました",
+    "aiAnalyzingServer": "AI解析中... (サーバー処理中)",
+    "pollingError": "ポーリングエラー",
+    "startFailed": "分析の開始に失敗しました",
+    "analyzingOnServer": "サーバーで分析中..."
   },
   "visionAnalysis": {
     "restoringBackground": "バックグラウンド解析を復元中...",
@@ -1359,5 +1607,74 @@
     "itemCount": "{count}個のアイテム",
     "details": "詳細",
     "close": "閉じる"
+  },
+  "cancelModal": {
+    "title": "本当に解約しますか？",
+    "valueTitle": "ご利用実績",
+    "analysisCount": "今週の分析回数",
+    "countUnit": "回",
+    "nextRenewal": "次回更新日",
+    "loseTitle": "解約すると失われる機能",
+    "loseAI": "AI試合分析（週20回）",
+    "loseChat": "AIコーチとのチャット",
+    "loseMicro": "ミクロ分析（動画解析）",
+    "losePriority": "優先サポート",
+    "loseDamage": "AIダメージ分析",
+    "loseSegments": "5セグメント自動選択",
+    "loseUnlimited": "無制限のAI分析",
+    "reasonTitle": "解約理由を教えてください",
+    "reason": {
+      "tooExpensive": "料金が高い",
+      "notUsingEnough": "あまり使っていない",
+      "missingFeatures": "欲しい機能がない",
+      "foundAlternative": "他のサービスを使う",
+      "other": "その他"
+    },
+    "keepSubscription": "継続する",
+    "proceed": "解約手続きへ",
+    "redirecting": "リダイレクト中...",
+    "pauseTitle": "解約の前に…",
+    "pauseDesc": "サブスクリプションを一時停止しませんか？停止中は課金されず、期間終了後に自動的に再開されます。",
+    "retention": {
+      "tooExpensive": {
+        "title": "一時停止で節約",
+        "desc": "一時停止中は課金されません。データや履歴はそのまま保持されます。"
+      },
+      "notUsingEnough": {
+        "title": "休憩して、また強くなろう",
+        "desc": "今は一時停止して、新シーズン開始時やプレイ時間が取れるようになったら再開しましょう。"
+      },
+      "missingFeatures": {
+        "title": "新機能を開発中です！",
+        "desc": "毎週アップデートを行っています。一時停止してまたチェックしてください。フィードバックは優先順位付けに役立ちます。"
+      }
+    },
+    "pause1Month": "1ヶ月間 一時停止",
+    "pause2Month": "2ヶ月間 一時停止",
+    "pause3Month": "3ヶ月間 一時停止",
+    "pauseSuccess": "サブスクリプションを一時停止しました。{date}に自動再開されます。",
+    "pauseError": "一時停止に失敗しました",
+    "back": "戻る",
+    "skipPause": "一時停止せず解約する"
+  },
+  "verification": {
+    "errors": {
+      "VERIFICATION_LOCKED": "アカウント連携機能は一時的にロックされています。",
+      "FORMAT_ERROR": "正しい形式で入力してください (例: Hide on bush#KR1)",
+      "SUMMONER_NOT_FOUND": "サモナーが見つかりませんでした",
+      "DETAIL_FETCH_FAILED": "詳細情報の取得に失敗しました",
+      "ALREADY_REGISTERED": "このサモナーは既に他のアカウントに登録されています",
+      "DB_ERROR": "認証の準備に失敗しました",
+      "INVALID_SESSION": "認証セッションが無効です。最初からやり直してください。",
+      "SESSION_EXPIRED": "認証の有効期限が切れました。再試行してください。",
+      "PUUID_MISMATCH": "対象のサモナーが一致しません",
+      "FETCH_FAILED": "サモナー情報の再取得に失敗しました",
+      "ICON_NOT_CHANGED": "アイコンが変更されていません",
+      "LOCKED_TRIPLE_FAIL": "認証に3回失敗したため、本日の認証機能をロックしました。明日またお試しください。",
+      "SYSTEM_ERROR": "システムエラーが発生しました",
+      "TIMEOUT": "時間切れのため、認証は失敗扱いとなりました",
+      "TIMEOUT_LOCKED": "時間切れを含め3回失敗したため、本日の認証機能をロックしました。明日またお試しください。",
+      "NOT_EXPIRED_YET": "まだ期限切れではありません"
+    }
   }
 }

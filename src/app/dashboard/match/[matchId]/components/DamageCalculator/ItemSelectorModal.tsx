@@ -20,7 +20,7 @@ const CATEGORIES = [
   { key: "boots", ja: "靴", en: "Boots", ko: "신발" },
 ];
 
-function categorizeItem(item: any): string[] {
+function categorizeItem(item: { stats?: Record<string, number>; tags?: string[] }): string[] {
   const cats: string[] = [];
   const stats = item.stats || {};
   const tags = item.tags || [];
@@ -39,6 +39,8 @@ export default function ItemSelectorModal({ isOpen, onClose, onSelect, itemDataM
   const [category, setCategory] = useState("all");
   const searchRef = useRef<HTMLInputElement>(null);
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (isOpen) {
       setSearch("");
@@ -46,6 +48,30 @@ export default function ItemSelectorModal({ isOpen, onClose, onSelect, itemDataM
       setTimeout(() => searchRef.current?.focus(), 100);
     }
   }, [isOpen]);
+
+  // Focus trap + Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key !== 'Tab') return;
+      const focusable = dialog.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last?.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first?.focus(); }
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   // Filter to completed items only (gold >= 2000 or is boots)
   const completedItems = useMemo(() => {
@@ -90,15 +116,19 @@ export default function ItemSelectorModal({ isOpen, onClose, onSelect, itemDataM
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="item-selector-title"
         className="bg-slate-900 border border-slate-700 rounded-xl w-[480px] max-h-[70vh] flex flex-col shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="p-3 border-b border-slate-800 flex items-center justify-between">
-          <h3 className="font-bold text-white text-sm">
+          <h3 id="item-selector-title" className="font-bold text-white text-sm">
             {language === "ja" ? "アイテム選択" : language === "ko" ? "아이템 선택" : "Select Item"}
           </h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-white text-lg leading-none">&times;</button>
+          <button onClick={onClose} className="text-slate-400 hover:text-white text-lg leading-none" aria-label="Close">&times;</button>
         </div>
 
         {/* Search + Filter */}
@@ -157,7 +187,7 @@ export default function ItemSelectorModal({ isOpen, onClose, onSelect, itemDataM
           </div>
 
           {filteredItems.length === 0 && (
-            <div className="text-center text-slate-500 text-sm py-8">
+            <div className="text-center text-slate-400 text-sm py-8">
               {language === "ja" ? "アイテムが見つかりません" : language === "ko" ? "아이템을 찾을 수 없습니다" : "No items found"}
             </div>
           )}

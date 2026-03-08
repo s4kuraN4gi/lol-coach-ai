@@ -4,10 +4,10 @@ import goldConstants from "@/data/gold_constants.json";
 import Link from "next/link";
 import { LuArrowUpRight, LuShield, LuSwords, LuGem } from "react-icons/lu";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { getLocalizedName } from "@/utils/goldLocalization";
-import AdSenseBanner from "@/app/Components/ads/AdSenseBanner";
+import { getLocalizedName, type GoldItem } from "@/utils/goldLocalization";
+import AdSenseBanner from "@/app/components/ads/AdSenseBanner";
 
-const AssetCard = ({ id, item, type, basePath, t, language }: { id: string; item: any; type: string; basePath: string; t: (key: string) => string; language: string }) => {
+const AssetCard = ({ id, item, type, basePath, t, language }: { id: string; item: GoldItem; type: string; basePath: string; t: (key: string) => string; language: string }) => {
     const hasDetail = type === "objectives" && (id === "dragons" || id === "baron" || id === "herald" || id === "void_grubs");
 
     if (id === "dragons") return null;
@@ -29,7 +29,7 @@ const AssetCard = ({ id, item, type, basePath, t, language }: { id: string; item
                     )}
                     <div>
                         <div className="flex items-center gap-2">
-                             <h3 className="font-bold text-foreground text-lg leading-none">{getLocalizedName(item, language as any)}</h3>
+                             <h3 className="font-bold text-foreground text-lg leading-none">{getLocalizedName(item, language as 'ja' | 'en' | 'ko')}</h3>
                         </div>
                         <span className="text-xs font-mono text-slate-500 uppercase tracking-widest">{item.name}</span>
                     </div>
@@ -41,11 +41,11 @@ const AssetCard = ({ id, item, type, basePath, t, language }: { id: string; item
                      <div className="text-xs text-slate-400 mb-1">{t('common.goldReward')}</div>
                      <div className="flex items-center gap-2">
                          <div className="text-2xl font-black text-primary font-numeric">{valueStr}</div>
-                         {item.growth > 0 && (
+                         {(item.growth ?? 0) > 0 && (
                              <div className="relative group cursor-help">
                                  <span className="text-slate-500 text-sm">(?)</span>
                                  <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-max max-w-[200px] px-3 py-2 bg-slate-900 border border-slate-700 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition pointer-events-none shadow-xl z-50">
-                                     {t('market.growthTooltip').replace('{growth}', item.growth)}
+                                     {t('market.growthTooltip').replace('{growth}', String(item.growth ?? 0))}
                                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-700"></div>
                                  </div>
                              </div>
@@ -62,9 +62,9 @@ const AssetCard = ({ id, item, type, basePath, t, language }: { id: string; item
     );
 };
 
-const DragonsSection = ({ dragons, basePath, t, language }: { dragons: any; basePath: string; t: (key: string) => string; language: string }) => (
+const DragonsSection = ({ dragons, basePath, t, language }: { dragons: Record<string, GoldItem>; basePath: string; t: (key: string) => string; language: string }) => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {Object.entries(dragons).map(([key, dragon]: [string, any]) => (
+        {Object.entries(dragons).map(([key, dragon]) => (
             <Link key={key} href={`${basePath}/market/dragon_${key}`} className="block h-full">
                 <div className="bg-gradient-to-br from-slate-900 to-slate-800 border-2 border-primary/20 hover:border-primary transition-all p-6 rounded-xl text-center relative group h-full flex flex-col items-center justify-center overflow-hidden">
                     <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/5 transition-colors" />
@@ -77,7 +77,7 @@ const DragonsSection = ({ dragons, basePath, t, language }: { dragons: any; base
                         />
                     </div>
 
-                    <h3 className="font-bold text-foreground text-xl mb-1 relative z-10">{getLocalizedName(dragon, language as any)}</h3>
+                    <h3 className="font-bold text-foreground text-xl mb-1 relative z-10">{getLocalizedName(dragon, language as 'ja' | 'en' | 'ko')}</h3>
                     <div className="text-xs text-slate-400 mb-3 relative z-10">{dragon.name}</div>
 
                     <div className="text-primary font-bold text-lg relative z-10">

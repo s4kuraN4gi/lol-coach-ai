@@ -3,12 +3,13 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import DOMPurify from "isomorphic-dompurify";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { fetchChampionDetail } from "@/app/actions/riot";
-import AdSenseBanner from "@/app/Components/ads/AdSenseBanner";
+import AdSenseBanner from "@/app/components/ads/AdSenseBanner";
 
 type Props = {
-    champion: any;
+    champion: { id: string; name: string; title: string; lore: string; tags: string[]; info: Record<string, number>; stats: Record<string, number>; image: { full: string }; spells: { id: string; name: string; description: string; image: { full: string }; cooldownBurn?: string; costBurn?: string; costType?: string }[]; passive: { name: string; description: string; image: { full: string } }; allytips?: string[]; enemytips?: string[] };
     version: string;
     champId: string;
 };
@@ -151,14 +152,14 @@ export default function ChampionDetailContent({ champion: initialChampion, versi
                                     <h3 className="font-bold text-white">{passive.name}</h3>
                                     <p
                                         className="text-sm text-gray-400 mt-1"
-                                        dangerouslySetInnerHTML={{ __html: passive.description }}
+                                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(passive.description) }}
                                     />
                                 </div>
                             </div>
                         )}
 
                         {/* Q/W/E/R */}
-                        {spells.map((spell: any, idx: number) => (
+                        {spells.map((spell, idx) => (
                             <div
                                 key={spell.id}
                                 className="flex gap-4 bg-white/[0.03] border border-white/5 rounded-lg p-4"
@@ -180,7 +181,7 @@ export default function ChampionDetailContent({ champion: initialChampion, versi
                                     <h3 className="font-bold text-white">{spell.name}</h3>
                                     <p
                                         className="text-sm text-gray-400 mt-1"
-                                        dangerouslySetInnerHTML={{ __html: spell.description }}
+                                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(spell.description) }}
                                     />
                                     <div className="flex gap-4 mt-2 text-xs text-gray-500">
                                         {spell.cooldownBurn && (

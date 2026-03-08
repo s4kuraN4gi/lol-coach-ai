@@ -2,7 +2,7 @@
 
 This document contains all the information needed to apply for a Riot Games Production API Key.
 
-**Last Updated**: January 31, 2026
+**Last Updated**: March 8, 2026
 
 ---
 
@@ -12,7 +12,7 @@ This document contains all the information needed to apply for a Riot Games Prod
 ---
 
 ## Production URL
-**https://lolcoachai.vercel.app**
+**https://lolcoachai.com**
 
 ---
 
@@ -83,11 +83,14 @@ LoL Coach AI is a comprehensive web-based coaching platform designed to help Lea
 
 | Tier | Price | Features |
 |------|-------|----------|
-| Free | 0 JPY | Basic stats, limited AI analysis (3 credits/day), ads displayed |
-| Premium | 980 JPY/month | Unlimited AI analysis, video coaching, ad-free, priority support |
+| Free | 0 JPY | Basic stats, limited AI analysis (1/week), ads displayed |
+| Premium | 980 JPY/month (or 5,880 JPY/year) | Unlimited AI analysis, video coaching (4 segments), ad-free |
+| Extra | 1,480 JPY/month (or 8,800 JPY/year) | All Premium features + extended video coaching (5 segments) |
 
 - **Payment Provider**: Stripe
 - **Advertising**: Google AdSense (Free tier only)
+- **Free Trial**: 7-day free trial for new subscribers
+- **Note**: We will obtain Riot's prior written approval before launching paid features, as required by the API Terms
 
 ---
 
@@ -96,9 +99,10 @@ LoL Coach AI is a comprehensive web-based coaching platform designed to help Lea
 | Endpoint | Purpose | Rate Limit Impact |
 |----------|---------|-------------------|
 | `/riot/account/v1/accounts/by-riot-id/{name}/{tag}` | Account lookup by Riot ID | Low |
-| `/riot/account/v1/accounts/by-puuid/{puuid}` | Account verification | Low |
+| `/riot/account/v1/accounts/by-puuid/{puuid}` | Account verification & RSO user info | Low |
 | `/lol/summoner/v4/summoners/by-puuid/{puuid}` | Summoner profile data | Low |
 | `/lol/league/v4/entries/by-summoner/{id}` | Ranked tier and LP info | Low |
+| `/lol/league/v4/entries/by-puuid/{puuid}` | Ranked tier and LP info (primary) | Low |
 | `/lol/match/v5/matches/by-puuid/{puuid}/ids` | Match history IDs (up to 50) | Medium |
 | `/lol/match/v5/matches/{matchId}` | Full match details | Medium |
 | `/lol/match/v5/matches/{matchId}/timeline` | Match timeline for analysis | Medium |
@@ -114,13 +118,17 @@ LoL Coach AI is a comprehensive web-based coaching platform designed to help Lea
 
 Our application implements robust rate limiting:
 
-1. **Exponential Backoff**: Automatic retry with increasing delays on 429 responses
-2. **Retry-After Header**: Respects Riot's specified wait times
-3. **Request Caching**:
+1. **Retry-After Header**: Respects Riot's specified wait times with additional 1-second buffer
+2. **Automatic Retry**: Up to 3 retries on 429 responses with backoff
+3. **Chunked Requests**: Match fetching batched in groups of 8 with inter-chunk delays
+4. **Request Caching**:
    - Match details: 24-hour cache (immutable data)
-   - Summoner info: 1-hour cache
+   - Summoner info: 5-minute cache (revalidate: 300)
+   - League data: 5-minute cache (revalidate: 300)
    - Timeline data: 24-hour cache
-4. **User Notifications**: Clear messaging when rate limits are reached
+   - Account lookup: 1-hour cache
+5. **Database Cache**: Match details stored in PostgreSQL to avoid repeat API calls
+6. **User Notifications**: Clear messaging when rate limits are reached
 
 ---
 
@@ -129,27 +137,36 @@ Our application implements robust rate limiting:
 ### Platform & Infrastructure
 | Component | Technology |
 |-----------|------------|
-| Framework | Next.js 14 (React 18) |
+| Framework | Next.js 16 (React 19) |
 | Hosting | Vercel (Edge Network) |
 | Database | Supabase (PostgreSQL) |
-| Authentication | Google OAuth + Supabase Auth |
+| Authentication | Riot Sign On (RSO) + Google OAuth + Supabase Auth |
 | Payments | Stripe |
-| AI Engine | Google Gemini API |
-| Analytics | Google Analytics |
+| AI Engine | Google Gemini 2.0 Flash |
+| Error Tracking | Sentry |
+| Input Validation | Zod |
 
 ### Security Measures
 - API keys stored securely in environment variables
-- All Riot API calls made server-side only
+- All Riot API calls made server-side only (`'use server'` directive)
 - No client-side API key exposure
-- HTTPS enforced on all endpoints
+- HTTPS enforced on all endpoints (HSTS preload)
+- Content Security Policy (CSP) with per-request nonces
 - User authentication required for all data operations
-- Row-Level Security (RLS) enabled in Supabase
+- Row-Level Security (RLS) enabled in Supabase with column-level restrictions
+- Distributed rate limiting on auth endpoints (10 req/60s per IP)
+- CSRF protection via Origin header validation and RSO state parameter
+- Input validation with Zod schemas on all server actions
+- Error sanitization (no stack traces or internal paths exposed to clients)
+- PII scrubbing in error tracking (Sentry)
 
 ### Data Storage & Privacy
-- **Match Data**: Cached in PostgreSQL for performance
+- **Match Data**: Cached in PostgreSQL for performance (pruned of unnecessary fields)
 - **User Preferences**: Stored with user consent
-- **Data Retention**: 90 days for match cache, user data retained until account deletion
+- **Data Retention**: 90 days for match cache (enforced via daily cleanup cron), user data retained until account deletion
 - **No Third-Party Sharing**: Raw API data is never sold or shared
+- **No Public Player Search**: Only authenticated users' own data is displayed; no arbitrary player lookup
+- **PUUID Privacy**: Player identifiers are never logged, even partially
 
 ---
 
@@ -184,8 +201,8 @@ This disclaimer appears:
 
 - **Developer Name**: Masamizu
 - **Contact Email**: s4kuran4gi@gmail.com
-- **Website**: https://lolcoachai.vercel.app
-- **Support Page**: https://lolcoachai.vercel.app/contact
+- **Website**: https://lolcoachai.com
+- **Support Page**: https://lolcoachai.com/contact
 
 ---
 

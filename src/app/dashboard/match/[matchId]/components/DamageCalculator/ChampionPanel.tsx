@@ -73,7 +73,7 @@ export default function ChampionPanel({
           </div>
         </button>
         <div className="flex-1 min-w-0">
-          <div className="text-xs text-slate-500">{label}</div>
+          <div className="text-xs text-slate-400">{label}</div>
           <div className="text-sm font-bold text-white truncate">{side.champion}</div>
         </div>
       </div>
@@ -104,7 +104,7 @@ export default function ChampionPanel({
 
       {/* Keystone */}
       <div className="space-y-1">
-        <div className="text-[10px] text-slate-500 uppercase tracking-wider">Keystone</div>
+        <div className="text-[10px] text-slate-400 uppercase tracking-wider">Keystone</div>
         <KeystoneSelector
           selectedId={side.keystone}
           onChange={onKeystoneChange}

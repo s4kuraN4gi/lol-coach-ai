@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useTranslation } from "@/contexts/LanguageContext";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
-import { useAuth } from "@/app/Providers/AuthProvider";
+import { useAuth } from "@/app/providers/AuthProvider";
 import { useState } from "react";
 import { LuMenu, LuX, LuLayoutDashboard } from "react-icons/lu";
 
@@ -85,6 +85,7 @@ export default function PublicHeader() {
                 <button
                     className="md:hidden text-gray-400 hover:text-white"
                     onClick={() => setMenuOpen(!menuOpen)}
+                    aria-label={menuOpen ? "Close menu" : "Open menu"}
                 >
                     {menuOpen ? <LuX size={24} /> : <LuMenu size={24} />}
                 </button>
@@ -108,6 +109,9 @@ export default function PublicHeader() {
                     <Link href="/pricing" className="block text-sm text-gray-400 hover:text-white py-2" onClick={() => setMenuOpen(false)}>
                         {t('publicNav.pricing')}
                     </Link>
+                    <div className="flex items-center gap-4 pt-2">
+                        <LanguageSwitcher />
+                    </div>
                     {isLoggedIn ? (
                         <Link
                             href="/dashboard"
@@ -122,16 +126,13 @@ export default function PublicHeader() {
                             <Link href="/login" className="block text-sm text-gray-400 hover:text-white py-2" onClick={() => setMenuOpen(false)}>
                                 {t('publicNav.login')}
                             </Link>
-                            <div className="flex items-center gap-4 pt-2">
-                                <LanguageSwitcher />
-                                <Link
-                                    href="/signup"
-                                    className="px-5 py-2.5 text-sm font-bold bg-cyan-500 text-black rounded-lg"
-                                    onClick={() => setMenuOpen(false)}
-                                >
-                                    {t('publicNav.getStarted')}
-                                </Link>
-                            </div>
+                            <Link
+                                href="/signup"
+                                className="inline-block px-5 py-2.5 text-sm font-bold bg-cyan-500 text-black rounded-lg"
+                                onClick={() => setMenuOpen(false)}
+                            >
+                                {t('publicNav.getStarted')}
+                            </Link>
                         </>
                     )}
                 </div>

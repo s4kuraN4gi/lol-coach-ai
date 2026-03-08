@@ -15,7 +15,7 @@
   --accent-glow: rgba(193, 126, 95, 0.25);
 
   /* Typography Strategy */
-  --font-heading: var(--font-outfit);
+  --font-heading: var(--font-geist-sans);
   --font-body: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -40,6 +40,13 @@ body {
   min-height: 100vh;
   /* Subtle background pattern or gradient could be added here */
   background-image: radial-gradient(circle at 50% 0%, #172033 0%, #0a0e17 70%);
+}
+
+/* Global focus-visible ring for keyboard accessibility (WCAG 2.4.7) */
+:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 /* Typography Strategy Application */
@@ -104,4 +111,14 @@ h1, h2, h3, h4, h5, h6, .font-heading {
 }
 .animate-progress {
   animation: progress 1.5s ease-in-out infinite;
+}
+
+/* Accessibility: Disable animations for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

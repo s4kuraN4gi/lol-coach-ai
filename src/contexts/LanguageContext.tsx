@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import jaLocale from '@/locales/ja.json';
 import enLocale from '@/locales/en.json';
 import koLocale from '@/locales/ko.json';
@@ -31,12 +31,12 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 // Helper to get nested value from object by dot notation
-function getNestedValue(obj: any, path: string): string | undefined {
+function getNestedValue(obj: Record<string, unknown>, path: string): string | undefined {
     const keys = path.split('.');
-    let result = obj;
+    let result: unknown = obj;
     for (const key of keys) {
-        if (result && typeof result === 'object' && key in result) {
-            result = result[key];
+        if (result && typeof result === 'object' && key in (result as Record<string, unknown>)) {
+            result = (result as Record<string, unknown>)[key];
         } else {
             return undefined;
         }
@@ -59,30 +59,32 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     }, []);
 
     // Save language to localStorage when changed
-    const setLanguage = (lang: Language) => {
+    const setLanguage = useCallback((lang: Language) => {
         setLanguageState(lang);
         localStorage.setItem('language', lang);
-    };
+    }, []);
 
-    // Translation function
-    const t = (key: string, fallback?: string): string => {
-        const value = getNestedValue(locales[language], key);
+    const effectiveLanguage = isHydrated ? language : 'ja';
+
+    // Translation function — stable reference per language
+    const t = useCallback((key: string, fallback?: string): string => {
+        const value = getNestedValue(locales[effectiveLanguage], key);
         if (value) return value;
-        
+
         // Fallback to Japanese if key not found
         const jaValue = getNestedValue(locales.ja, key);
         if (jaValue) return jaValue;
-        
+
         // Return fallback or key if nothing found
         return fallback || key;
-    };
+    }, [effectiveLanguage]);
 
-    // Prevent hydration mismatch by using default language until hydrated
-    const contextValue: LanguageContextType = {
-        language: isHydrated ? language : 'ja',
+    // Stable context value — only changes when language actually changes
+    const contextValue = useMemo<LanguageContextType>(() => ({
+        language: effectiveLanguage,
         setLanguage,
         t,
-    };
+    }), [effectiveLanguage, setLanguage, t]);
 
     return (
         <LanguageContext.Provider value={contextValue}>

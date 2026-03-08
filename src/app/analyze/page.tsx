@@ -3,18 +3,17 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { FaPlay, FaUpload, FaClock, FaChevronDown, FaChevronUp, FaLightbulb, FaMapMarkerAlt, FaLock, FaCrown, FaUser, FaGamepad, FaArrowLeft, FaSearch } from "react-icons/fa";
+import { FaMapMarkerAlt, FaSearch, FaUser, FaGamepad, FaCrown, FaArrowLeft, FaLock } from "react-icons/fa";
 import { useTranslation } from "@/contexts/LanguageContext";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
-import AdSenseBanner from "@/app/Components/ads/AdSenseBanner";
-import RewardedAdModal from "@/app/Components/ads/RewardedAdModal";
+import AdSenseBanner from "@/app/components/ads/AdSenseBanner";
+import RewardedAdModal from "@/app/components/ads/RewardedAdModal";
 import { GUEST_FIXED_SEGMENTS, type GuestSegment } from "@/app/actions/guestConstants";
 import {
     canPerformGuestAnalysis,
     performGuestAnalysis,
     performGuestMicroAnalysis,
     type GuestAnalysisResult,
-    type GuestSegmentAnalysis
 } from "@/app/actions/guestAnalysis";
 import { detectGameTimeFromFrame, selectAnalysisSegments, type VideoMacroSegment } from "@/app/actions/videoMacroAnalysis";
 import { getMatchSummary, type MatchSummary } from "@/app/actions/coach";
@@ -23,6 +22,12 @@ import { startVisionAnalysis, verifyMatchVideo, type VisionAnalysisResult } from
 import { getAnalysisJobStatus } from "@/app/actions/analysis";
 import { VideoProcessor } from "@/lib/videoProcessor";
 import { FREE_MAX_SEGMENTS, FRAMES_PER_SEGMENT } from "@/app/actions/constants";
+import { logger } from "@/lib/logger";
+
+import VideoUploader from "./components/VideoUploader";
+import AnalysisControlPanel from "./components/AnalysisControlPanel";
+import MacroResultSection from "./components/MacroResultSection";
+import MicroResultSection from "./components/MicroResultSection";
 
 export default function AnalyzePage() {
     const { t, language } = useTranslation();
@@ -38,6 +43,20 @@ export default function AnalyzePage() {
     const [videoFile, setVideoFile] = useState<File | null>(null);
     const [videoUrl, setVideoUrl] = useState<string | null>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
+
+    // Revoke previous ObjectURL when videoUrl changes or component unmounts
+    const prevVideoUrlRef = useRef<string | null>(null);
+    useEffect(() => {
+        if (prevVideoUrlRef.current && prevVideoUrlRef.current !== videoUrl) {
+            URL.revokeObjectURL(prevVideoUrlRef.current);
+        }
+        prevVideoUrlRef.current = videoUrl;
+        return () => {
+            if (prevVideoUrlRef.current) {
+                URL.revokeObjectURL(prevVideoUrlRef.current);
+            }
+        };
+    }, [videoUrl]);
 
     // Credit state
     const [creditInfo, setCreditInfo] = useState<{
@@ -79,6 +98,9 @@ export default function AnalyzePage() {
     // Analysis mode (macro/micro)
     const [analysisMode, setAnalysisMode] = useState<'macro' | 'micro'>('macro');
 
+    // Turnstile CAPTCHA token for guest bot protection
+    const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+
     // Micro analysis state
     const [videoDuration, setVideoDuration] = useState(0);
     const [microStartTime, setMicroStartTime] = useState(0);
@@ -90,13 +112,8 @@ export default function AnalyzePage() {
     const [showRewardAd, setShowRewardAd] = useState(false);
     const [adCompleted, setAdCompleted] = useState(false);
 
-    // Micro result sections expand/collapse
-    const [expandedMicroSections, setExpandedMicroSections] = useState<Record<string, boolean>>({
-        situation: true,
-        trade: true,
-        mechanics: true,
-        improvements: true,
-    });
+    // Upgrade modal (shown once per session when credits hit 0)
+    const [upgradeModalDismissed, setUpgradeModalDismissed] = useState(false);
 
     // Check credits and load segments on mount
     useEffect(() => {
@@ -109,30 +126,21 @@ export default function AnalyzePage() {
         try {
             const info = await canPerformGuestAnalysis();
 
-            // Premium users should always be redirected to /dashboard/coach
             if (info.isPremium) {
                 router.replace("/dashboard/coach");
                 return;
             }
 
-            // Free members WITHOUT match params should go to /dashboard/coach to select a match
-            // Free members WITH match params stay here for analysis (with ads)
             if (!info.isGuest && !hasMatchParams) {
                 router.replace("/dashboard/coach");
                 return;
             }
 
-            // If free member with match params, load auto-selected segments and match info
             if (!info.isGuest && hasMatchParams && matchIdParam && puuidParam) {
                 setLoadingSegments(true);
                 try {
                     const [segmentResult, matchSummary, version] = await Promise.all([
-                        selectAnalysisSegments(
-                            matchIdParam,
-                            puuidParam,
-                            language as 'ja' | 'en' | 'ko',
-                            FREE_MAX_SEGMENTS
-                        ),
+                        selectAnalysisSegments(matchIdParam, puuidParam, language as 'ja' | 'en' | 'ko', FREE_MAX_SEGMENTS),
                         getMatchSummary(matchIdParam, puuidParam),
                         fetchLatestVersion()
                     ]);
@@ -144,7 +152,7 @@ export default function AnalyzePage() {
                     }
                     setDdragonVersion(version);
                 } catch (e) {
-                    console.error("Failed to load segments:", e);
+                    logger.error("Failed to load segments:", e);
                 }
                 setLoadingSegments(false);
             }
@@ -152,8 +160,7 @@ export default function AnalyzePage() {
             setCreditInfo(info);
             setIsLoading(false);
         } catch (e) {
-            console.error("Failed to check credits:", e);
-            // Default to guest with 3 credits on error
+            logger.error("Failed to check credits:", e);
             setCreditInfo({
                 canAnalyze: true,
                 isGuest: true,
@@ -165,11 +172,9 @@ export default function AnalyzePage() {
         }
     };
 
-    // Determine which segments to use: auto-selected for free members, fixed for guests
+    // Determine which segments to use
     const activeSegments: (GuestSegment | VideoMacroSegment)[] =
-        hasMatchParams && autoSegments.length > 0
-            ? autoSegments
-            : [...GUEST_FIXED_SEGMENTS];
+        hasMatchParams && autoSegments.length > 0 ? autoSegments : [...GUEST_FIXED_SEGMENTS];
 
     // Handle video file selection
     const handleVideoSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -189,15 +194,15 @@ export default function AnalyzePage() {
     // Extract a single frame
     const extractSingleFrame = async (video: HTMLVideoElement): Promise<string> => {
         const canvas = document.createElement("canvas");
-        canvas.width = 1280;
-        canvas.height = 720;
+        canvas.width = 960;
+        canvas.height = 540;
         const ctx = canvas.getContext("2d");
         if (!ctx) throw new Error("Canvas not supported");
-        ctx.drawImage(video, 0, 0, 1280, 720);
-        return canvas.toDataURL("image/jpeg", 0.7);
+        ctx.drawImage(video, 0, 0, 960, 540);
+        return canvas.toDataURL("image/jpeg", 0.6);
     };
 
-    // Extract frames for a segment (supports both GuestSegment and VideoMacroSegment)
+    // Extract frames for a segment
     const extractFrames = async (
         video: HTMLVideoElement,
         segment: GuestSegment | VideoMacroSegment,
@@ -210,8 +215,8 @@ export default function AnalyzePage() {
         const interval = duration / frameCount;
 
         const canvas = document.createElement("canvas");
-        canvas.width = 1280;
-        canvas.height = 720;
+        canvas.width = 960;
+        canvas.height = 540;
         const ctx = canvas.getContext("2d");
         if (!ctx) return frames;
 
@@ -228,8 +233,8 @@ export default function AnalyzePage() {
                 video.addEventListener("seeked", onSeeked);
             });
 
-            ctx.drawImage(video, 0, 0, 1280, 720);
-            const base64 = canvas.toDataURL("image/jpeg", 0.7);
+            ctx.drawImage(video, 0, 0, 960, 540);
+            const base64 = canvas.toDataURL("image/jpeg", 0.6);
 
             frames.push({
                 segmentId: segment.segmentId,
@@ -245,16 +250,55 @@ export default function AnalyzePage() {
     // Auto-detect time offset
     const autoDetectTimeOffset = async (videoTimeSec: number, frameBase64: string): Promise<number | null> => {
         try {
-            const result = await detectGameTimeFromFrame(frameBase64);
-            if (result.success && result.gameTimeSeconds !== undefined) {
-                const offset = videoTimeSec - result.gameTimeSeconds;
-                console.log(`[Analyze] Auto-detected offset: ${offset}s`);
-                return offset;
+            const detectionResult = await detectGameTimeFromFrame(frameBase64);
+            if (detectionResult.success && detectionResult.gameTimeSeconds !== undefined) {
+                return videoTimeSec - detectionResult.gameTimeSeconds;
             }
             return null;
         } catch (e) {
-            console.error("[Analyze] Time detection error:", e);
+            logger.error("[Analyze] Time detection error:", e);
             return null;
+        }
+    };
+
+    // Match verification helper
+    const verifyMatch = async (video: HTMLVideoElement) => {
+        if (!hasMatchParams || !matchIdParam || !puuidParam || !matchInfo) return;
+
+        setIsVerifying(true);
+        try {
+            const matchDetail = await fetchMatchDetail(matchIdParam);
+            if (!matchDetail.success || !matchDetail.data) {
+                throw new Error(t('analyzePage.verifyFetchFailed'));
+            }
+            const participants = matchDetail.data.info.participants;
+            const me = participants.find((p) => p.puuid === puuidParam);
+            const myTeamId = me ? me.teamId : 0;
+            const verifyContext = {
+                myChampion: matchInfo.championName,
+                allies: participants.filter((p) => p.teamId === myTeamId).map((p) => p.championName),
+                enemies: participants.filter((p) => p.teamId !== myTeamId).map((p) => p.championName)
+            };
+
+            const processor = new VideoProcessor();
+            const vFrames = await processor.extractVerificationFrames(videoFile!);
+
+            setProgressMsg(t('analyzePage.aiVerifying'));
+            const vResult = await verifyMatchVideo(vFrames, verifyContext);
+
+            if (!vResult.success || !vResult.data) {
+                throw new Error(t('analyzePage.verifyServerError'));
+            }
+            if (!vResult.data.isValid) {
+                const reasonCode = vResult.data.reason || '';
+                const reasonMap: Record<string, string> = {
+                    'CHAMPION_MISMATCH': t('analyzePage.championMismatch'),
+                    'TEAM_MISMATCH': t('analyzePage.teamMismatch'),
+                };
+                throw new Error(reasonMap[reasonCode] || t('analyzePage.videoMismatch'));
+            }
+        } finally {
+            setIsVerifying(false);
         }
     };
 
@@ -262,7 +306,6 @@ export default function AnalyzePage() {
     const handleAdComplete = () => {
         setAdCompleted(true);
         setShowRewardAd(false);
-        // Re-trigger analysis after ad is complete
         if (analysisMode === 'macro') {
             runMacroAnalysis();
         } else {
@@ -270,7 +313,7 @@ export default function AnalyzePage() {
         }
     };
 
-    // Run analysis (entry point - checks reward ad, then branches)
+    // Run analysis (entry point)
     const runAnalysis = async () => {
         if (!videoFile || !videoRef.current) {
             setError(t('analyzePage.selectVideo'));
@@ -278,12 +321,12 @@ export default function AnalyzePage() {
         }
 
         if (!creditInfo?.canAnalyze) {
-            setError(creditInfo?.upgradeMessage || t('analyzePage.noCredits'));
+            setUpgradeModalDismissed(false);
             return;
         }
 
-        // Reward ad check for non-premium users
         if (!adCompleted && creditInfo && !creditInfo.isPremium) {
+            setUpgradeModalDismissed(true); // Close upgrade modal to prevent overlap
             setShowRewardAd(true);
             return;
         }
@@ -295,7 +338,7 @@ export default function AnalyzePage() {
         }
     };
 
-    // Run macro analysis (existing logic)
+    // Run macro analysis
     const runMacroAnalysis = async () => {
         if (!videoFile || !videoRef.current) return;
 
@@ -315,10 +358,7 @@ export default function AnalyzePage() {
                 const testVideoTime = Math.min(120, video.duration * 0.1);
                 video.currentTime = testVideoTime;
                 await new Promise<void>((resolve) => {
-                    const onSeeked = () => {
-                        video.removeEventListener("seeked", onSeeked);
-                        resolve();
-                    };
+                    const onSeeked = () => { video.removeEventListener("seeked", onSeeked); resolve(); };
                     video.addEventListener("seeked", onSeeked);
                 });
 
@@ -334,64 +374,15 @@ export default function AnalyzePage() {
 
             setProgress(15);
 
-            // Step 1.5: Match verification (free members with match params only)
-            if (hasMatchParams && matchIdParam && puuidParam && matchInfo) {
-                setIsVerifying(true);
+            // Step 1.5: Match verification
+            if (hasMatchParams) {
                 setProgressMsg(t('analyzePage.verifying'));
                 setProgress(18);
-
-                try {
-                    // 1. Get match detail for participant data
-                    const matchDetail = await fetchMatchDetail(matchIdParam);
-                    if (!matchDetail.success || !matchDetail.data) {
-                        throw new Error(t('analyzePage.verifyFetchFailed'));
-                    }
-
-                    // 2. Build verification context
-                    const participants = matchDetail.data.info.participants;
-                    const me = participants.find((p: any) => p.puuid === puuidParam);
-                    const myTeamId = me ? me.teamId : 0;
-                    const verifyContext = {
-                        myChampion: matchInfo.championName,
-                        allies: participants.filter((p: any) => p.teamId === myTeamId).map((p: any) => p.championName),
-                        enemies: participants.filter((p: any) => p.teamId !== myTeamId).map((p: any) => p.championName)
-                    };
-
-                    // 3. Extract verification frames from video
-                    const processor = new VideoProcessor();
-                    const vFrames = await processor.extractVerificationFrames(videoFile);
-
-                    // 4. AI verification
-                    setProgressMsg(t('analyzePage.aiVerifying'));
-                    const vResult = await verifyMatchVideo(vFrames, verifyContext);
-
-                    if (!vResult.success || !vResult.data) {
-                        throw new Error(t('analyzePage.verifyServerError'));
-                    }
-                    if (!vResult.data.isValid) {
-                        const reasonCode = vResult.data.reason || '';
-                        const reasonMap: Record<string, string> = {
-                            'CHAMPION_MISMATCH': t('analyzePage.championMismatch'),
-                            'TEAM_MISMATCH': t('analyzePage.teamMismatch'),
-                        };
-                        throw new Error(reasonMap[reasonCode] || t('analyzePage.videoMismatch'));
-                    }
-                } finally {
-                    setIsVerifying(false);
-                }
+                await verifyMatch(video);
             }
 
-            // Step 2: Extract frames for each segment (uses activeSegments - auto for free, fixed for guest)
+            // Step 2: Extract frames for each segment
             const allFrames: { segmentId: number; frameIndex: number; gameTime: number; base64Data: string }[] = [];
-
-            console.log(`[Analyze] Video duration: ${video.duration}s, Offset: ${currentOffset}s`);
-            console.log(`[Analyze] Segments to process:`, activeSegments.map(s => ({
-                id: s.segmentId,
-                start: s.analysisStartTime / 1000,
-                end: s.analysisEndTime / 1000,
-                videoStart: (s.analysisStartTime / 1000) + currentOffset,
-                videoEnd: (s.analysisEndTime / 1000) + currentOffset
-            })));
 
             for (let i = 0; i < activeSegments.length; i++) {
                 const segment = activeSegments[i];
@@ -401,48 +392,44 @@ export default function AnalyzePage() {
                 const videoStartTime = (segment.analysisStartTime / 1000) + currentOffset;
                 const videoEndTime = (segment.analysisEndTime / 1000) + currentOffset;
 
-                // Check if video is long enough
                 if (videoStartTime < 0 || videoEndTime > video.duration) {
-                    console.warn(`[Analyze] Segment ${segment.segmentId} out of video range: video=${video.duration}s, required=${videoStartTime}-${videoEndTime}s`);
+                    logger.warn(`[Analyze] Segment ${segment.segmentId} out of video range: video=${video.duration}s, required=${videoStartTime}-${videoEndTime}s`);
                 }
 
                 const frames = await extractFrames(video, segment, FRAMES_PER_SEGMENT, currentOffset);
-                console.log(`[Analyze] Segment ${segment.segmentId}: extracted ${frames.length} frames`);
                 allFrames.push(...frames);
             }
-
-            console.log(`[Analyze] Total frames extracted: ${allFrames.length}`);
 
             setProgressMsg(t('analyzePage.startingAnalysis'));
             setProgress(55);
 
-            // Step 3: Call analysis (pass matchId for free members to enable segment context)
+            // Step 3: Call analysis
             const analysisResult = await performGuestAnalysis({
                 frames: allFrames,
                 language: language as 'ja' | 'en' | 'ko',
                 timeOffset: currentOffset,
                 matchId: matchIdParam || undefined,
-                segments: hasMatchParams ? autoSegments : undefined
+                segments: hasMatchParams ? autoSegments : undefined,
+                turnstileToken: turnstileToken || undefined,
             });
 
             setProgress(100);
 
             if (analysisResult.success) {
                 setResult(analysisResult);
-                // Refresh credit info
                 await checkCredits();
             } else {
-                setError(analysisResult.error || t('analyzePage.analysisFailed'));
+                setError(t(`serverErrors.${analysisResult.error}`, analysisResult.error) || t('analyzePage.analysisFailed'));
             }
 
-        } catch (e: any) {
-            setError(e.message);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : String(e));
         } finally {
             setAnalyzing(false);
         }
     };
 
-    // Run micro analysis (new)
+    // Run micro analysis
     const runMicroAnalysis = async () => {
         if (!videoFile || !videoRef.current) return;
 
@@ -454,84 +441,36 @@ export default function AnalyzePage() {
         try {
             const video = videoRef.current;
 
-            // Step 1: Validate video
             if (video.duration < 30) {
                 throw new Error(t('analyzePage.selectVideo'));
             }
 
-            // Clamp microStartTime to valid range
             const startSec = Math.min(microStartTime, Math.max(0, video.duration - 30));
 
             setProgressMsg(t('analyzePage.micro.analyzing'));
             setProgress(10);
 
-            // Step 2: Match verification (free members with match params only)
-            if (hasMatchParams && matchIdParam && puuidParam && matchInfo) {
-                setIsVerifying(true);
+            // Match verification
+            if (hasMatchParams) {
                 setProgressMsg(t('analyzePage.verifying'));
                 setProgress(15);
-
-                try {
-                    const matchDetail = await fetchMatchDetail(matchIdParam);
-                    if (!matchDetail.success || !matchDetail.data) {
-                        throw new Error(t('analyzePage.verifyFetchFailed'));
-                    }
-                    const participants = matchDetail.data.info.participants;
-                    const me = participants.find((p: any) => p.puuid === puuidParam);
-                    const myTeamId = me ? me.teamId : 0;
-                    const verifyContext = {
-                        myChampion: matchInfo.championName,
-                        allies: participants.filter((p: any) => p.teamId === myTeamId).map((p: any) => p.championName),
-                        enemies: participants.filter((p: any) => p.teamId !== myTeamId).map((p: any) => p.championName)
-                    };
-
-                    const processor = new VideoProcessor();
-                    const vFrames = await processor.extractVerificationFrames(videoFile);
-
-                    setProgressMsg(t('analyzePage.aiVerifying'));
-                    const vResult = await verifyMatchVideo(vFrames, verifyContext);
-
-                    if (!vResult.success || !vResult.data) {
-                        throw new Error(t('analyzePage.verifyServerError'));
-                    }
-                    if (!vResult.data.isValid) {
-                        const reasonCode = vResult.data.reason || '';
-                        const reasonMap: Record<string, string> = {
-                            'CHAMPION_MISMATCH': t('analyzePage.championMismatch'),
-                            'TEAM_MISMATCH': t('analyzePage.teamMismatch'),
-                        };
-                        throw new Error(reasonMap[reasonCode] || t('analyzePage.videoMismatch'));
-                    }
-                } finally {
-                    setIsVerifying(false);
-                }
+                await verifyMatch(video);
             }
 
-            // Step 3: Extract frames (1fps, 30 frames, 1280px)
+            // Extract frames
             setProgressMsg(t('analyzePage.extractingFrames'));
             setProgress(25);
 
             const processor = new VideoProcessor();
-            const frameData = await processor.extractFrames(
-                videoFile,
-                1.0,    // 1fps
-                30,     // max 30 frames
-                1280,   // 1280px
-                startSec,
-                (p) => setProgress(25 + (p * 0.3))
-            );
-
+            const frameData = await processor.extractFrames(videoFile, 1.0, 30, 1280, startSec, (p) => setProgress(25 + (p * 0.3)));
             const frameDataUrls = frameData.map(f => f.dataUrl);
-            console.log(`[Analyze:Micro] Extracted ${frameDataUrls.length} frames from ${startSec}s`);
 
             setProgress(55);
             setProgressMsg(t('analyzePage.startingAnalysis'));
 
-            // Branch: Guest/Free member → synchronous, Authenticated → async job + polling
             const isGuestOrFreeMember = creditInfo?.isGuest || !creditInfo?.isPremium;
 
             if (isGuestOrFreeMember) {
-                // Guest / Free member: synchronous micro analysis (no DB job)
                 setProgress(60);
                 setProgressMsg(t('analyzePage.micro.polling'));
 
@@ -542,17 +481,17 @@ export default function AnalyzePage() {
                     puuid: puuidParam || undefined,
                     analysisStartGameTime: startSec,
                     analysisEndGameTime: startSec + 30,
+                    turnstileToken: turnstileToken || undefined,
                 });
 
                 if (!guestResult.success || !guestResult.result) {
-                    throw new Error(guestResult.error || t('analyzePage.analysisFailed'));
+                    throw new Error(t(`serverErrors.${guestResult.error}`, guestResult.error) || t('analyzePage.analysisFailed'));
                 }
 
                 setMicroResult(guestResult.result);
                 setProgress(100);
                 await checkCredits();
             } else {
-                // Authenticated (premium): async job + polling
                 const startResult = await startVisionAnalysis({
                     frames: frameDataUrls,
                     matchId: matchIdParam || undefined,
@@ -563,18 +502,16 @@ export default function AnalyzePage() {
                 });
 
                 if (!startResult.success || !startResult.jobId) {
-                    throw new Error(startResult.error || t('analyzePage.analysisFailed'));
+                    throw new Error(t(`serverErrors.${startResult.error}`, startResult.error) || t('analyzePage.analysisFailed'));
                 }
 
                 setJobId(startResult.jobId);
                 setProgress(60);
-
-                // Poll for job completion
                 setIsPolling(true);
                 setProgressMsg(t('analyzePage.micro.polling'));
 
                 const pollInterval = 3000;
-                const maxPolls = 60; // 3 minutes max
+                const maxPolls = 60;
                 let polls = 0;
 
                 while (polls < maxPolls) {
@@ -590,7 +527,7 @@ export default function AnalyzePage() {
                         await checkCredits();
                         break;
                     } else if (status.status === 'failed') {
-                        throw new Error(status.error || t('analyzePage.analysisFailed'));
+                        throw new Error(t(`serverErrors.${status.error}`, status.error) || t('analyzePage.analysisFailed'));
                     } else if (status.status === 'not_found') {
                         throw new Error(t('analyzePage.analysisFailed'));
                     }
@@ -601,39 +538,12 @@ export default function AnalyzePage() {
                 }
             }
 
-        } catch (e: any) {
-            setError(e.message);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : String(e));
         } finally {
             setAnalyzing(false);
             setIsPolling(false);
         }
-    };
-
-    // Toggle micro result sections
-    const toggleMicroSection = (section: string) => {
-        setExpandedMicroSections(prev => ({ ...prev, [section]: !prev[section] }));
-    };
-
-    // Grade color mapping for micro results
-    const gradeColors: Record<string, string> = {
-        'S': 'text-yellow-400 bg-yellow-500/20 border-yellow-500/50',
-        'A': 'text-green-400 bg-green-500/20 border-green-500/50',
-        'B': 'text-blue-400 bg-blue-500/20 border-blue-500/50',
-        'C': 'text-orange-400 bg-orange-500/20 border-orange-500/50',
-        'D': 'text-red-400 bg-red-500/20 border-red-500/50',
-    };
-
-    const priorityColors: Record<string, string> = {
-        'HIGH': 'bg-red-500/20 text-red-400 border-red-500/50',
-        'MEDIUM': 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50',
-        'LOW': 'bg-blue-500/20 text-blue-400 border-blue-500/50',
-    };
-
-    const outcomeColors: Record<string, string> = {
-        'WIN': 'text-green-400',
-        'LOSE': 'text-red-400',
-        'EVEN': 'text-yellow-400',
-        'NO_TRADE': 'text-slate-400',
     };
 
     // Seek to timestamp
@@ -652,7 +562,7 @@ export default function AnalyzePage() {
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
-    // Show loading screen while checking user type (prevents flash for premium users)
+    // Loading screen
     if (isLoading) {
         return (
             <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
@@ -664,13 +574,14 @@ export default function AnalyzePage() {
         );
     }
 
+    const hasResults = !!(result || microResult);
+
     return (
         <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
             {/* Header */}
             <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
                 <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        {/* Back button - different destination based on user type */}
                         <Link
                             href={creditInfo?.isGuest ? "/" : hasMatchParams ? "/dashboard/coach" : "/dashboard"}
                             className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition"
@@ -686,9 +597,7 @@ export default function AnalyzePage() {
                     </div>
                     <div className="flex items-center gap-4">
                         <LanguageSwitcher />
-                        {isLoading ? (
-                            <div className="w-24 h-8 bg-slate-700 rounded-full animate-pulse" />
-                        ) : creditInfo && (
+                        {creditInfo && (
                             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm ${
                                 creditInfo.isGuest
                                     ? 'bg-slate-700 text-slate-300'
@@ -703,17 +612,11 @@ export default function AnalyzePage() {
                                 </span>
                             </div>
                         )}
-                        <Link
-                            href="/pricing"
-                            className="text-sm text-slate-400 hover:text-white transition"
-                        >
+                        <Link href="/pricing" className="text-sm text-slate-400 hover:text-white transition">
                             {t('analyzePage.header.pricing')}
                         </Link>
                         {creditInfo?.isGuest && (
-                            <Link
-                                href="/login"
-                                className="text-sm text-blue-400 hover:text-blue-300 transition"
-                            >
+                            <Link href="/login" className="text-sm text-blue-400 hover:text-blue-300 transition">
                                 {t('analyzePage.header.login')}
                             </Link>
                         )}
@@ -722,11 +625,10 @@ export default function AnalyzePage() {
             </header>
 
             <main className="py-8">
-                {/* Top Section - Centered */}
+                {/* Top Section */}
                 <div className="max-w-6xl mx-auto px-4">
-                    {/* Ad Banner 1 - Top */}
-                    <div className="mb-6 flex justify-center">
-                        <AdSenseBanner className="w-full max-w-[728px] h-[90px] bg-slate-800/30 rounded" />
+                    <div className="mb-6 hidden sm:flex justify-center">
+                        <AdSenseBanner className="w-full max-w-[728px] h-[90px] bg-slate-800/30 rounded" isPremium={creditInfo?.isPremium} />
                     </div>
 
                     {/* Page Title */}
@@ -734,10 +636,27 @@ export default function AnalyzePage() {
                         <h1 className="text-3xl md:text-4xl font-black italic tracking-tighter text-white mb-2">
                             {t('analyzePage.hero.free')}<span className="text-emerald-400">{t('analyzePage.upload.title')}</span>
                         </h1>
-                        <p className="text-slate-400">
-                            {t('analyzePage.hero.desc')}
-                        </p>
+                        <p className="text-slate-400">{t('analyzePage.hero.desc')}</p>
                     </div>
+
+                    {/* Soft promo banner at 80% usage */}
+                    {creditInfo && !creditInfo.isGuest && !creditInfo.isPremium && creditInfo.maxCredits > 0 && (
+                      (() => {
+                        const used = creditInfo.maxCredits - creditInfo.credits;
+                        const usagePercent = (used / creditInfo.maxCredits) * 100;
+                        if (usagePercent < 80) return null;
+                        return (
+                          <div className="max-w-md mx-auto mb-4 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 flex items-center justify-between">
+                            <p className="text-xs text-amber-200">
+                              {t('analyzePage.usagePromo', 'Only {n} analyses left this week — Premium gives you 20/week').replace('{n}', String(creditInfo.credits))}
+                            </p>
+                            <Link href="/pricing" className="ml-3 text-xs font-bold text-amber-400 hover:text-amber-300 whitespace-nowrap transition">
+                              {t('analyzePage.usagePromoCta', 'Upgrade')}
+                            </Link>
+                          </div>
+                        );
+                      })()
+                    )}
 
                     {/* Match Info Card */}
                     {hasMatchParams && matchInfo && (
@@ -751,9 +670,7 @@ export default function AnalyzePage() {
                                 <div className="flex items-center gap-2 mb-1">
                                     <span className="text-white font-bold text-lg">{matchInfo.championName}</span>
                                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                                        matchInfo.win
-                                            ? 'bg-blue-500/20 text-blue-400'
-                                            : 'bg-red-500/20 text-red-400'
+                                        matchInfo.win ? 'bg-blue-500/20 text-blue-400' : 'bg-red-500/20 text-red-400'
                                     }`}>
                                         {matchInfo.win ? t('analyzePage.matchInfo.victory') : t('analyzePage.matchInfo.defeat')}
                                     </span>
@@ -793,729 +710,145 @@ export default function AnalyzePage() {
                     </div>
                 </div>
 
-                {/* 3-Column Layout: Left Ad | Main Content | Right Ad */}
+                {/* Main Content */}
                 <div className="flex justify-center px-4">
-                    {/* Left Ad Sidebar - Fixed to outer left on xl screens */}
-                    <div className="hidden xl:block flex-shrink-0 w-[160px] mr-6">
-                        <div className="sticky top-24">
-                            <AdSenseBanner className="w-[160px] h-[600px] bg-slate-800/30 rounded" />
-                        </div>
-                    </div>
-
-                    {/* Main Content - 2 Column Grid */}
                     <div className="w-full max-w-4xl">
                         <div className="grid md:grid-cols-2 gap-6">
                             {/* Left Column - Video Upload */}
+                            <VideoUploader
+                                videoUrl={videoUrl}
+                                videoRef={videoRef}
+                                videoDuration={videoDuration}
+                                onVideoSelect={handleVideoSelect}
+                                onVideoReset={() => {
+                                    setVideoFile(null);
+                                    setVideoUrl(null);
+                                    setVideoDuration(0);
+                                    setResult(null);
+                                }}
+                                onVideoLoaded={() => {
+                                    if (videoRef.current) {
+                                        setVideoDuration(videoRef.current.duration);
+                                    }
+                                }}
+                                analysisMode={analysisMode}
+                                hasMatchParams={hasMatchParams}
+                                autoSegments={autoSegments}
+                                activeSegments={activeSegments}
+                                loadingSegments={loadingSegments}
+                                microStartTime={microStartTime}
+                                onMicroStartTimeChange={setMicroStartTime}
+                                formatTime={formatTime}
+                            />
+
+                            {/* Right Column - Analysis */}
                             <div className="space-y-4">
-                                {/* Video Upload Card */}
-                                <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-                                    <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                                        <FaUpload className="text-emerald-400" />
-                                        {t('analyzePage.upload.title')}
-                                    </h2>
-
-                                    {!videoUrl ? (
-                                        <label className="block cursor-pointer">
-                                            <div className="border-2 border-dashed border-slate-700 rounded-xl p-8 text-center hover:border-emerald-500/50 transition">
-                                                <FaUpload className="text-4xl text-slate-600 mx-auto mb-4" />
-                                                <p className="text-slate-400 mb-2">
-                                                    {t('analyzePage.upload.dragDrop')}
-                                                </p>
-                                                <p className="text-xs text-slate-500">
-                                                    {t('analyzePage.upload.formats')}
-                                                </p>
-                                            </div>
-                                            <input
-                                                type="file"
-                                                accept="video/*"
-                                                onChange={handleVideoSelect}
-                                                className="hidden"
-                                            />
-                                        </label>
-                                    ) : (
-                                        <div className="space-y-4">
-                                            <video
-                                                ref={videoRef}
-                                                src={videoUrl}
-                                                controls
-                                                onLoadedMetadata={() => {
-                                                    if (videoRef.current) {
-                                                        setVideoDuration(videoRef.current.duration);
-                                                    }
-                                                }}
-                                                className="w-full rounded-lg bg-black"
-                                            />
-                                            <button
-                                                onClick={() => {
-                                                    setVideoFile(null);
-                                                    setVideoUrl(null);
-                                                    setVideoDuration(0);
-                                                    setResult(null);
-                                                }}
-                                                className="text-sm text-slate-400 hover:text-white transition"
-                                            >
-                                                {t('analyzePage.upload.changeVideo')}
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Mode-specific left column content */}
-                                {analysisMode === 'macro' ? (
-                                    /* Segments Info - Auto-selected for free members, fixed for guests */
-                                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-                                        <h3 className="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
-                                            <FaClock className={hasMatchParams && autoSegments.length > 0 ? "text-emerald-400" : "text-blue-400"} />
-                                            {hasMatchParams && autoSegments.length > 0
-                                                ? t('analyzePage.segments.titleAuto')
-                                                : t('analyzePage.segments.titleFixed')}
-                                        </h3>
-                                        {loadingSegments ? (
-                                            <div className="flex items-center gap-2 text-slate-400 py-4">
-                                                <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-                                                {t('analyzePage.segments.loading')}
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-2">
-                                                {activeSegments.map((seg, idx) => (
-                                                    <div key={seg.segmentId} className="flex items-center gap-3 text-sm">
-                                                        <span className={`font-mono w-12 ${hasMatchParams && autoSegments.length > 0 ? "text-emerald-400" : "text-emerald-400"}`}>
-                                                            {seg.targetTimestampStr}
-                                                        </span>
-                                                        <span className="text-slate-400">
-                                                            {seg.eventDescription}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                        <p className="mt-3 text-xs text-slate-500">
-                                            {hasMatchParams && autoSegments.length > 0
-                                                ? t('analyzePage.segments.autoNote')
-                                                : t('analyzePage.segments.registerNote')}
-                                        </p>
-                                    </div>
-                                ) : (
-                                    /* Micro Analysis - Clip Selector */
-                                    <div className="bg-slate-900 border border-purple-500/30 rounded-xl p-6">
-                                        <h3 className="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
-                                            <FaSearch className="text-purple-400" />
-                                            {t('analyzePage.micro.clipSelector')}
-                                        </h3>
-                                        <div className="space-y-4">
-                                            <div>
-                                                <label className="block text-xs text-slate-400 mb-2">
-                                                    {t('analyzePage.micro.clipFrom')}
-                                                </label>
-                                                <div className="flex items-center gap-3">
-                                                    <input
-                                                        type="range"
-                                                        min={0}
-                                                        max={Math.max(0, videoDuration - 30)}
-                                                        step={1}
-                                                        value={microStartTime}
-                                                        onChange={(e) => setMicroStartTime(Number(e.target.value))}
-                                                        className="flex-1 accent-purple-500"
-                                                    />
-                                                    <span className="text-white font-mono text-sm min-w-[50px] text-right">
-                                                        {formatTime(microStartTime)}
-                                                    </span>
-                                                </div>
-                                                <div className="flex justify-between text-xs text-slate-500 mt-1">
-                                                    <span>0:00</span>
-                                                    <span className="text-purple-400 font-medium">
-                                                        {formatTime(microStartTime)} - {formatTime(microStartTime + 30)}
-                                                    </span>
-                                                    <span>{formatTime(videoDuration)}</span>
-                                                </div>
-                                            </div>
-                                            <p className="text-xs text-slate-500">
-                                                {t('analyzePage.micro.clipDescription')}
-                                            </p>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                    {/* Right Column - Analysis */}
-                    <div className="space-y-4">
-                        {/* Error Display */}
-                        {error && (
-                            <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-4">
-                                <p className="text-red-300 text-sm">{error}</p>
-                                <button
-                                    onClick={() => setError(null)}
-                                    className="text-xs text-red-400 mt-2 hover:text-red-300"
-                                >
-                                    {t('analyzePage.segments.close')}
-                                </button>
-                            </div>
-                        )}
-
-                        {/* Analysis Card */}
-                        {!result && !microResult && (
-                            <div className={`bg-slate-900 border rounded-xl p-6 ${
-                                analysisMode === 'macro' ? 'border-emerald-500/30' : 'border-purple-500/30'
-                            }`}>
-                                <h2 className={`text-lg font-bold mb-4 flex items-center gap-2 ${
-                                    analysisMode === 'macro' ? 'text-emerald-400' : 'text-purple-400'
-                                }`}>
-                                    {analysisMode === 'macro' ? <FaMapMarkerAlt /> : <FaSearch />}
-                                    {analysisMode === 'macro'
-                                        ? t('analyzePage.analysis.macroTitle')
-                                        : t('analyzePage.tabs.micro')}
-                                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                                        analysisMode === 'macro'
-                                            ? 'bg-emerald-500/20 text-emerald-300'
-                                            : 'bg-purple-500/20 text-purple-300'
-                                    }`}>
-                                        AI
-                                    </span>
-                                </h2>
-
-                                {/* Progress */}
-                                {analyzing && (
-                                    <div className="mb-4">
-                                        <div className="flex justify-between text-xs text-slate-400 mb-1">
-                                            <span>{progressMsg}</span>
-                                            <span>{Math.round(progress)}%</span>
-                                        </div>
-                                        <div className="w-full bg-slate-800 rounded-full h-2">
-                                            <div
-                                                className={`h-2 rounded-full transition-all duration-300 ${
-                                                    analysisMode === 'macro' ? 'bg-emerald-500' : 'bg-purple-500'
-                                                }`}
-                                                style={{ width: `${progress}%` }}
-                                            />
-                                        </div>
-                                    </div>
+                                {!hasResults && (
+                                    <AnalysisControlPanel
+                                        analysisMode={analysisMode}
+                                        creditInfo={creditInfo}
+                                        videoFile={videoFile}
+                                        analyzing={analyzing}
+                                        isLoading={isLoading}
+                                        progress={progress}
+                                        progressMsg={progressMsg}
+                                        error={error}
+                                        onErrorDismiss={() => setError(null)}
+                                        onRunAnalysis={runAnalysis}
+                                        onTurnstileVerify={(token) => setTurnstileToken(token)}
+                                        onTurnstileExpire={() => setTurnstileToken(null)}
+                                    />
                                 )}
 
-                                {/* Credit Warning - Contextual upgrade prompt */}
-                                {creditInfo && !creditInfo.canAnalyze && (
-                                    <div className="mb-4 p-4 bg-slate-800/50 border border-slate-700 rounded-lg">
-                                        <p className="text-slate-300 text-sm mb-3">
-                                            {creditInfo.isGuest
-                                                ? t('analyzePage.analysis.guestNoCredits')
-                                                : t('analyzePage.analysis.weeklyLimit')}
-                                        </p>
-                                        <div className="flex flex-col sm:flex-row gap-2">
-                                            {creditInfo.isGuest ? (
-                                                <>
-                                                    <Link
-                                                        href="/signup"
-                                                        className="flex-1 py-2 text-center bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition"
-                                                    >
-                                                        {t('analyzePage.analysis.freeRegister')}
-                                                    </Link>
-                                                    <Link
-                                                        href="/pricing"
-                                                        className="flex-1 py-2 text-center text-slate-400 hover:text-white text-sm border border-slate-600 rounded-lg transition"
-                                                    >
-                                                        {t('analyzePage.analysis.comparePlans')}
-                                                    </Link>
-                                                </>
-                                            ) : (
-                                                <Link
-                                                    href="/pricing"
-                                                    className="py-2 px-4 text-center text-slate-400 hover:text-white text-sm transition"
-                                                >
-                                                    {t('analyzePage.analysis.viewPlans')}
-                                                </Link>
-                                            )}
-                                        </div>
-                                    </div>
+                                {/* Macro Results */}
+                                {result && result.success && (
+                                    <MacroResultSection
+                                        result={result}
+                                        isGuest={!!creditInfo?.isGuest}
+                                        showUpgradeCTA={!creditInfo?.isGuest && !creditInfo?.isPremium}
+                                        expandedSegment={expandedSegment}
+                                        setExpandedSegment={setExpandedSegment}
+                                        seekToTimestamp={seekToTimestamp}
+                                        onReanalyze={() => { setResult(null); setAdCompleted(false); }}
+                                    />
                                 )}
 
-                                {/* Analysis Button */}
-                                <button
-                                    onClick={runAnalysis}
-                                    disabled={!videoFile || analyzing || isLoading || !creditInfo?.canAnalyze}
-                                    className={`w-full py-3 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 ${
-                                        !videoFile || analyzing || isLoading || !creditInfo?.canAnalyze
-                                            ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                                            : analysisMode === 'macro'
-                                                ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
-                                                : 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-500/20'
-                                    }`}
-                                >
-                                    {analysisMode === 'macro' ? <FaMapMarkerAlt /> : <FaSearch />}
-                                    {isLoading ? t('analyzePage.buttons.loading') :
-                                     analyzing ? t('analyzePage.buttons.analyzing') :
-                                     !videoFile ? t('analyzePage.buttons.selectVideo') :
-                                     !creditInfo?.canAnalyze ? t('analyzePage.buttons.noCredits') :
-                                     t('analyzePage.buttons.startAnalysis').replace('{credits}', String(creditInfo.credits))}
-                                </button>
-                            </div>
-                        )}
-
-                        {/* Results */}
-                        {result && result.success && (
-                            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-5">
-                                {/* Warnings (if any) */}
-                                {result.warnings && result.warnings.length > 0 && (
-                                    <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-xl p-4">
-                                        <h4 className="text-yellow-400 font-bold text-sm mb-2">{t('analyzePage.results.warning')}</h4>
-                                        <ul className="text-xs text-yellow-300/80 space-y-1">
-                                            {result.warnings.map((w, i) => (
-                                                <li key={i}>• {w}</li>
-                                            ))}
-                                        </ul>
-                                        <p className="text-xs text-slate-400 mt-2">
-                                            {t('analyzePage.results.completed').replace('{completed}', String(result.completedSegments)).replace('{requested}', String(result.requestedSegments))}
-                                        </p>
-                                    </div>
+                                {/* Micro Results */}
+                                {microResult && (
+                                    <MicroResultSection
+                                        microResult={microResult}
+                                        isGuest={!!creditInfo?.isGuest}
+                                        showUpgradeCTA={!creditInfo?.isGuest && !creditInfo?.isPremium}
+                                        onReanalyze={() => { setMicroResult(null); setAdCompleted(false); }}
+                                    />
                                 )}
 
-                                {/* Overall Summary */}
-                                <div className="bg-gradient-to-br from-emerald-900/30 to-cyan-900/30 border border-emerald-500/50 rounded-xl p-5">
-                                    <h3 className="font-bold text-emerald-400 mb-3 flex items-center gap-2">
-                                        <FaLightbulb />
-                                        {t('analyzePage.results.summary')}
-                                    </h3>
-                                    <div className="mb-3 p-3 bg-slate-800/50 rounded-lg">
-                                        <p className="text-white">{result.overallSummary.mainIssue}</p>
-                                    </div>
-                                    <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                                        <div className="text-xs text-blue-400 font-bold mb-1">
-                                            {t('analyzePage.results.homework')}
-                                        </div>
-                                        <h4 className="text-white font-bold mb-1">
-                                            {result.overallSummary.homework.title}
-                                        </h4>
-                                        <p className="text-sm text-slate-300 mb-2">
-                                            {result.overallSummary.homework.description}
-                                        </p>
-                                        <p className="text-xs text-cyan-400">
-                                            ✅ {result.overallSummary.homework.howToCheck}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                {/* Segment Results */}
-                                <div className="space-y-2">
-                                    <h4 className="font-bold text-slate-300 text-sm">
-                                        {t('analyzePage.results.sceneAnalysis')}
-                                    </h4>
-                                    {result.segments.map((seg) => (
-                                        <div
-                                            key={seg.segmentId}
-                                            className="bg-slate-800/50 rounded-lg border border-slate-700 overflow-hidden"
-                                        >
-                                            <button
-                                                onClick={() => setExpandedSegment(
-                                                    expandedSegment === seg.segmentId ? null : seg.segmentId
-                                                )}
-                                                className="w-full p-3 flex items-center justify-between hover:bg-slate-700/50 transition"
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-emerald-400 font-mono">
-                                                        {seg.timestamp}
-                                                    </span>
-                                                    <span className="text-sm text-white">
-                                                        {seg.winningPattern.title}
-                                                    </span>
-                                                </div>
-                                                {expandedSegment === seg.segmentId
-                                                    ? <FaChevronUp className="text-slate-400" />
-                                                    : <FaChevronDown className="text-slate-400" />}
-                                            </button>
-
-                                            {expandedSegment === seg.segmentId && (
-                                                <div className="p-4 border-t border-slate-700 space-y-3 animate-in slide-in-from-top-2">
-                                                    {/* Observation */}
-                                                    <div className="grid grid-cols-2 gap-2 text-xs">
-                                                        <div className="p-2 bg-slate-900/50 rounded">
-                                                            <span className="text-slate-500">{t('analyzePage.results.position')}</span>
-                                                            <p className="text-slate-300">{seg.observation.userPosition}</p>
-                                                        </div>
-                                                        <div className="p-2 bg-slate-900/50 rounded">
-                                                            <span className="text-slate-500">{t('analyzePage.results.wave')}</span>
-                                                            <p className="text-slate-300">{seg.observation.waveState}</p>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Winning Pattern */}
-                                                    <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
-                                                        <div className="text-xs font-bold text-emerald-400 mb-2">
-                                                            {t('analyzePage.results.winPattern')} {seg.winningPattern.macroConceptUsed}
-                                                        </div>
-                                                        <ol className="space-y-1">
-                                                            {seg.winningPattern.steps.map((step, i) => (
-                                                                <li key={i} className="text-sm text-slate-300 flex items-start gap-2">
-                                                                    <span className="text-emerald-400 font-bold">{i + 1}.</span>
-                                                                    {step}
-                                                                </li>
-                                                            ))}
-                                                        </ol>
-                                                    </div>
-
-                                                    {/* Improvement */}
-                                                    <div className="p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">
-                                                        <div className="text-xs font-bold text-orange-400 mb-1">
-                                                            {t('analyzePage.results.improvement')}
-                                                        </div>
-                                                        <p className="text-sm text-slate-300 mb-2">
-                                                            {seg.improvement.description}
-                                                        </p>
-                                                        <p className="text-xs text-yellow-400">
-                                                            💡 {seg.improvement.actionableAdvice}
-                                                        </p>
-                                                    </div>
-
-                                                    {/* Seek Button */}
-                                                    <button
-                                                        onClick={() => {
-                                                            const [min, sec] = seg.timestamp.split(':').map(Number);
-                                                            seekToTimestamp((min * 60 + sec - 30) * 1000);
-                                                        }}
-                                                        className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
-                                                    >
-                                                        <FaPlay /> {t('analyzePage.results.checkVideo')}
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {/* Re-analyze Button */}
-                                <button
-                                    onClick={() => { setResult(null); setAdCompleted(false); }}
-                                    className="w-full py-2 text-sm text-slate-400 hover:text-white border border-slate-700 rounded-lg hover:border-slate-600 transition"
-                                >
-                                    {t('analyzePage.results.reanalyze')}
-                                </button>
-
-                                {/* Remaining Credits */}
-                                <div className="text-center text-sm text-slate-500">
-                                    {t('analyzePage.results.remainingCredits').replace('{remaining}', String(result.remainingCredits))}
+                                {/* Plan Link */}
+                                <div className="text-center py-4">
+                                    <Link href="/pricing" className="text-sm text-slate-400 hover:text-slate-300 transition">
+                                        {t('analyzePage.results.viewPlans')}
+                                    </Link>
                                 </div>
                             </div>
-                        )}
-
-                        {/* Micro Analysis Results */}
-                        {microResult && (
-                            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-5">
-                                {/* Header with Grade */}
-                                {microResult.enhanced ? (
-                                    <>
-                                        <div className="flex items-center justify-between bg-slate-900 p-4 rounded-xl border border-purple-500/50">
-                                            <div>
-                                                <h4 className="font-bold text-white text-lg">{t('analyzePage.micro.clipSelector')}</h4>
-                                                <p className="text-sm text-slate-400">
-                                                    {microResult.enhanced.championContext.championName} ({microResult.enhanced.championContext.role})
-                                                </p>
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center text-2xl font-bold ${gradeColors[microResult.enhanced.overallGrade]}`}>
-                                                    {microResult.enhanced.overallGrade}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Summary */}
-                                        <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-800">
-                                            <p className="text-sm text-slate-300 leading-relaxed">{microResult.summary}</p>
-                                        </div>
-
-                                        {/* Situation Snapshot */}
-                                        <div className="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden">
-                                            <button
-                                                onClick={() => toggleMicroSection('situation')}
-                                                className="w-full flex items-center justify-between p-4 hover:bg-slate-800/50 transition"
-                                            >
-                                                <h5 className="font-bold text-white flex items-center gap-2">
-                                                    <span className="text-purple-400">📊</span>
-                                                    {t('analyzePage.micro.situationSnapshot')}
-                                                    <span className="text-xs text-slate-500">@ {microResult.enhanced.situationSnapshot.gameTime}</span>
-                                                </h5>
-                                                {expandedMicroSections.situation ? <FaChevronUp className="text-slate-400" /> : <FaChevronDown className="text-slate-400" />}
-                                            </button>
-                                            {expandedMicroSections.situation && (
-                                                <div className="p-4 border-t border-slate-800">
-                                                    <div className="grid grid-cols-2 gap-4">
-                                                        <div className="bg-blue-900/20 p-3 rounded-lg border border-blue-500/30">
-                                                            <h6 className="text-xs font-bold text-blue-400 mb-2">{t('coachPage.micro.myStatus', 'Me')}</h6>
-                                                            <div className="space-y-1 text-sm">
-                                                                <div className="flex justify-between">
-                                                                    <span className="text-slate-400">HP</span>
-                                                                    <span className={`font-medium ${microResult.enhanced!.situationSnapshot.myStatus.hpPercent > 50 ? 'text-green-400' : 'text-red-400'}`}>
-                                                                        {microResult.enhanced!.situationSnapshot.myStatus.hpPercent}%
-                                                                    </span>
-                                                                </div>
-                                                                <div className="flex justify-between">
-                                                                    <span className="text-slate-400">Mana</span>
-                                                                    <span className={`font-medium ${microResult.enhanced!.situationSnapshot.myStatus.manaPercent > 30 ? 'text-blue-400' : 'text-orange-400'}`}>
-                                                                        {microResult.enhanced!.situationSnapshot.myStatus.manaPercent}%
-                                                                    </span>
-                                                                </div>
-                                                                <div className="flex justify-between">
-                                                                    <span className="text-slate-400">Lv</span>
-                                                                    <span className="text-white font-medium">{microResult.enhanced!.situationSnapshot.myStatus.level}</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div className="bg-red-900/20 p-3 rounded-lg border border-red-500/30">
-                                                            <h6 className="text-xs font-bold text-red-400 mb-2">{t('coachPage.micro.enemyStatus', 'Enemy')}</h6>
-                                                            <div className="space-y-1 text-sm">
-                                                                <div className="flex justify-between">
-                                                                    <span className="text-slate-400">HP</span>
-                                                                    <span className={`font-medium ${microResult.enhanced!.situationSnapshot.enemyStatus.hpPercent > 50 ? 'text-green-400' : 'text-red-400'}`}>
-                                                                        {microResult.enhanced!.situationSnapshot.enemyStatus.hpPercent}%
-                                                                    </span>
-                                                                </div>
-                                                                <div className="flex justify-between">
-                                                                    <span className="text-slate-400">Mana</span>
-                                                                    <span className={`font-medium ${microResult.enhanced!.situationSnapshot.enemyStatus.manaPercent > 30 ? 'text-blue-400' : 'text-orange-400'}`}>
-                                                                        {microResult.enhanced!.situationSnapshot.enemyStatus.manaPercent}%
-                                                                    </span>
-                                                                </div>
-                                                                <div className="flex justify-between">
-                                                                    <span className="text-slate-400">Lv</span>
-                                                                    <span className="text-white font-medium">{microResult.enhanced!.situationSnapshot.enemyStatus.level}</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                                                        <div className="p-2 bg-slate-800/50 rounded">
-                                                            <span className="text-slate-500">Wave</span>
-                                                            <p className="text-slate-300">{microResult.enhanced!.situationSnapshot.environment.wavePosition}</p>
-                                                        </div>
-                                                        <div className="p-2 bg-slate-800/50 rounded">
-                                                            <span className="text-slate-500">Jungler</span>
-                                                            <p className="text-slate-300">{microResult.enhanced!.situationSnapshot.environment.junglerThreat}</p>
-                                                        </div>
-                                                        <div className="p-2 bg-slate-800/50 rounded">
-                                                            <span className="text-slate-500">Minions</span>
-                                                            <p className="text-slate-300">{microResult.enhanced!.situationSnapshot.environment.minionAdvantage}</p>
-                                                        </div>
-                                                        <div className="p-2 bg-slate-800/50 rounded">
-                                                            <span className="text-slate-500">Vision</span>
-                                                            <p className="text-slate-300">{microResult.enhanced!.situationSnapshot.environment.visionControl}</p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Trade Analysis */}
-                                        <div className="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden">
-                                            <button
-                                                onClick={() => toggleMicroSection('trade')}
-                                                className="w-full flex items-center justify-between p-4 hover:bg-slate-800/50 transition"
-                                            >
-                                                <h5 className="font-bold text-white flex items-center gap-2">
-                                                    <span className="text-orange-400">⚔️</span>
-                                                    {t('analyzePage.micro.tradeAnalysis')}
-                                                    <span className={`text-xs font-bold ${outcomeColors[microResult.enhanced!.tradeAnalysis.outcome]}`}>
-                                                        {microResult.enhanced!.tradeAnalysis.outcome}
-                                                    </span>
-                                                </h5>
-                                                {expandedMicroSections.trade ? <FaChevronUp className="text-slate-400" /> : <FaChevronDown className="text-slate-400" />}
-                                            </button>
-                                            {expandedMicroSections.trade && (
-                                                <div className="p-4 border-t border-slate-800 space-y-3">
-                                                    <p className="text-sm text-slate-300">{microResult.enhanced!.tradeAnalysis.reason}</p>
-                                                    <div className="grid grid-cols-2 gap-2 text-xs">
-                                                        <div className="p-2 bg-slate-800/50 rounded">
-                                                            <span className="text-slate-500">Damage Given</span>
-                                                            <p className="text-slate-300">{microResult.enhanced!.tradeAnalysis.hpExchanged.damageGiven}</p>
-                                                        </div>
-                                                        <div className="p-2 bg-slate-800/50 rounded">
-                                                            <span className="text-slate-500">Damage Taken</span>
-                                                            <p className="text-slate-300">{microResult.enhanced!.tradeAnalysis.hpExchanged.damageTaken}</p>
-                                                        </div>
-                                                    </div>
-                                                    {microResult.enhanced!.tradeAnalysis.cooldownContext && (
-                                                        <div className="p-2 bg-slate-800/50 rounded text-xs">
-                                                            <span className="text-slate-500">CD Context</span>
-                                                            <p className="text-slate-300">{microResult.enhanced!.tradeAnalysis.cooldownContext}</p>
-                                                        </div>
-                                                    )}
-                                                    {microResult.enhanced!.tradeAnalysis.optimalAction && (
-                                                        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
-                                                            <h6 className="text-xs font-bold text-emerald-400 mb-1">Optimal Action</h6>
-                                                            <p className="text-sm text-slate-300">{microResult.enhanced!.tradeAnalysis.optimalAction}</p>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Mechanics Evaluation */}
-                                        <div className="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden">
-                                            <button
-                                                onClick={() => toggleMicroSection('mechanics')}
-                                                className="w-full flex items-center justify-between p-4 hover:bg-slate-800/50 transition"
-                                            >
-                                                <h5 className="font-bold text-white flex items-center gap-2">
-                                                    <span className="text-cyan-400">🎮</span>
-                                                    {t('analyzePage.micro.mechanics')}
-                                                </h5>
-                                                {expandedMicroSections.mechanics ? <FaChevronUp className="text-slate-400" /> : <FaChevronDown className="text-slate-400" />}
-                                            </button>
-                                            {expandedMicroSections.mechanics && (
-                                                <div className="p-4 border-t border-slate-800 space-y-3">
-                                                    {/* Positioning */}
-                                                    <div className="p-2 bg-slate-800/50 rounded text-sm">
-                                                        <div className="flex items-center justify-between mb-1">
-                                                            <span className="text-xs text-slate-500">Positioning</span>
-                                                            <span className="text-xs font-bold text-purple-400">{microResult.enhanced!.mechanicsEvaluation.positioningScore}</span>
-                                                        </div>
-                                                        <p className="text-slate-300">{microResult.enhanced!.mechanicsEvaluation.positioningNote}</p>
-                                                    </div>
-                                                    {/* Combo */}
-                                                    <div className="p-2 bg-slate-800/50 rounded text-sm">
-                                                        <span className="text-xs text-slate-500">Combo Execution</span>
-                                                        <p className="text-slate-300">{microResult.enhanced!.mechanicsEvaluation.comboExecution}</p>
-                                                    </div>
-                                                    {/* Auto Attack Weaving */}
-                                                    <div className="p-2 bg-slate-800/50 rounded text-sm">
-                                                        <span className="text-xs text-slate-500">Auto-Attack Weaving</span>
-                                                        <p className="text-slate-300">{microResult.enhanced!.mechanicsEvaluation.autoAttackWeaving}</p>
-                                                    </div>
-                                                    {/* Skills Used */}
-                                                    {microResult.enhanced!.mechanicsEvaluation.skillsUsed.length > 0 && (
-                                                        <div className="space-y-1">
-                                                            <span className="text-xs text-slate-500">Skills</span>
-                                                            {microResult.enhanced!.mechanicsEvaluation.skillsUsed.map((skill, idx) => (
-                                                                <div key={idx} className="flex items-center gap-2 text-xs p-1.5 bg-slate-900/50 rounded">
-                                                                    <span className="font-mono font-bold text-white">{skill.skill}</span>
-                                                                    <span className={skill.hit === true ? 'text-green-400' : skill.hit === false ? 'text-red-400' : 'text-slate-400'}>
-                                                                        {skill.hit === true ? 'Hit' : skill.hit === false ? 'Missed' : 'N/A'}
-                                                                    </span>
-                                                                    <span className="text-slate-500">{skill.timing}</span>
-                                                                    <span className="text-slate-400 flex-1 truncate">{skill.note}</span>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Improvements */}
-                                        <div className="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden">
-                                            <button
-                                                onClick={() => toggleMicroSection('improvements')}
-                                                className="w-full flex items-center justify-between p-4 hover:bg-slate-800/50 transition"
-                                            >
-                                                <h5 className="font-bold text-white flex items-center gap-2">
-                                                    <span className="text-yellow-400">💡</span>
-                                                    {t('analyzePage.micro.improvements')}
-                                                    <span className="text-xs text-slate-500">({microResult.enhanced!.improvements.length})</span>
-                                                </h5>
-                                                {expandedMicroSections.improvements ? <FaChevronUp className="text-slate-400" /> : <FaChevronDown className="text-slate-400" />}
-                                            </button>
-                                            {expandedMicroSections.improvements && (
-                                                <div className="p-4 border-t border-slate-800 space-y-3">
-                                                    {microResult.enhanced!.improvements.map((imp, idx) => (
-                                                        <div key={idx} className="p-3 bg-slate-800/50 rounded-lg border-l-2 border-yellow-500/50">
-                                                            <div className="flex items-center gap-2 mb-1">
-                                                                <span className={`text-xs px-2 py-0.5 rounded-full border ${priorityColors[imp.priority]}`}>
-                                                                    {imp.priority}
-                                                                </span>
-                                                                <span className="text-xs text-slate-500">{imp.category}</span>
-                                                            </div>
-                                                            <p className="text-sm text-white font-medium mb-1">{imp.title}</p>
-                                                            <p className="text-sm text-red-400/80">{imp.currentBehavior}</p>
-                                                            <p className="text-sm text-emerald-400/80">{imp.idealBehavior}</p>
-                                                            {imp.practice && (
-                                                                <p className="text-xs text-cyan-400 mt-2">🎯 {imp.practice}</p>
-                                                            )}
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </>
-                                ) : (
-                                    /* Legacy fallback (no enhanced data) */
-                                    <div className="bg-slate-900 p-4 rounded-xl border border-purple-500/50">
-                                        <h4 className="font-bold text-white mb-3">{t('analyzePage.micro.clipSelector')}</h4>
-                                        <div className="space-y-3">
-                                            <div>
-                                                <h5 className="text-xs font-bold text-purple-400 mb-1">{t('analyzePage.results.summary')}</h5>
-                                                <p className="text-sm text-slate-300">{microResult.summary}</p>
-                                            </div>
-                                            {microResult.mistakes.length > 0 && (
-                                                <div>
-                                                    <h5 className="text-xs font-bold text-red-400 mb-1">{t('analyzePage.results.improvement')}</h5>
-                                                    <ul className="space-y-2">
-                                                        {microResult.mistakes.map((mk, idx) => (
-                                                            <li key={idx} className="text-sm text-slate-300 bg-slate-800/50 p-2 rounded border-l-2 border-red-500">
-                                                                <span className="font-bold text-red-300">[{mk.timestamp}] {mk.title}</span><br />
-                                                                {mk.advice}
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                            )}
-                                            {microResult.finalAdvice && (
-                                                <div className="p-3 bg-purple-900/20 border border-purple-500/30 rounded-lg">
-                                                    <p className="text-sm text-slate-300">{microResult.finalAdvice}</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Re-analyze Button */}
-                                <button
-                                    onClick={() => { setMicroResult(null); setAdCompleted(false); }}
-                                    className="w-full py-2 text-sm text-slate-400 hover:text-white border border-slate-700 rounded-lg hover:border-slate-600 transition"
-                                >
-                                    {t('analyzePage.results.reanalyze')}
-                                </button>
-                            </div>
-                        )}
-
-                        {/* Minimal Plan Link */}
-                        <div className="text-center py-4">
-                            <Link
-                                href="/pricing"
-                                className="text-sm text-slate-500 hover:text-slate-300 transition"
-                            >
-                                {t('analyzePage.results.viewPlans')}
-                            </Link>
-                        </div>
-
-                        </div>
-                        {/* End of 2-column grid */}
                         </div>
                     </div>
 
-                    {/* Right Ad Sidebar - Fixed to outer right on xl screens */}
-                    <div className="hidden xl:block flex-shrink-0 w-[160px] ml-6">
-                        <div className="sticky top-24">
-                            <AdSenseBanner className="w-[160px] h-[600px] bg-slate-800/30 rounded" />
-                        </div>
-                    </div>
                 </div>
 
-                {/* Mobile Ad - Only shown on smaller screens */}
+                {/* Mobile Ad */}
                 <div className="xl:hidden mt-6 flex justify-center px-4">
-                    <AdSenseBanner className="w-full max-w-[336px] h-[280px] bg-slate-800/30 rounded" />
+                    <AdSenseBanner className="w-full max-w-[336px] h-[280px] bg-slate-800/30 rounded" isPremium={creditInfo?.isPremium} />
                 </div>
 
-                {/* Ad Banner 4 - Bottom */}
+                {/* Bottom Ad */}
                 <div className="mt-8 flex justify-center px-4">
-                    <AdSenseBanner className="w-full max-w-[728px] h-[90px] bg-slate-800/30 rounded" />
+                    <AdSenseBanner className="w-full max-w-[728px] h-[90px] bg-slate-800/30 rounded" isPremium={creditInfo?.isPremium} />
                 </div>
             </main>
 
             {/* Footer */}
             <footer className="border-t border-slate-800 mt-12 py-8">
-                <div className="max-w-6xl mx-auto px-4 text-center text-slate-500 text-sm">
-                    <p>{t('footer.copyright').replace('{year}', '2024')}</p>
+                <div className="max-w-6xl mx-auto px-4 text-center text-slate-400 text-sm">
+                    <p>{t('footer.copyright').replace('{year}', new Date().getFullYear().toString())}</p>
                     <div className="mt-2 flex justify-center gap-4">
                         <Link href="/terms" className="hover:text-slate-300">{t('footer.terms')}</Link>
                         <Link href="/privacy" className="hover:text-slate-300">{t('footer.privacy')}</Link>
                     </div>
                 </div>
             </footer>
+
+            {/* Upgrade Modal */}
+            {!upgradeModalDismissed && creditInfo && !creditInfo.canAnalyze && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+                    <div role="dialog" aria-modal="true" aria-labelledby="upgrade-modal-title" className="bg-slate-900 border border-slate-700 rounded-2xl p-8 max-w-md mx-4 text-center shadow-2xl animate-in fade-in zoom-in-95">
+                        <div className="text-4xl mb-4">
+                            <FaCrown className="inline text-amber-400" />
+                        </div>
+                        <h3 id="upgrade-modal-title" className="text-xl font-bold text-white mb-2">
+                            {t('analyzePage.upgradeModal.title', creditInfo.isGuest ? 'Guest analysis credits used up' : 'Weekly analysis limit reached')}
+                        </h3>
+                        <p className="text-sm text-slate-400 mb-6">
+                            {t('analyzePage.upgradeModal.desc', 'Premium allows up to 20 analyses per week. Try free for 7 days.')}
+                        </p>
+                        <div className="space-y-3">
+                            <Link
+                                href={creditInfo.isGuest ? "/signup" : "/pricing"}
+                                className="block w-full py-3 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-slate-900 font-bold hover:from-amber-400 hover:to-orange-400 transition-all shadow-lg shadow-amber-500/20"
+                            >
+                                {creditInfo.isGuest
+                                    ? t('analyzePage.upgradeModal.signupCta', 'Sign up for free')
+                                    : t('analyzePage.upgradeModal.upgradeCta', 'Upgrade to Premium')}
+                            </Link>
+                            <button
+                                onClick={() => setUpgradeModalDismissed(true)}
+                                className="block w-full py-2.5 text-sm text-slate-400 hover:text-slate-300 transition"
+                            >
+                                {t('analyzePage.upgradeModal.dismiss', 'Close')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Reward Ad Modal */}
             <RewardedAdModal

@@ -1,17 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/utils/supabase/server";
+import { createClient, createServiceRoleClient } from "@/utils/supabase/server";
+import { randomBytes } from "crypto";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get("code");
+  const stateParam = searchParams.get("state");
 
   if (!code) {
     return NextResponse.redirect(new URL("/login?error=no_code", request.url));
   }
 
+  // CSRF validation: verify state parameter matches the cookie
+  const storedState = request.cookies.get("rso_state")?.value;
+  if (!stateParam || !storedState || stateParam !== storedState) {
+    return NextResponse.redirect(new URL("/login?error=csrf_validation_failed", request.url));
+  }
+
   const RSO_CLIENT_ID = process.env.RIOT_RSO_CLIENT_ID;
   const RSO_CLIENT_SECRET = process.env.RIOT_RSO_CLIENT_SECRET;
-  const REDIRECT_URI = process.env.NEXT_PUBLIC_APP_URL 
+  const REDIRECT_URI = process.env.NEXT_PUBLIC_APP_URL
     ? `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback/riot`
     : "http://localhost:3000/api/auth/callback/riot";
 
@@ -76,105 +85,105 @@ export async function GET(request: NextRequest) {
     const gameName = accountData.gameName;
     const tagLine = accountData.tagLine;
 
-    // 3. Supabase Integration
+    // 3. Supabase Integration — use Service Role for admin user management
     const supabase = await createClient();
-    
-    // Check if user exists by tracking a metadata field or specific table.
-    // Ideally we linked RSO PUUID to auth.users. 
-    // For now, simpler approach:
-    // We will generate a consistent email for RSO users OR allow them to be new users.
-    // Easiest for now: Create a user if not exists based on PUUID (rso_<puuid>@lolcoach.ai)
-    
-    const rsoEmail = `rso_${puuid}@lolcoach.ai`;
-    // Secure random password (they won't use it)
-    const dummyPassword = Buffer.from(puuid + process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY).toString('base64'); 
+    const adminClient = createServiceRoleClient();
 
-    // Try to sign in or sign up
-    // Ideally we use admin client to get user by metadata, but we only have anon/cookie client usually in route handlers unless we use service role.
-    // We will create a fresh Client with Service Role for Admin ops to ensure we can Find-Or-Create.
-    // NOTE: Using Service Role here requires SUPABASE_SERVICE_ROLE_KEY env var.
-    
-    // Fallback: Since we might not have Service Key ready in env, we can use the client-side flow? No, must be server.
-    // Let's assume we use the standard auth.signInWithPassword if they exist? No password is unknown if we just made it.
-    
-    // Let's rely on Supabase Auth Admin.
-    // We need 'supabase-js' import for admin if 'utils/supabase/server' doesn't export admin.
-    // If we cannot perform Admin ops, this approach is tricky.
-    // ALTERNATIVE: Use the manual 'signInWithOtp' or just create a session?
-    // Supabase can issue a session if we have the secret.
-    
-    // Let's try to verify if we can access the Service Role.
-    // If not, we might need the user to set it.
-    
-    // SIMPLIFIED APPROACH for MVP:
-    // We are trusting the RSO. We want to log them in.
-    // If we can't create a session easily, we might need to guide them to "Link Account" page? 
-    // No, "Sign in with Riot" implies auto-login.
-    
-    // We'll create a user with a deterministic email/pass.
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: rsoEmail,
-        password: dummyPassword
-    });
+    let userId: string;
+    let rsoEmail: string;
 
-    let session = signInData.session;
+    // Check if user already exists by puuid (summoners table lookup)
+    const { data: existingUser } = await adminClient
+        .from('summoners')
+        .select('user_id')
+        .eq('puuid', puuid)
+        .single();
 
-    if (signInError) {
-        // Assume user doesn't exist, try to sign up
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-            email: rsoEmail,
-            password: dummyPassword,
-            options: {
-                data: {
-                    rso_puuid: puuid,
-                    full_name: `${gameName}#${tagLine}`
-                }
-            }
-        });
-        
-        if(signUpError) {
-             throw new Error("Supabase SignUp Failed: " + signUpError.message);
+    if (existingUser?.user_id) {
+        // Returning RSO user — get their auth email
+        userId = existingUser.user_id;
+        const { data: authUser } = await adminClient.auth.admin.getUserById(userId);
+        if (!authUser?.user?.email) {
+            throw new Error("RSO user auth record not found");
         }
-        session = signUpData.session;
+        rsoEmail = authUser.user.email;
+        // Ensure app_metadata marks this as RSO user
+        await adminClient.auth.admin.updateUserById(userId, {
+            app_metadata: { auth_method: 'rso' },
+        });
+    } else {
+        // New RSO user — create with salted synthetic email
+        const salt = randomBytes(8).toString('hex');
+        rsoEmail = `rso_${salt}_${puuid.slice(0, 8)}@lolcoach.ai`;
+        const securePassword = randomBytes(32).toString('base64url');
+
+        const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
+            email: rsoEmail,
+            password: securePassword,
+            email_confirm: true,
+            user_metadata: {
+                rso_puuid: puuid,
+                full_name: `${gameName}#${tagLine}`,
+            },
+            app_metadata: {
+                auth_method: 'rso',
+            },
+        });
+
+        if (!createError && newUser.user) {
+            userId = newUser.user.id;
+        } else {
+            // Fallback: check profiles by legacy email format
+            const legacyEmail = `rso_${puuid}@lolcoach.ai`;
+            const { data: profileData } = await adminClient
+                .from('profiles')
+                .select('id')
+                .eq('email', legacyEmail)
+                .single();
+
+            if (profileData) {
+                userId = profileData.id;
+                rsoEmail = legacyEmail;
+                await adminClient.auth.admin.updateUserById(userId, {
+                    app_metadata: { auth_method: 'rso' },
+                });
+            } else {
+                throw new Error("RSO user creation failed and not found in profiles");
+            }
+        }
     }
 
-    if(!session) {
-        return NextResponse.redirect(new URL("/login?error=session_creation_failed", request.url));
+    // Sign in via magic link (never use password-based sign-in for RSO users)
+    const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
+        type: 'magiclink',
+        email: rsoEmail,
+    });
+    if (linkError || !linkData.user) {
+        throw new Error("Failed to generate session for RSO user");
     }
-
-    // 4. Update Summoners Table (Auto-Link)
-    // Now that we have a session, we can write to the DB as the user (RLS permits it usually).
-    // Or we stick to the Service Key if available.
-    // Let's try standard client with the new session.
+    const token = linkData.properties?.hashed_token;
+    if (!token) {
+        throw new Error("Failed to get session token for RSO user");
+    }
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+        type: 'email',
+        token_hash: token,
+    });
+    if (verifyError) {
+        throw new Error("Failed to verify RSO user session");
+    }
     
-    // Re-create client with new session if needed, but `signInWithPassword` sets the cookie on the response usually? 
-    // Wait, route handlers don't automatically set cookies on the `response` object unless we manipulate it.
-    // `utils/supabase/server.ts` usually handles cookies -> request/response.
-    
-    // IMPORTANT: In Next.js Route Handlers, `supabase.auth.signInWithPassword` updates the cookies on the `supabase` instance,
-    // but we need to ensure those cookies are passed to the browser.
-    // The `createClient` in server.ts usually uses `cookies()` from `next/headers`. 
-    // Setting cookies there works for Server Actions, but in Route Handlers we often need to be careful.
-    // However, if we utilize the default `utils/supabase/server`, it should work if we await the response.
-    
-    // Actually, `signInWithPassword` returns a session. We might need to manually set the cookies if the standard util doesn't auto-flush to response.
-    // But typically `createClient` with `cookieStore` works.
-    
-    // Let's update the Profile/Summoner Data.
-    const userId = session.user.id;
-    
-    // Check if summoner exists
-    const { data: existingSummoner } = await supabase
+    // Check if summoner exists (use adminClient to bypass RLS)
+    const { data: existingSummoner } = await adminClient
         .from('summoners')
         .select('*')
         .eq('puuid', puuid)
         .single();
-        
+
     if (existingSummoner) {
         // Ensure it's linked to this user (might be a re-login or takeover)
         if(existingSummoner.user_id !== userId) {
-            // Update owner
-             await supabase.from('summoners').update({ user_id: userId }).eq('puuid', puuid);
+             await adminClient.from('summoners').update({ user_id: userId }).eq('puuid', puuid);
         }
     } else {
         // Create new summoner entry
@@ -185,7 +194,7 @@ export async function GET(request: NextRequest) {
         });
         if(summonerRes.ok) {
             const sumData = await summonerRes.json();
-            await supabase.from('summoners').insert({
+            await adminClient.from('summoners').insert({
                 user_id: userId,
                 puuid: puuid,
                 summoner_id: sumData.id,
@@ -199,11 +208,15 @@ export async function GET(request: NextRequest) {
         }
     }
 
-    // Redirect to dashboard
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    // Redirect to dashboard (clear state cookie)
+    const redirectResponse = NextResponse.redirect(new URL("/dashboard", request.url));
+    redirectResponse.cookies.delete("rso_state");
+    return redirectResponse;
 
   } catch (error) {
-    console.error("RSO Error:", error);
-    return NextResponse.redirect(new URL(`/login?error=rso_failed&details=${encodeURIComponent(String(error))}`, request.url));
+    logger.error("RSO Error:", error);
+    const errorResponse = NextResponse.redirect(new URL("/login?error=rso_failed", request.url));
+    errorResponse.cookies.delete("rso_state");
+    return errorResponse;
   }
 }

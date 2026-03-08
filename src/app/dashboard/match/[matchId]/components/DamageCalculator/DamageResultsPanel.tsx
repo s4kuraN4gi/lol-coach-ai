@@ -39,7 +39,7 @@ export default function DamageResultsPanel({ result, attackerName, targetName, t
       {/* Direction label */}
       <div className="flex items-center gap-2 text-xs">
         <span className="font-bold text-blue-400">{attackerName}</span>
-        <span className="text-slate-500">→</span>
+        <span className="text-slate-400">→</span>
         <span className="font-bold text-red-400">{targetName}</span>
       </div>
 
@@ -84,7 +84,7 @@ export default function DamageResultsPanel({ result, attackerName, targetName, t
         </div>
 
         {/* Disclaimer */}
-        <p className="text-[10px] text-slate-500 leading-tight">
+        <p className="text-[10px] text-slate-400 leading-tight">
           {language === "ja"
             ? "※ AA1回+各スキル1回の単純合算です。AAキャンセル・コンボ順序・クールダウンは考慮していません。"
             : language === "ko"

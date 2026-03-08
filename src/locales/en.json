@@ -1,4 +1,33 @@
 {
+  "serverErrors": {
+    "PREMIUM_ONLY": "This feature is available for Premium members only. Please upgrade to continue.",
+    "CUSTOM_KEY_PREMIUM_ONLY": "Custom API key usage is available for Premium members only.",
+    "WEEKLY_LIMIT_REACHED": "Weekly limit reached. Resets on Monday.",
+    "FREE_WEEKLY_LIMIT_REACHED": "Free plan weekly limit reached. Upgrade to Premium for up to 20 analyses per week.",
+    "CREDITS_INSUFFICIENT": "Insufficient credits. Please upgrade to Premium for more analyses.",
+    "GUEST_CREDITS_INSUFFICIENT": "Credits used up. Sign up for 3 free analyses per week!",
+    "AUTH_REQUIRED": "Authentication required",
+    "PROFILE_NOT_FOUND": "Profile not found",
+    "TIME_DETECTION_FAILED": "Failed to detect in-game time",
+    "ANALYSIS_CORRUPTED": "Analysis result was corrupted. Please try again.",
+    "ANALYSIS_FAILED": "Analysis failed. Please try again.",
+    "DB_ERROR": "A database error occurred. Please try again.",
+    "RIOT_API_ERROR": "Failed to communicate with Riot API. Please try again.",
+    "REPLAY_FETCH_FAILED": "Failed to fetch replay data.",
+    "SEGMENT_SELECTION_FAILED": "Failed to select analysis segments.",
+    "REFERRAL_FAILED": "Referral processing failed. Please try again.",
+    "INVALID_CREDENTIALS": "Invalid email or password."
+  },
+  "authCodeError": {
+    "title": "Authentication Error",
+    "message": "Authentication failed. Please try again.",
+    "backToLogin": "Back to Login"
+  },
+  "checkoutErrors": {
+    "failed": "Checkout failed. Please try again.",
+    "portalFailed": "Failed to open billing portal.",
+    "error": "An error occurred. Please try again."
+  },
   "common": {
     "backToHome": "← Back to Home",
     "backToDashboard": "← Back to Dashboard",
@@ -7,7 +36,8 @@
     "readMore": "Read Guide →",
     "goldReward": "Gold Reward",
     "priority": "Priority",
-    "buffEffect": "( + Buff Effect )"
+    "buffEffect": "( + Buff Effect )",
+    "loading": "Loading..."
   },
   "footer": {
     "terms": "Terms of Service",
@@ -21,9 +51,11 @@
       "dashboard": "Dashboard",
       "stats": "Match History",
       "economy": "Gold Economy",
-      "coach": "AI Coach",
+      "coach": "Match Analysis",
+      "chat": "AI Chat",
       "analysis": "Summoner Analysis",
       "account": "Account",
+      "pricing": "Plans",
       "champions": "Champions",
       "items": "Items",
       "runeGuide": "Rune Guide"
@@ -33,13 +65,30 @@
       "privacy": "Privacy Policy",
       "legal": "Legal Notice"
     },
-    "logout": "Logout"
+    "logout": "Logout",
+    "reference": "Reference"
   },
   "dashboard": {
     "title": "Dashboard",
     "subtitle": "Your Growth Center",
     "refresh": "Refresh Data",
     "refreshing": "Refreshing...",
+    "loading": "Loading...",
+    "syncing": "Syncing...",
+    "upgrade": "Upgrade",
+    "welcome": {
+      "title": "Welcome to LoL Coach AI!",
+      "desc": "Your account setup is complete. Start by reviewing your match history and getting AI coaching!",
+      "startCoaching": "Start AI Coaching",
+      "viewPlans": "View Plans — 7 days free trial",
+      "dismiss": "View Dashboard"
+    },
+    "upgradeSuccess": {
+      "title": "Your plan is now active!",
+      "desc": "Enjoy all the premium features.",
+      "tryCoach": "Try AI Match Analysis",
+      "dismiss": "View Dashboard"
+    },
     "noData": {
       "title": "No Match Data Found",
       "description": "No recent match history (last 10 games) exists for the linked account, or it hasn't been cached yet.",
@@ -52,6 +101,16 @@
     "errors": {
       "puuidMissing": "Account information incomplete (PUUID missing). Please re-link your account.",
       "loadFailed": "Failed to load data."
+    },
+    "promo": {
+      "weeklyUsage": "AI Analysis (This Week)",
+      "remaining": "{{count}} remaining",
+      "upgradeTitle": "Unlock 20x/week with Premium",
+      "upgradeDesc": "7-day free trial — includes micro analysis & AI coaching",
+      "upgradeCta": "Start 7-day free trial",
+      "extraTitle": "Upgrade to Extra for 50x/week",
+      "extraDesc": "AI Damage Analysis included",
+      "extraCta": "Details"
     }
   },
   "championsPage": {
@@ -157,12 +216,16 @@
   },
   "matchDetail": {
     "errorTitle": "Failed to Load Match",
+    "errorDesc": "Failed to load match details.",
     "returnToDashboard": "Return to Dashboard",
+    "returnToStats": "Return to Stats",
     "backToStats": "← Back to Stats",
     "matchReport": "MATCH REPORT",
     "aiBeta": "AI BETA",
     "victory": "VICTORY",
     "defeat": "DEFEAT",
+    "loading": "Loading...",
+    "syncing": "Syncing...",
     "patch": "PATCH",
     "teamsOverview": "Teams Overview",
     "blueTeam": "BLUE TEAM",
@@ -291,7 +354,9 @@
       "unexpectedError": "An unexpected error occurred",
       "switchFailed": "Switch failed: ",
       "deleteFailed": "Delete failed: ",
-      "deleteConfirm": "Delete {name}?"
+      "deleteConfirm": "Delete {name}?",
+      "remainingAttempts": "Remaining attempts",
+      "unlockAt": "Unlock at"
     }
   },
   "chatPage": {
@@ -308,7 +373,7 @@
     "you": "YOU",
     "aiCoach": "AI COACH",
     "aiThinking": "AI IS THINKING...",
-    "coachTitle": "LOLE COACH AI",
+    "coachTitle": "LOL COACH AI",
     "selectOrStart": "Select a chat history or start a new conversation.",
     "inputPlaceholder": "Ask your AI Coach anything...",
     "send": "SEND",
@@ -333,7 +398,12 @@
       "checkoutFailed": "Failed to start checkout.",
       "error": "An error occurred.",
       "extraOnly": "Extra plan exclusive",
-      "viewPlans": "View pricing plans"
+      "viewPlans": "View pricing plans",
+      "premiumBenefit": "Unlock AI coaching, micro analysis, and more",
+      "extraBenefit": "Unlock AI damage analysis and advanced features",
+      "upgradeNow": "Upgrade Now",
+      "processing": "Processing...",
+      "comparePlans": "Compare plans"
     },
     "promoCard": {
       "title": "UNLOCK PREMIUM",
@@ -385,7 +455,8 @@
       "fileSelected": "Video Selected",
       "selectFile": "Select Video File",
       "invalidYoutube": "Invalid YouTube URL",
-      "selectVideo": "Please select a video to analyze"
+      "selectVideo": "Please select a video to analyze",
+      "localFile": "Local File"
     },
     "micro": {
       "title": "Micro Analysis (Vision)",
@@ -401,6 +472,8 @@
       "finalAdvice": "Final Verdict",
       "analyzeAnother": "Analyze Another Scene",
       "visionError": "Vision Analysis Error",
+      "premiumBadge": "Premium",
+      "premiumOnly": "Micro Analysis is a Premium-only feature. Please upgrade to use it.",
       "youtubeNotSupported": "YouTube Vision Analysis is coming soon. Please use a local file.",
       "situationSnapshot": "Situation Snapshot",
       "myStatus": "You",
@@ -473,6 +546,7 @@
       }
     },
     "macro": {
+      "startingJob": "Starting analysis job...",
       "modeLabel": "Analysis Mode",
       "timeLabel": "Time (Optional)",
       "timePlaceholder": "Ex: 12:30",
@@ -803,6 +877,10 @@
       "csPerMin": "CS/min",
       "visionPerMin": "Vision/min",
       "avgDamage": "Avg Damage"
+    },
+    "common": {
+      "tryCoaching": "Try AI Coaching →",
+      "viewChampions": "View Champion Stats →"
     }
   },
   "tooltip": {
@@ -894,6 +972,18 @@
     "defaultHow": "Establish vision (wards) and start the objective when your laners have priority (pushed lanes). Always keep track of your Smite damage.",
     "defaultWhy": "Securing this objective gives your entire team a stat advantage beyond the gold difference. The effect becomes more significant as the game progresses."
   },
+  "errorBoundary": {
+    "title": "An Error Occurred",
+    "description": "Something went wrong while loading the page. Please try again or return to the dashboard.",
+    "descriptionGeneric": "An unexpected error occurred. Please try again.",
+    "statsTitle": "Failed to Load Stats",
+    "statsDescription": "An error occurred while fetching stats. Please try again.",
+    "errorDetails": "Error Details",
+    "errorDetailsShow": "Show Error Details",
+    "retry": "Retry",
+    "dashboard": "Dashboard",
+    "topPage": "Home"
+  },
   "settings": {
     "language": "Language",
     "selectLanguage": "Select Language"
@@ -926,13 +1016,16 @@
       "getStarted": "Get Started Free"
     },
     "hero": {
+      "titleLine1": "LEVEL UP",
+      "titleLine2": "YOUR RANK",
       "subtitlePrefix": "AI ",
       "subtitle": "Fetching real-time data from the Riot API.",
       "subtitleHighlight": "Personalized",
       "subtitleEnd": " improvements analyzed to fast-track your rank up.",
       "ctaStart": "Get Started Now →",
       "ctaAnalyze": "🎥 Try Free Video Analysis",
-      "freeBadge": "No login required - Up to 3 free analyses"
+      "freeBadge": "No login required - Up to 3 free analyses",
+      "freeSubText": "Free to start — 3 AI analyses per week"
     },
     "bento": {
       "skillAnalysis": "Visualize Your Skills",
@@ -949,9 +1042,13 @@
       "microDesc": "Detailed analysis of mechanics, combos, and positioning.",
       "winRateChange": "+12% this week",
       "aiCoachLabel": "AI Coach",
-      "activeNow": "Active now"
+      "activeNow": "Active now",
+      "badgeAiCoaching": "AI-Powered Coaching",
+      "skillLabel": "Skill Analysis",
+      "winRateLabel": "Win Rate"
     },
     "features": {
+      "label": "Features",
       "sectionTitlePrefix": "Data-Driven ",
       "sectionTitle": "Win",
       "sectionDesc": "Data-driven improvement, not guesswork.",
@@ -968,6 +1065,22 @@
       "chatFeature2": "Match Data Integration",
       "chatFeature3": "Personalized Advice"
     },
+    "howItWorks": {
+      "label": "How It Works",
+      "title": "Start Improving in 3 Steps",
+      "stepLabel": "STEP",
+      "step1Title": "Connect Your Riot ID",
+      "step1Desc": "Done in 30 seconds. Your password is never shared with us.",
+      "step2Title": "AI Analyzes Your Match",
+      "step2Desc": "Timeline, CS, vision, and macro decisions — all reviewed by AI automatically.",
+      "step3Title": "Get Actionable Advice",
+      "step3Desc": "Specific, practical improvement suggestions based on YOUR gameplay data.",
+      "badgeRiotApi": "Official Riot API",
+      "badgeAi": "Gemini 2.0 Flash AI",
+      "badgeFree": "3 Free Analyses / Week",
+      "cta": "Try a Free Analysis →",
+      "ctaSub": "No signup required. Results in 60 seconds."
+    },
     "cta": {
       "titlePrefix": "Reach Your ",
       "title": "Next Rank",
@@ -982,6 +1095,8 @@
   "loginPage": {
     "emptyFields": "Please enter your login ID and password",
     "loginFailed": "Login failed: ",
+    "tooManyAttempts": "Too many login attempts. Please try again in 60 seconds.",
+    "googleAuthFailed": "Google authentication failed. Please try again.",
     "emailNotVerified": "Email not verified.\nPlease click the link in the email we sent you.",
     "welcomeBack": "Welcome Back",
     "initializing": "Initializing...",
@@ -992,13 +1107,36 @@
     "emailLabel": "Email",
     "passwordLabel": "Password",
     "googleLogin": "Sign in with Google",
-    "orContinueWithEmail": "Or continue with email"
+    "orContinueWithEmail": "Or continue with email",
+    "invalidCredentials": "Invalid email or password",
+    "rsoPasswordBlocked": "RSO-linked accounts must log in via Riot Sign On"
+  },
+  "resetPasswordPage": {
+    "title": "Reset Password",
+    "description": "Enter your registered email address. We'll send you a link to reset your password.",
+    "emailLabel": "Email",
+    "emailPlaceholder": "your@email.com",
+    "sendButton": "Send Reset Link",
+    "sending": "Sending...",
+    "successMessage": "Reset link sent. Please check your email.",
+    "backToLogin": "Back to Login",
+    "resetFailed": "Failed to send reset link. Please check your email address."
   },
   "signupPage": {
     "allFieldsRequired": "Please fill in all fields",
+    "passwordTooShort": "Password must be at least 8 characters.",
+    "passwordWeak": "Weak — add uppercase & numbers",
+    "passwordMedium": "Medium — add uppercase or numbers",
+    "passwordStrong": "Strong",
     "passwordMismatch": "Passwords do not match.",
     "alreadyRegistered": "This email is already registered. Please log in.",
     "registrationFailed": "Registration failed: ",
+    "errors": {
+      "invalidEmail": "Invalid email address format.",
+      "weakPassword": "Password must be at least 8 characters.",
+      "tooManyRequests": "Too many requests. Please try again later.",
+      "generic": "Registration failed. Please try again later."
+    },
     "emailSent": "Confirmation email sent.",
     "checkEmail": "Click the link in the email to complete registration.",
     "alreadyRegisteredNote": "* If you didn't receive an email, the address may already be registered.\nIn that case, please go to the login page.",
@@ -1011,7 +1149,13 @@
     "passwordLabel": "Password",
     "confirmPasswordLabel": "Confirm Password",
     "googleSignup": "Sign up with Google",
-    "orRegisterWithEmail": "Or register with email"
+    "orRegisterWithEmail": "Or register with email",
+    "googleAuthFailed": "Google authentication failed. Please try again.",
+    "loading": "Loading...",
+    "termsAgreement": "By registering, you agree to our {terms} and {privacy}.",
+    "termsOfService": "Terms of Service",
+    "privacyPolicy": "Privacy Policy",
+    "reservedDomain": "This email domain is not available"
   },
   "onboardingPage": {
     "welcome": "Let's link your account and start analyzing.",
@@ -1026,7 +1170,25 @@
     "changed": "I Changed It",
     "verifySuccess": "Verified! Redirecting to dashboard...",
     "logout": "Log Out and Return",
-    "timeRemaining": "Time remaining:"
+    "skipForNow": "Skip and explore the dashboard",
+    "timeRemaining": "Time remaining:",
+    "welcomeTitle": "WELCOME, SUMMONER",
+    "enterRiotId": "Enter Riot ID",
+    "currentIcon": "Current",
+    "newIcon": "New Icon",
+    "targetBadge": "Target"
+  },
+  "referral": {
+    "title": "Invite Friends",
+    "description": "When your friend signs up and goes Premium, your subscription is extended by 1 week. Your friend also gets a 14-day trial!",
+    "descFriend": "Your friend gets a 14-day free trial (normally 7 days) with all Premium features.",
+    "descYou": "When they subscribe, your subscription is extended by 1 week!",
+    "copied": "Link copied",
+    "copyFailed": "Copy failed",
+    "copiedShort": "OK",
+    "copy": "Copy",
+    "invited": "Invited",
+    "rewarded": "Rewards earned"
   },
   "pricingPage": {
     "header": {
@@ -1037,6 +1199,19 @@
     },
     "title": "Plans",
     "subtitle": "Choose the plan that fits you best",
+    "billing": {
+      "monthly": "Monthly",
+      "annual": "Annual",
+      "discount": "Up to 50% OFF",
+      "perYear": "/year",
+      "premiumMonthly": "¥650/mo equivalent — 34% OFF",
+      "extraMonthly": "¥733/mo equivalent — 50% OFF",
+      "perMonthEquivalent": "/mo equivalent",
+      "percentOff": "% OFF",
+      "annualSave": "Save {discount}% with annual plan",
+      "withAnnual": "with annual plan",
+      "annualSaving": "Annual plan: {price} (-{discount}%)"
+    },
     "features": {
       "analysisCount": "Video Analysis Count",
       "segmentCount": "Analysis Segments",
@@ -1088,13 +1263,15 @@
       "name": "Premium",
       "priceUnit": "/month",
       "desc": "For those serious about climbing",
+      "popularBadge": "POPULAR",
+      "trialBadge": "7-day free trial",
       "weeklyAnalysis": "20x/week",
       "fourSegments": "4 segments",
       "autoSegments": "4 auto-selected",
       "buildAdvice": "Build Advice",
       "noAds": "No Ads",
       "processing": "Processing...",
-      "subscribe": "Subscribe to Premium",
+      "subscribe": "Start 7-day free trial",
       "unsubscribe": "Unsubscribe"
     },
     "extra": {
@@ -1104,7 +1281,12 @@
       "weeklyAnalysis": "50x/week",
       "fiveSegments": "5 segments",
       "autoSegments": "5 auto-selected",
+      "buildAdvice": "Build Advice",
+      "noAds": "No Ads",
       "aiDamageAnalysis": "AI Damage Analysis",
+      "aiDamageDesc": "AI-powered damage calculation, rune & item optimization suggestions",
+      "badge": "BEST VALUE",
+      "recommended": "Recommended",
       "subscribe": "Subscribe to Extra",
       "processing": "Processing...",
       "unsubscribe": "Unsubscribe"
@@ -1113,21 +1295,35 @@
       "title": "Feature Comparison",
       "feature": "Feature"
     },
+    "fallbackNotice": "Prices shown are approximate. Exact amounts will be confirmed at checkout.",
     "faq": {
       "title": "FAQ",
-      "q1": "What's the difference between Guest and Free?",
-      "a1": "Guest lets you try instantly without registration, but analysis is limited to 3 fixed scenes. Free members get Riot API integration for auto-selected key scenes from match data, plus analysis history is saved.",
-      "q2": "Can I cancel Premium anytime?",
-      "a2": "Yes, you can cancel anytime. Premium features remain active until the end of your billing period. After cancellation, you automatically continue as a Free member.",
-      "q3": "When do analysis credits reset?",
-      "a3": "Free and Premium weekly credits reset every Monday. Guest credits regenerate 1 credit every 3 days after the last use (up to 3 max).",
-      "q4": "What payment methods are accepted?",
-      "a4": "We accept credit cards (Visa, Mastercard, JCB, American Express). All payments are securely processed through Stripe."
+      "q1": "Can I cancel anytime?",
+      "a1": "Yes, you can cancel anytime. Premium features remain active until the end of your current billing period. After cancellation, you automatically continue as a Free member.",
+      "q2": "Is there a free trial?",
+      "a2": "Yes, we offer a 7-day free trial for first-time users. You can try all Premium features during the trial period.",
+      "q3": "Can I change my plan?",
+      "a3": "Yes, you can upgrade or downgrade anytime. Plan changes are prorated, so you only pay the difference for the remaining period.",
+      "q4": "What are the benefits of the annual plan?",
+      "a4": "The annual plan offers up to 50% off compared to monthly billing. After cancellation, premium features remain active until the end of your current billing period.",
+      "q5": "What payment methods are accepted?",
+      "a5": "We accept credit cards (Visa, Mastercard, JCB, American Express). All payments are securely processed through Stripe.",
+      "q6": "What can I do as a Free member?",
+      "a6": "Free members can use AI analysis up to 3 times per week. Match history viewing and basic stats analysis through Riot API are available without limits.",
+      "q7": "Which regions are supported?",
+      "a7": "Currently, the Japan (JP) server is supported. Support for other regions is planned for the future.",
+      "q8": "What's the difference between Premium and Extra?",
+      "a8": "Premium includes 20 AI analyses per week, 4 auto-selected segments, and AI coaching. Extra adds damage analysis, 5 segment selection, and 50 AI analyses per week.",
+      "q9": "Will I be charged if I cancel during the trial?",
+      "a9": "No, if you cancel during the free trial period, you won't be charged at all. Simply cancel before the trial ends to avoid any charges.",
+      "q10": "Can I pause my subscription?",
+      "a10": "Yes, you can pause your subscription for 1-3 months. You won't be charged during the pause period, and your subscription automatically resumes when the pause ends."
     },
     "ctaPremium": {
       "title": "You're on the Premium Plan",
-      "desc": "Enjoy all features",
-      "button": "Go to Dashboard"
+      "desc": "Upgrade to Extra for damage analysis, more segments, and advanced features",
+      "button": "Go to Dashboard",
+      "upgradeToExtra": "Upgrade to Extra"
     },
     "ctaExtra": {
       "title": "You're on the Extra Plan",
@@ -1136,7 +1332,7 @@
     },
     "ctaUpgrade": {
       "title": "Level Up with Premium",
-      "desc": "20 analyses/week and 5 auto-selected segments for efficient improvement"
+      "desc": "20 analyses/week and 4 auto-selected segments for efficient improvement"
     },
     "ctaGuest": {
       "title": "Want to try it for free?",
@@ -1160,7 +1356,18 @@
       "situationSnapshot": "Situation Snapshot",
       "tradeAnalysis": "Trade Analysis",
       "mechanics": "Mechanics Evaluation",
-      "improvements": "Improvements"
+      "improvements": "Improvements",
+      "damageGiven": "Damage Given",
+      "damageTaken": "Damage Taken",
+      "cdContext": "CD Context",
+      "optimalAction": "Optimal Action",
+      "positioning": "Positioning",
+      "comboExecution": "Combo Execution",
+      "autoAttackWeaving": "Auto-Attack Weaving",
+      "skills": "Skills",
+      "hit": "Hit",
+      "missed": "Missed",
+      "na": "N/A"
     },
     "rewardAd": {
       "title": "Watch an ad to start analysis",
@@ -1193,6 +1400,8 @@
       "pricing": "Pricing",
       "login": "Log In"
     },
+    "usagePromo": "Only {n} analyses left this week — Premium gives you 20/week",
+    "usagePromoCta": "Upgrade",
     "hero": {
       "free": "Free",
       "desc": "Upload your LoL gameplay and get AI-powered macro tactics advice"
@@ -1214,7 +1423,7 @@
     "analysis": {
       "macroTitle": "Macro Analysis",
       "guestNoCredits": "Guest credits used up. Please wait for the next credit to regenerate.",
-      "weeklyLimit": "Weekly analysis limit reached. Resets on Monday.",
+      "weeklyLimit": "Analysis limit reached. Please wait for the next reset.",
       "freeRegister": "Sign up free for 3x/week",
       "comparePlans": "Compare Plans",
       "viewPlans": "View other plans →"
@@ -1244,7 +1453,46 @@
       "reanalyze": "Re-analyze",
       "remainingCredits": "Remaining credits: {remaining}",
       "viewPlans": "View pricing plans →"
+    },
+    "blur": {
+      "message": "Sign up to see full details",
+      "cta": "Sign up for free",
+      "segmentTitle": "Sign up to view scene details",
+      "segmentDesc": "See winning patterns and improvement tips for each scene",
+      "microTitle": "Sign up to view detailed analysis",
+      "microDesc": "See trade analysis, mechanics evaluation, and improvements"
+    },
+    "inlineCta": {
+      "title": "Sign up for deeper analysis",
+      "desc": "Riot API integration, analysis history, AI coaching",
+      "cta": "Sign up free"
+    },
+    "upsell": {
+      "title": "Sign up to unlock more",
+      "desc": "Save analysis history, AI coaching, and match data integration",
+      "cta": "Sign up for free",
+      "trial": "Premium includes a 7-day free trial"
+    },
+    "upgradeCta": {
+      "title": "Upgrade to Premium",
+      "desc": "20 analyses/week, AI coaching, video analysis & more",
+      "cta": "View Plans"
+    },
+    "upgradeModal": {
+      "title": "You've used all your analyses",
+      "desc": "Premium allows up to 20 analyses per week. Try it free for 7 days.",
+      "signupCta": "Sign up for free",
+      "upgradeCta": "Upgrade to Premium",
+      "dismiss": "Close"
     }
+  },
+  "videoMacroProvider": {
+    "restoringBackground": "Restoring background analysis...",
+    "analysisFailed": "Analysis failed",
+    "aiAnalyzingServer": "AI analyzing... (server processing)",
+    "pollingError": "Polling error",
+    "startFailed": "Failed to start analysis",
+    "analyzingOnServer": "Analyzing on server..."
   },
   "visionAnalysis": {
     "restoringBackground": "Restoring background analysis...",
@@ -1359,5 +1607,74 @@
     "itemCount": "{count} Items",
     "details": "Details",
     "close": "Close"
+  },
+  "cancelModal": {
+    "title": "Are you sure you want to cancel?",
+    "valueTitle": "Your Usage",
+    "analysisCount": "Analyses this week",
+    "countUnit": "",
+    "nextRenewal": "Next renewal",
+    "loseTitle": "Features you'll lose",
+    "loseAI": "AI match analysis (20/week)",
+    "loseChat": "AI coach chat",
+    "loseMicro": "Micro analysis (video)",
+    "losePriority": "Priority support",
+    "loseDamage": "AI damage analysis",
+    "loseSegments": "5 auto-selected segments",
+    "loseUnlimited": "Unlimited AI analyses",
+    "reasonTitle": "Why are you canceling?",
+    "reason": {
+      "tooExpensive": "Too expensive",
+      "notUsingEnough": "Not using it enough",
+      "missingFeatures": "Missing features I need",
+      "foundAlternative": "Found an alternative",
+      "other": "Other"
+    },
+    "keepSubscription": "Keep Subscription",
+    "proceed": "Proceed to cancel",
+    "redirecting": "Redirecting...",
+    "pauseTitle": "Before you cancel...",
+    "pauseDesc": "Would you like to pause your subscription instead? You won't be charged during the pause, and it will automatically resume.",
+    "retention": {
+      "tooExpensive": {
+        "title": "Save money with a pause",
+        "desc": "Pausing is free — no charges until you resume. Your data and history are preserved."
+      },
+      "notUsingEnough": {
+        "title": "Take a break, come back stronger",
+        "desc": "Pause now and resume when the new season starts or when you have more time to play."
+      },
+      "missingFeatures": {
+        "title": "New features are coming!",
+        "desc": "We ship updates every week. Pause now and check back — your feedback helps us prioritize."
+      }
+    },
+    "pause1Month": "Pause for 1 month",
+    "pause2Month": "Pause for 2 months",
+    "pause3Month": "Pause for 3 months",
+    "pauseSuccess": "Subscription paused. It will resume automatically on {date}.",
+    "pauseError": "Failed to pause subscription",
+    "back": "Back",
+    "skipPause": "Cancel without pausing"
+  },
+  "verification": {
+    "errors": {
+      "VERIFICATION_LOCKED": "Account linking is temporarily locked.",
+      "FORMAT_ERROR": "Please enter in the correct format (e.g., Hide on bush#KR1)",
+      "SUMMONER_NOT_FOUND": "Summoner not found",
+      "DETAIL_FETCH_FAILED": "Failed to retrieve details",
+      "ALREADY_REGISTERED": "This summoner is already registered to another account",
+      "DB_ERROR": "Failed to prepare verification",
+      "INVALID_SESSION": "Verification session is invalid. Please start over.",
+      "SESSION_EXPIRED": "Verification has expired. Please try again.",
+      "PUUID_MISMATCH": "Target summoner does not match",
+      "FETCH_FAILED": "Failed to re-fetch summoner data",
+      "ICON_NOT_CHANGED": "Icon has not been changed",
+      "LOCKED_TRIPLE_FAIL": "Verification locked due to 3 failed attempts. Please try again tomorrow.",
+      "SYSTEM_ERROR": "A system error occurred",
+      "TIMEOUT": "Verification timed out and was counted as a failure",
+      "TIMEOUT_LOCKED": "Verification locked due to 3 failures including timeout. Please try again tomorrow.",
+      "NOT_EXPIRED_YET": "Not expired yet"
+    }
   }
 }

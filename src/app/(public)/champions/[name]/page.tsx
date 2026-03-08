@@ -10,7 +10,7 @@ type Props = {
 export async function generateStaticParams() {
     const result = await fetchAllChampions("en");
     if (!result) return [];
-    return result.champions.map((c: any) => ({ name: c.id }));
+    return result.champions.map((c: { id: string }) => ({ name: c.id }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

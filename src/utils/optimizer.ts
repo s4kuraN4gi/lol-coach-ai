@@ -3,13 +3,15 @@
  * Prunes the full Riot Match V5 JSON response to reduce storage size.
  * Removes unused 'challenges' and other heavy objects.
  */
-export function pruneMatchData(matchData: any): any {
+import type { MatchV5Response } from "@/app/actions/riot/types";
+
+export function pruneMatchData(matchData: MatchV5Response): MatchV5Response {
     if (!matchData || !matchData.info || !matchData.info.participants) {
         return matchData;
     }
 
     // Deep clone to avoid mutating original if used elsewhere immediately (though mostly used for save)
-    const pruned = JSON.parse(JSON.stringify(matchData));
+    const pruned: MatchV5Response = JSON.parse(JSON.stringify(matchData));
 
     // Whitelist of critical challenges we use for stats
     // Add new ones here as features expand
@@ -30,24 +32,20 @@ export function pruneMatchData(matchData: any): any {
         "maxLevelLeadLaneOpponent"
     ];
 
-    pruned.info.participants.forEach((p: any) => {
-        // Prune Challenges
+    pruned.info.participants.forEach((p) => {
         if (p.challenges) {
-            const newChallenges: any = {};
+            const newChallenges: Record<string, number> = {};
             KEEP_CHALLENGES.forEach(key => {
-                if (key in p.challenges) {
-                    newChallenges[key] = p.challenges[key];
+                const challenges = p.challenges as Record<string, number>;
+                if (key in challenges && challenges[key] !== undefined) {
+                    newChallenges[key] = challenges[key];
                 }
             });
             p.challenges = newChallenges;
         }
 
         // Remove Missions (often contains localized strings or bulky tracking)
-        if (p.missions) delete p.missions;
-        
-        // Remove Perks if we don't visualize rune trees deeply?
-        // We might want perks for "Build Analysis", so keeping them for now.
-        // if (p.perks) delete p.perks; 
+        if ('missions' in p) delete (p as Record<string, unknown>).missions;
     });
 
     return pruned;

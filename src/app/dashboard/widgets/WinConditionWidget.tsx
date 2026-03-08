@@ -3,16 +3,26 @@
 import DashboardCard from "../components/DashboardCard";
 import InfoTooltip from "../components/InfoTooltip";
 import { useTranslation } from "@/contexts/LanguageContext";
+import Link from "next/link";
 
-export default function WinConditionWidget({ stats }: { stats: any }) {
+export default function WinConditionWidget({ stats }: { stats: { winConditions?: { label: string; count: number; winRate: number }[] } | null }) {
     const { t } = useTranslation();
     
-    if (!stats) return <DashboardCard className="h-full">{t('widgets.winCondition.noData')}</DashboardCard>;
+    if (!stats) return (
+        <DashboardCard className="h-full">
+            <div className="flex flex-col items-center justify-center h-full gap-2">
+                <span className="text-slate-400 text-sm">{t('widgets.winCondition.noData')}</span>
+                <Link href="/dashboard/coach" className="text-xs text-blue-400 hover:text-blue-300 font-bold transition">
+                    {t('widgets.common.tryCoaching', 'Try AI Coaching →')}
+                </Link>
+            </div>
+        </DashboardCard>
+    );
 
     const conditions = stats.winConditions || [];
 
     const getData = (labelContains: string) => {
-        const item = conditions.find((c: any) => c.label.includes(labelContains));
+        const item = conditions.find((c) => c.label.includes(labelContains));
         if (!item) return { wins: 0, total: 0, winRate: 0 };
         
         // stats.ts returns { count, winRate }. We calculate wins.
@@ -46,7 +56,7 @@ export default function WinConditionWidget({ stats }: { stats: any }) {
                             how: t('tooltip.winCondition.how')
                         }} />
                      </h3>
-                     <p className="text-xs text-slate-500">{t('widgets.winCondition.subtitle')}</p>
+                     <p className="text-xs text-slate-400">{t('widgets.winCondition.subtitle')}</p>
                 </div>
              </div>
 

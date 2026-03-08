@@ -2,9 +2,11 @@
 
 import useSWR from "swr";
 
+import type { MatchV5Response } from "@/app/actions/riot/types";
+
 type MatchData = {
-    matchData: any;
-    analysis: any;
+    matchData: MatchV5Response | null;
+    analysis: string | null;
     ddVersion: string;
 };
 
@@ -25,7 +27,7 @@ async function fetchMatchData(matchId: string): Promise<MatchData> {
     ]);
 
     return {
-        matchData: matchRes.success ? matchRes.data : null,
+        matchData: matchRes.success ? matchRes.data ?? null : null,
         analysis: analysisRes,
         ddVersion,
     };

@@ -1,8 +1,9 @@
 'use server';
 
-import { createClient } from "@/utils/supabase/server";
+import { createClient, getUser } from "@/utils/supabase/server";
 import { isExtraTier } from "./constants";
-import { getAnalysisStatus } from "./analysis";
+import { refreshAnalysisStatus } from "./analysis";
+import { logger } from "@/lib/logger";
 
 export type DamageAnalysisInput = {
     attacker: {
@@ -85,23 +86,8 @@ export type DamageAnalysisResult = {
     strategicAdvice: string;
 };
 
-const MODELS_TO_TRY = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
-
-async function generateContentWithRetry(model: any, content: any, retries = 0): Promise<any> {
-    try {
-        return await model.generateContent(content);
-    } catch (e: any) {
-        const isRateLimit = e.message?.includes('429') || e.status === 429 || e.message?.includes('Too Many Requests');
-        if (isRateLimit && retries < 2) {
-            await new Promise(resolve => setTimeout(resolve, 3000));
-            return generateContentWithRetry(model, content, retries + 1);
-        }
-        if (isRateLimit) {
-            throw new Error("AI Service is busy. Please try again in 30 seconds.");
-        }
-        throw e;
-    }
-}
+import { GEMINI_MODELS_TO_TRY } from "@/lib/gemini";
+import { generateContentWithRetry } from "./analysis/helpers";
 
 function buildPrompt(input: DamageAnalysisInput): string {
     const { attacker, defender, locale } = input;
@@ -194,11 +180,11 @@ export async function analyzeDamageMatchup(input: DamageAnalysisInput): Promise<
 }> {
     // Auth check
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getUser();
     if (!user) return { success: false, error: "Not authenticated" };
 
     // Extra tier check
-    const status = await getAnalysisStatus();
+    const status = await refreshAnalysisStatus(user.id);
     if (!isExtraTier(status)) {
         return { success: false, error: "Extra plan required for AI damage analysis" };
     }
@@ -209,13 +195,13 @@ export async function analyzeDamageMatchup(input: DamageAnalysisInput): Promise<
     }
 
     try {
-        const { GoogleGenerativeAI } = await import("@google/generative-ai");
-        const genAI = new GoogleGenerativeAI(apiKey);
+        const { getGeminiClient } = await import("@/lib/gemini");
+        const genAI = getGeminiClient(apiKey);
         const prompt = buildPrompt(input);
 
         let finalJson = "";
 
-        for (const modelName of MODELS_TO_TRY) {
+        for (const modelName of GEMINI_MODELS_TO_TRY) {
             try {
                 const model = genAI.getGenerativeModel({
                     model: modelName,
@@ -224,8 +210,8 @@ export async function analyzeDamageMatchup(input: DamageAnalysisInput): Promise<
                 const result = await generateContentWithRetry(model, prompt);
                 finalJson = result.response.text();
                 if (finalJson) break;
-            } catch (e: any) {
-                console.warn(`[DamageAnalysis] Failed with ${modelName}: ${e.message}`);
+            } catch (e) {
+                logger.warn(`[DamageAnalysis] Failed with ${modelName}: ${e instanceof Error ? e.message : String(e)}`);
             }
         }
 
@@ -239,8 +225,8 @@ export async function analyzeDamageMatchup(input: DamageAnalysisInput): Promise<
         const parsed = JSON.parse(finalJson) as DamageAnalysisResult;
         return { success: true, data: parsed };
 
-    } catch (e: any) {
-        console.error("[DamageAnalysis] Error:", e);
-        return { success: false, error: e.message || "Analysis failed" };
+    } catch (e) {
+        logger.error("[DamageAnalysis] Error:", e);
+        return { success: false, error: "ANALYSIS_FAILED" };
     }
 }

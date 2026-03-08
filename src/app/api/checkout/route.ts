@@ -1,29 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, createServiceRoleClient } from '@/utils/supabase/server';
+import Stripe from 'stripe';
+import { createClient, getUser } from '@/utils/supabase/server';
 import { stripe } from '@/lib/stripe';
+import { checkoutRequestSchema, verifyOrigin } from '@/lib/validation';
+import { logger } from '@/lib/logger';
 
 export async function POST(req: NextRequest) {
+  const originError = verifyOrigin(req);
+  if (originError) return originError;
+
   try {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getUser();
 
     if (!user) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
     const body = await req.json();
-    const priceId = body?.priceId;
+    const parsed = checkoutRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      return new NextResponse('Invalid request', { status: 400 });
+    }
+    const { priceId } = parsed.data;
 
-    if (!priceId) {
-      return new NextResponse('Price ID is required', { status: 400 });
+    // Whitelist check: only allow known price IDs (monthly + annual)
+    const allowedPriceIds = [
+      process.env.NEXT_PUBLIC_STRIPE_PRICE_ID,
+      process.env.NEXT_PUBLIC_STRIPE_EXTRA_PRICE_ID,
+      process.env.NEXT_PUBLIC_STRIPE_PREMIUM_ANNUAL_PRICE_ID,
+      process.env.NEXT_PUBLIC_STRIPE_EXTRA_ANNUAL_PRICE_ID,
+    ].filter(Boolean);
+    if (!allowedPriceIds.includes(priceId)) {
+      return new NextResponse('Invalid Price ID', { status: 400 });
     }
 
     // Check if user already has a customer ID and subscription
     const { data: profile } = await supabase
       .from('profiles')
-      .select('stripe_customer_id, stripe_subscription_id')
+      .select('stripe_customer_id, stripe_subscription_id, language_preference')
       .eq('id', user.id)
       .single();
 
@@ -40,16 +55,13 @@ export async function POST(req: NextRequest) {
         throw new Error("Price ID is missing or empty");
     }
 
-    // Determine Base URL securely
-    let baseUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || 'http://localhost:3000';
-
-    if (baseUrl.includes('localhost') && !baseUrl.startsWith('http')) {
-        baseUrl = `http://${baseUrl}`;
-    } else if (!baseUrl.startsWith('http')) {
-        baseUrl = `https://${baseUrl}`;
+    // Determine Base URL securely using URL constructor for safe parsing
+    let rawUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || 'http://localhost:3000';
+    if (!rawUrl.startsWith('http')) {
+        rawUrl = rawUrl.includes('localhost') ? `http://${rawUrl}` : `https://${rawUrl}`;
     }
-
-    baseUrl = baseUrl.replace(/\/$/, '');
+    const parsedUrl = new URL(rawUrl);
+    const baseUrl = `${parsedUrl.protocol}//${parsedUrl.host}`;
 
     const successUrl = `${baseUrl}/dashboard?checkout=success`;
     const cancelUrl = `${baseUrl}/dashboard?checkout=cancel`;
@@ -89,16 +101,18 @@ export async function POST(req: NextRequest) {
 
           // Already on the requested price — sync DB tier and redirect
           if (currentPriceId === sanitizedPriceId) {
-            const EXTRA_PRICE_ID_CHECK = process.env.NEXT_PUBLIC_STRIPE_EXTRA_PRICE_ID;
-            const tier = (EXTRA_PRICE_ID_CHECK && currentPriceId === EXTRA_PRICE_ID_CHECK) ? 'extra' : 'premium';
-            // Use service role client to bypass RLS for subscription_tier update
-            const adminDb = createServiceRoleClient();
-            const { error: updateErr } = await adminDb.from('profiles').update({
-              subscription_tier: tier,
-              is_premium: true,
-            }).eq('id', user.id);
-            if (updateErr) {
-              console.error(`[Checkout] DB update failed: ${updateErr.message}`);
+            const extraPriceIds = [
+              process.env.NEXT_PUBLIC_STRIPE_EXTRA_PRICE_ID,
+              process.env.NEXT_PUBLIC_STRIPE_EXTRA_ANNUAL_PRICE_ID,
+            ].filter(Boolean);
+            const tier = extraPriceIds.includes(currentPriceId ?? '') ? 'extra' : 'premium';
+            // Sync subscription tier via RPC (no service role needed)
+            const { error: syncErr } = await supabase.rpc('sync_subscription_tier', {
+              p_user_id: user.id,
+              p_tier: tier,
+            });
+            if (syncErr) {
+              logger.error("[Checkout] Tier sync failed");
             }
             return NextResponse.json({ url: `${baseUrl}/dashboard?checkout=success` });
           }
@@ -122,12 +136,14 @@ export async function POST(req: NextRequest) {
             if (creditAmount > 0) {
               const remainingDays = Math.ceil(remainingSeconds / 86400);
 
+              // Idempotency key prevents duplicate coupons on concurrent requests
+              const idempotencyKey = `coupon_${user.id}_${existingSub.id}_${sanitizedPriceId}`;
               const coupon = await stripe.coupons.create({
                 amount_off: creditAmount,
                 currency: currentPrice.currency || 'jpy',
                 duration: 'once',
-                name: `プラン切替クレジット (残${remainingDays}日分)`,
-              });
+                name: getCouponName(remainingDays, profile?.language_preference),
+              }, { idempotencyKey });
 
               discounts = [{ coupon: coupon.id }];
             }
@@ -135,13 +151,27 @@ export async function POST(req: NextRequest) {
 
           oldSubscriptionId = existingSub.id;
         }
-      } catch (e: any) {
-        console.error(`[Checkout] Could not retrieve existing subscription: ${e.message}`);
+      } catch (e) {
+        logger.error("[Checkout] Existing subscription retrieval failed");
       }
     }
 
     // Create Stripe Checkout Session (always show payment page)
-    const sessionParams: any = {
+    const isNewSubscriber = !existingSubscriptionId && !profile?.stripe_subscription_id;
+
+    // Check if user was referred — extend trial to 14 days as referral bonus
+    let trialDays = 7;
+    if (isNewSubscriber) {
+      const { count } = await supabase
+        .from('referrals')
+        .select('id', { count: 'exact', head: true })
+        .eq('referred_id', user.id);
+      if (count && count > 0) {
+        trialDays = 14;
+      }
+    }
+
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
       customer: customerId ? customerId : undefined,
       customer_email: (!customerId && user.email) ? user.email : undefined,
       client_reference_id: user.id,
@@ -159,17 +189,37 @@ export async function POST(req: NextRequest) {
         userId: user.id,
         ...(oldSubscriptionId ? { oldSubscriptionId } : {}),
       },
+      // Free trial for first-time subscribers (14 days if referred, 7 days otherwise)
+      ...(isNewSubscriber && !discounts ? {
+        subscription_data: {
+          trial_period_days: trialDays,
+        },
+      } : {}),
     };
 
     if (discounts) {
       sessionParams.discounts = discounts;
     }
 
-    const session = await stripe.checkout.sessions.create(sessionParams);
+    // 5-minute bucket prevents duplicate sessions from rapid clicks
+    const timeBucket = Math.floor(Date.now() / (5 * 60 * 1000));
+    const sessionIdempotencyKey = `checkout_${user.id}_${sanitizedPriceId}_${timeBucket}`;
+    const session = await stripe.checkout.sessions.create(sessionParams, { idempotencyKey: sessionIdempotencyKey });
 
     return NextResponse.json({ url: session.url });
-  } catch (error: any) {
-    console.error('Stripe Checkout Error:', error);
-    return new NextResponse(JSON.stringify({ error: error.message }), { status: 500 });
+  } catch (error) {
+    logger.error("[Checkout] Session creation failed");
+    return new NextResponse(JSON.stringify({ error: "Checkout service error. Please try again later." }), { status: 500 });
+  }
+}
+
+function getCouponName(remainingDays: number, lang?: string | null): string {
+  switch (lang) {
+    case 'en':
+      return `Plan switch credit (${remainingDays} days remaining)`;
+    case 'ko':
+      return `플랜 전환 크레딧 (${remainingDays}일 남음)`;
+    default:
+      return `プラン切替クレジット (残${remainingDays}日分)`;
   }
 }

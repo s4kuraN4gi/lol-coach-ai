@@ -4,11 +4,21 @@ import { UniqueStats } from "@/app/actions/stats";
 import DashboardCard from "../components/DashboardCard";
 import InfoTooltip from "../components/InfoTooltip";
 import { useTranslation } from "@/contexts/LanguageContext";
+import Link from "next/link";
 
 export default function ClutchWidget({ stats }: { stats: UniqueStats | null }) {
     const { t } = useTranslation();
-    
-    if (!stats) return <DashboardCard>{t('widgets.clutch.noData')}</DashboardCard>;
+
+    if (!stats) return (
+        <DashboardCard className="h-full">
+            <div className="flex flex-col items-center justify-center h-full gap-2">
+                <span className="text-slate-400 text-sm">{t('widgets.clutch.noData')}</span>
+                <Link href="/dashboard/coach" className="text-xs text-blue-400 hover:text-blue-300 font-bold transition">
+                    {t('widgets.common.tryCoaching', 'Try AI Coaching →')}
+                </Link>
+            </div>
+        </DashboardCard>
+    );
 
     const { clutch } = stats;
 
@@ -39,7 +49,7 @@ export default function ClutchWidget({ stats }: { stats: UniqueStats | null }) {
                             how: t('tooltip.clutch.how')
                         }} />
                      </h3>
-                     <p className="text-xs text-slate-500">{t('widgets.clutch.subtitle')}</p>
+                     <p className="text-xs text-slate-400">{t('widgets.clutch.subtitle')}</p>
                 </div>
              </div>
 
