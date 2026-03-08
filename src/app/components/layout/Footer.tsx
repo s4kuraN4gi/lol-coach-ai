@@ -22,7 +22,7 @@ export default function Footer() {
                 </div>
 
                 {/* Riot Games Disclaimer (Legal Jibber Jabber) */}
-                <div className="max-w-3xl text-[10px] sm:text-xs text-slate-500 leading-relaxed">
+                <div className="max-w-3xl text-[10px] sm:text-xs text-slate-400 leading-relaxed">
                     <p>
                         {t('footer.riotDisclaimer')}
                     </p>

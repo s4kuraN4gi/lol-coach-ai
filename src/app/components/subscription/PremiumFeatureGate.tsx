@@ -1,8 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { triggerStripeCheckout } from "@/lib/checkout";
 
 
 type Props = {
@@ -25,6 +26,7 @@ export default function PremiumFeatureGate({
     subscriptionTier,
 }: Props) {
     const { t } = useTranslation();
+    const [isLoading, setIsLoading] = useState(false);
 
     // For 'premium' requirement: isPremium flag is sufficient (covers both premium and extra)
     // For 'extra' requirement: must specifically be on the extra tier
@@ -42,6 +44,17 @@ export default function PremiumFeatureGate({
     const defaultMessage = requiredTier === 'extra'
         ? 'Extraプラン限定機能'
         : 'プレミアムプランのみ有効';
+
+    const checkoutTier = requiredTier === 'extra' ? 'extra' : 'premium';
+
+    const handleDirectCheckout = async () => {
+        setIsLoading(true);
+        try {
+            await triggerStripeCheckout(checkoutTier, t);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     return (
         <div className="relative overflow-hidden rounded-xl">
@@ -73,12 +86,22 @@ export default function PremiumFeatureGate({
                             requiredTier === 'extra' ? 'AIダメージ分析や高度な機能が利用可能に' : 'AIコーチング・ミクロ分析などが利用可能に'
                         )}
                     </p>
-                    {/* CTA Button */}
+                    {/* Direct Checkout Button */}
+                    <button
+                        onClick={handleDirectCheckout}
+                        disabled={isLoading}
+                        className="inline-block px-5 py-2 rounded-lg bg-gradient-to-r from-yellow-500 to-amber-500 text-slate-900 text-sm font-bold hover:from-yellow-400 hover:to-amber-400 transition-all shadow-lg shadow-yellow-500/20 disabled:opacity-50"
+                    >
+                        {isLoading
+                            ? t('premium.featureGate.processing', '処理中...')
+                            : t('premium.featureGate.upgradeNow', 'アップグレード')}
+                    </button>
+                    {/* Compare Plans Link */}
                     <Link
                         href="/pricing"
-                        className="inline-block px-5 py-2 rounded-lg bg-gradient-to-r from-yellow-500 to-amber-500 text-slate-900 text-sm font-bold hover:from-yellow-400 hover:to-amber-400 transition-all shadow-lg shadow-yellow-500/20"
+                        className="block text-xs text-slate-500 hover:text-slate-300 transition-colors"
                     >
-                        {t('premium.featureGate.upgradeNow', 'アップグレード')}
+                        {t('premium.featureGate.comparePlans', 'プラン比較を見る')}
                     </Link>
                 </div>
             </div>

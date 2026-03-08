@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getAnalysisStatus } from "@/app/actions/analysis";
 import { type AnalysisStatus } from "@/app/actions/constants";
 import DashboardLayout from "../components/layout/DashboardLayout";
@@ -10,6 +10,7 @@ import { useSummoner } from "../providers/SummonerProvider";
 import { useRouter } from "next/navigation";
 import { fetchBasicStats, fetchMatchStats } from "@/app/actions/stats";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { logger } from "@/lib/logger";
 
 const CHAT_KEY = "chat:message";
 
@@ -43,6 +44,13 @@ export default function ChatPage() {
 
   //   AIメッセージの状態管理
   const [input, setInput] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const autoResize = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+  }, []);
   //   ローディング状態管理
   const [loadingAI, setLoadingAI] = useState(false);
   //   セッションの状態管理
@@ -52,8 +60,9 @@ export default function ChatPage() {
     null
   );
   //   自動スクロール用
-  // const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const chatContainerRef = useRef<HTMLDivElement | null>(null);
+  //   モバイルサイドバー表示制御
+  const [showSidebar, setShowSidebar] = useState(false);
 
   // Data Context for AI
   type ChatContextType = {
@@ -62,10 +71,10 @@ export default function ChatPage() {
       favoriteChampions?: string;
       recentPerformance?: string;
       summonerName?: string;
-      currentMatch?: any; // Add match context
+      currentMatch?: { championName: string; kda: string; win: boolean; matchId?: string } | null;
   };
   const [chatContext, setChatContext] = useState<ChatContextType>({});
-  const [consultingMatch, setConsultingMatch] = useState<any>(null); // For UI display
+  const [consultingMatch, setConsultingMatch] = useState<ChatContextType['currentMatch']>(null);
 
   // Fetch Premium Status
   useEffect(() => {
@@ -86,7 +95,7 @@ export default function ChatPage() {
         const parsed = JSON.parse(saved);
         setSessions(parsed);
       } catch {
-        console.warn(t('chatPage.historyLoadFailed'));
+        logger.warn(t('chatPage.historyLoadFailed'));
       }
     }
   }, [activeSummoner]);
@@ -105,41 +114,41 @@ export default function ChatPage() {
         activeSummoner.summoner_id, 
         activeSummoner.summoner_name || "", 
         activeSummoner.tag_line || ""
-    ).then((basic: any) => {
+    ).then((basic) => {
         if (basic.ranks && basic.ranks.length > 0) {
             const r = basic.ranks[0];
-            setChatContext((prev) => ({ 
-                ...prev, 
+            setChatContext((prev) => ({
+                ...prev,
                 rank: `${r.tier} ${r.rank} (${r.leaguePoints} LP)`
             }));
         } else {
             setChatContext((prev) => ({ ...prev, rank: "Unranked" }));
         }
-    }).catch((e: any) => console.error("Basic Stats fetch failed in Chat", e));
+    }).catch((e) => logger.error("Basic Stats fetch failed in Chat", e));
 
     // 3. Fetch Match Stats (Slow, Lazy)
-    fetchMatchStats(activeSummoner.puuid!).then((stats: any) => {
+    fetchMatchStats(activeSummoner.puuid!).then((stats) => {
         // Top 3 Champs
         const topChamps = stats.championStats
-            .sort((a: any, b: any) => b.games - a.games)
+            .sort((a, b) => b.games - a.games)
             .slice(0, 3)
-            .map((c: any) => c.name)
+            .map((c) => c.name)
             .join(", ");
-        
-        const wins = stats.recentMatches.filter((m: any) => m.win).length;
+
+        const wins = stats.recentMatches.filter((m) => m.win).length;
         const total = stats.recentMatches.length;
         const wr = total > 0 ? Math.round((wins / total) * 100) : 0;
-        
-        // Recent Performance (last 5 games)
-        const recent5 = stats.recentMatches.slice(0, 5).map((m: any) => m.win ? "W" : "L").join("-");
 
-        setChatContext((prev) => ({ 
-            ...prev, 
+        // Recent Performance (last 5 games)
+        const recent5 = stats.recentMatches.slice(0, 5).map((m) => m.win ? "W" : "L").join("-");
+
+        setChatContext((prev) => ({
+            ...prev,
             favoriteChampions: topChamps,
             winRate: wr,
             recentPerformance: recent5
         }));
-    }).catch((e: any) => console.error("Match Stats fetch failed in Chat", e));
+    }).catch((e) => logger.error("Match Stats fetch failed in Chat", e));
 
   }, [activeSummoner]);
 
@@ -172,7 +181,7 @@ export default function ChatPage() {
               // Optional: Auto-create session if needed? 
               // Existing logic creates session on submit.
           } catch (e) {
-              console.error("Failed to parse match context", e);
+              logger.error("Failed to parse match context", e);
           }
       }
   }, []);
@@ -217,7 +226,7 @@ export default function ChatPage() {
       // 既存のチャット更新
       // タイトルが新しいチャットだった場合に最初の入力で更新
       const newTitle =
-        selectedSession.title === "新しいチャット"
+        selectedSession.title === t('chatPage.newChatTitle')
           ? input.slice(0, 20)
           : selectedSession.title;
 
@@ -296,9 +305,8 @@ export default function ChatPage() {
       setSessions(updatedSessions);
       setSelectedSession(updatedSession);
       setMessage(updatedSession.message);
-    } catch (err: any) {
-      console.log("AI接続エラー:", err);
-      const errMsg = err.message || t('chatPage.messages.connectionFailed');
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : t('chatPage.messages.connectionFailed');
       
       const errorMsg: ChatMsg = { 
           role: "ai", 
@@ -345,8 +353,16 @@ export default function ChatPage() {
         title={t('chatPage.premiumTitle')}
         description={t('chatPage.premiumDesc')}
       >
-      <div className="flex h-[85vh] gap-6">
-        <aside className="w-72 glass-panel p-4 flex flex-col rounded-xl overflow-hidden border border-slate-700/50">
+      <div className="flex h-[85vh] gap-0 lg:gap-6 relative">
+        {/* Mobile sidebar overlay backdrop */}
+        {showSidebar && (
+          <div className="fixed inset-0 bg-black/60 z-30 lg:hidden" onClick={() => setShowSidebar(false)} />
+        )}
+        <aside className={`
+          fixed inset-y-0 left-0 z-40 w-72 glass-panel p-4 flex flex-col overflow-hidden border-r border-slate-700/50 transition-transform duration-200
+          lg:static lg:z-auto lg:rounded-xl lg:border lg:translate-x-0
+          ${showSidebar ? 'translate-x-0' : '-translate-x-full'}
+        `}>
           <div className="flex items-center justify-between mb-4 px-2">
             <h3 className="text-lg font-bold text-slate-200 flex items-center gap-2">
                 <span className="text-xl">💬</span> {t('chatPage.history')}
@@ -373,6 +389,7 @@ export default function ChatPage() {
               setSessions(updated);
               setSelectedSession(newSession);
               setMessage([]);
+              setShowSidebar(false);
               const key = `chatSessions_${activeSummoner?.summoner_name}`
               localStorage.setItem(key, JSON.stringify(updated));
             }}
@@ -395,6 +412,7 @@ export default function ChatPage() {
                   onClick={() => {
                     setSelectedSession(s);
                     setMessage(s.message);
+                    setShowSidebar(false);
                   }}
                   className={`group flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all border border-transparent ${
                     selectedSession?.id === s.id 
@@ -427,6 +445,7 @@ export default function ChatPage() {
                       }
                     }}
                     className="text-slate-600 group-hover:text-red-400 opacity-0 group-hover:opacity-100 transition p-1 hover:bg-slate-700 rounded"
+                    aria-label={t('chatPage.deleteSession', 'Delete session')}
                   >
                     ✕
                   </button>
@@ -438,7 +457,21 @@ export default function ChatPage() {
 
         {/* チャット画面 */}
         <section className="flex-1 flex flex-col h-full glass-panel rounded-xl border border-slate-700/50 overflow-hidden relative">
-          
+
+          {/* Mobile header with sidebar toggle */}
+          <div className="flex items-center gap-3 p-3 border-b border-slate-800 lg:hidden">
+            <button
+              onClick={() => setShowSidebar(true)}
+              className="p-2 rounded-lg hover:bg-slate-800 text-slate-400 transition"
+              aria-label="Toggle history"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+            </button>
+            <span className="text-sm font-medium text-slate-300 truncate">
+              {selectedSession?.title || t('chatPage.coachTitle')}
+            </span>
+          </div>
+
           {/* Background decoration */}
            <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] opacity-5 pointer-events-none"></div>
 
@@ -475,7 +508,7 @@ export default function ChatPage() {
                 {/* <div ref={messagesEndRef} /> */}
               </>
             ) : (
-                <div className="flex flex-col items-center justify-center h-full text-slate-500 opacity-60">
+                <div className="flex flex-col items-center justify-center h-full text-slate-400 opacity-60">
                     <div className="w-24 h-24 bg-slate-800 rounded-full flex items-center justify-center mb-6 shadow-inner">
                         <span className="text-4xl grayscale">🤖</span>
                     </div>
@@ -517,6 +550,7 @@ export default function ChatPage() {
                 className="flex gap-3 max-w-4xl mx-auto"
             >
                 <textarea
+                ref={textareaRef}
                 value={input}
                 onKeyDown={(e) => {
                     if(e.nativeEvent.isComposing) return;
@@ -526,7 +560,7 @@ export default function ChatPage() {
                     }
                 }}
                 placeholder={t('chatPage.inputPlaceholder')}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => { setInput(e.target.value); autoResize(); }}
                 className="flex-1 bg-slate-800 border-slate-700 text-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-slate-500 resize-none transition shadow-inner"
                 rows={1}
                 disabled={!selectedSession}

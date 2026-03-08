@@ -52,7 +52,7 @@ async function fetchMatchHistory(
             if (!res.success || !res.data) return null;
 
             const m = res.data;
-            const p = m.info.participants.find((p: any) => p.puuid === puuid);
+            const p = m.info.participants.find((p) => p.puuid === puuid);
 
             if (!p) return null;
 

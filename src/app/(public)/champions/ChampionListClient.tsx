@@ -11,7 +11,7 @@ import { useBackUrl } from "@/hooks/useBackUrl";
 const ROLES = ["all", "Fighter", "Tank", "Mage", "Assassin", "Marksman", "Support"] as const;
 
 type Props = {
-    champions: any[];
+    champions: { id: string; name: string; title: string; tags: string[]; image: { full: string } }[];
     version: string;
 };
 

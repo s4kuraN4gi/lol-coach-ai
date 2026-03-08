@@ -1,7 +1,7 @@
 "use client";
 
 import * as Sentry from "@sentry/nextjs";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { FaExclamationTriangle, FaRedo, FaHome } from "react-icons/fa";
 import Link from "next/link";
 import { useTranslation } from "@/contexts/LanguageContext";
@@ -14,9 +14,11 @@ export default function CoachError({
     reset: () => void;
 }) {
     const { t } = useTranslation();
+    const [eventId, setEventId] = useState<string | null>(null);
 
     useEffect(() => {
-        Sentry.captureException(error);
+        const id = Sentry.captureException(error);
+        setEventId(id);
     }, [error]);
 
     return (
@@ -34,9 +36,15 @@ export default function CoachError({
                     {t('errorBoundary.description')}
                 </p>
 
+                {process.env.NODE_ENV === "development" && eventId && (
+                    <p className="text-xs text-slate-600 mb-4">
+                        Error ID: <code className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-400">{eventId}</code>
+                    </p>
+                )}
+
                 {process.env.NODE_ENV === "development" && (
                     <details className="mb-4 text-left">
-                        <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-400">
+                        <summary className="text-xs text-slate-400 cursor-pointer hover:text-slate-400">
                             {t('errorBoundary.errorDetailsShow')}
                         </summary>
                         <pre className="mt-2 p-2 bg-slate-950 rounded text-xs text-red-400 overflow-x-auto">

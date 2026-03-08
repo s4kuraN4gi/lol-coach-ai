@@ -13,13 +13,12 @@ import { type AnalysisStatus } from "@/app/actions/constants";
 import { useChampionMatchIds, useChampionMatchDetails } from "@/hooks/useChampionData";
 import { useAnalysisStatus } from "@/hooks/useCoachData";
 
-type Match = any; // We can use strict type if available
 
 // --- HELPER COMPONENT: Simple Tooltip ---
 function HelperTooltip({ text }: { text: string }) {
     return (
         <div className="group relative ml-2 inline-flex items-center cursor-help z-50">
-            <span className="text-slate-500 hover:text-blue-400 transition-colors">
+            <span className="text-slate-400 hover:text-blue-400 transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
                 </svg>
@@ -84,7 +83,7 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
         let validGamesCount = 0;
 
         matchDetails.forEach(m => {
-            const p = m.info.participants.find((p: any) => p.puuid === puuid);
+            const p = m.info.participants.find((p) => p.puuid === puuid);
             if (!p) return; 
 
             // STRICT FILTER: Verify champion name matches requested champion
@@ -95,7 +94,7 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
 
             validGamesCount++;
 
-            const team = m.info.participants.filter((t: any) => t.teamId === p.teamId);
+            const team = m.info.participants.filter((t) => t.teamId === p.teamId);
 
             // Basic
             if (p.win) wins++;
@@ -109,7 +108,7 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
             if (p.challenges?.teamDamagePercentage) {
                 damageShare += p.challenges.teamDamagePercentage;
             } else {
-                 const totalTeamDmg = team.reduce((sum: number, t: any) => sum + t.totalDamageDealtToChampions, 0);
+                 const totalTeamDmg = team.reduce((sum, t) => sum + t.totalDamageDealtToChampions, 0);
                  if (totalTeamDmg > 0) damageShare += (p.totalDamageDealtToChampions / totalTeamDmg);
             }
             if (p.challenges?.killParticipation) {
@@ -117,7 +116,7 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
             }
 
             // Laning
-            const opponent = m.info.participants.find((o: any) => 
+            const opponent = m.info.participants.find((o) =>
                 o.teamId !== p.teamId && o.teamPosition === p.teamPosition && p.teamPosition !== 'UTILITY'
             );
 
@@ -314,7 +313,7 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                                     style={{ width: `${progress}%` }}
                                  />
                              </div>
-                             <div className="text-xs font-mono text-slate-500 min-w-[80px]">
+                             <div className="text-xs font-mono text-slate-400 min-w-[80px]">
                                  {isComplete ? (
                                      <span className="text-green-400 flex items-center gap-1">
                                          {t('championDetail.ready')}
@@ -328,11 +327,11 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                     
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
-                            <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">{t('championDetail.stats.csPerMin')}</div>
+                            <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">{t('championDetail.stats.csPerMin')}</div>
                             <div className="text-xl font-bold text-slate-200">{stats.summary.csPerMin}</div>
                         </div>
                         <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
-                            <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">{t('championDetail.stats.goldDiff')}</div>
+                            <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">{t('championDetail.stats.goldDiff')}</div>
                             <div className={`text-xl font-bold ${stats.laning.goldDiff > 0 ? "text-green-400" : "text-red-400"}`}>
                                 {stats.laning.goldDiff > 0 ? "+" : ""}{stats.laning.goldDiff}
                             </div>
@@ -434,7 +433,7 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                                             </div>
                                         </div>
                                     </div>
-                                    <span className="text-xs text-slate-500 font-medium mt-1">0-25m</span>
+                                    <span className="text-xs text-slate-400 font-medium mt-1">0-25m</span>
                                 </div>
 
                                 {/* Mid */}
@@ -446,7 +445,7 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                                             </div>
                                         </div>
                                     </div>
-                                    <span className="text-xs text-slate-500 font-medium mt-1">25-35m</span>
+                                    <span className="text-xs text-slate-400 font-medium mt-1">25-35m</span>
                                 </div>
 
                                 {/* Late */}
@@ -458,7 +457,7 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                                             </div>
                                         </div>
                                     </div>
-                                    <span className="text-xs text-slate-500 font-medium mt-1">35m+</span>
+                                    <span className="text-xs text-slate-400 font-medium mt-1">35m+</span>
                                 </div>
                             </div>
                         </div>
@@ -481,7 +480,7 @@ export default function ChampionDetailView({ puuid, championName }: { puuid: str
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left text-slate-400">
-                                <thead className="text-xs text-slate-500 uppercase bg-slate-800/50">
+                                <thead className="text-xs text-slate-400 uppercase bg-slate-800/50">
                                     <tr>
                                         <th className="px-4 py-3 rounded-l-lg">{t('championDetail.matchup.opponent')}</th>
                                         <th className="px-4 py-3">{t('championDetail.matchup.games')}</th>

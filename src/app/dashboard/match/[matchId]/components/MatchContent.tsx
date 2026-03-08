@@ -2,6 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { fetchMatchDetail, fetchLatestVersion } from "@/app/actions/riot";
+import type { MatchV5Response, MatchV5Participant } from "@/app/actions/riot/types";
 import { getMatchAnalysis } from "@/app/actions/analysis";
 import TeamOverviewCard from "./TeamOverviewCard";
 
@@ -48,9 +49,9 @@ function MatchContentClient({
     ddVersion,
     participant,
 }: {
-    matchData: any;
+    matchData: MatchV5Response;
     ddVersion: string;
-    participant: any;
+    participant: MatchV5Participant | null;
 }) {
     "use client";
 
@@ -59,8 +60,8 @@ function MatchContentClient({
     const kda = participant ? `${participant.kills}/${participant.deaths}/${participant.assists}` : "0/0/0";
     const win = participant?.win || false;
 
-    const team100 = matchData?.info.participants.filter((p: any) => p.teamId === 100) || [];
-    const team200 = matchData?.info.participants.filter((p: any) => p.teamId === 200) || [];
+    const team100 = matchData?.info.participants.filter((p) => p.teamId === 100) || [];
+    const team200 = matchData?.info.participants.filter((p) => p.teamId === 200) || [];
     const team100Win = team100[0]?.win;
     const team200Win = team200[0]?.win;
 
@@ -98,7 +99,7 @@ function MatchContentClient({
                     </div>
                 </div>
 
-                <div className="text-xs font-mono text-slate-500 border border-slate-800 bg-slate-900/50 px-3 py-1.5 rounded-full">
+                <div className="text-xs font-mono text-slate-400 border border-slate-800 bg-slate-900/50 px-3 py-1.5 rounded-full">
                     Patch {matchData.info.gameVersion.split('.').slice(0, 2).join('.')} (View: {ddVersion})
                 </div>
             </div>
@@ -147,8 +148,8 @@ export async function MatchContent({ matchId, puuid }: Props) {
             <div className="p-10 text-center text-red-400">
                 <h2 className="text-2xl font-bold mb-4">Error Loading Match</h2>
                 <p className="font-mono bg-slate-900 border border-slate-800 p-4 rounded inline-block text-left text-sm max-w-2xl whitespace-pre-wrap">
-                    <span className="text-slate-500">ID:</span> {matchId}<br />
-                    <span className="text-slate-500">Error:</span> {matchRes.error || "Failed to load match details."}
+                    <span className="text-slate-400">ID:</span> {matchId}<br />
+                    <span className="text-slate-400">Error:</span> {matchRes.error || "Failed to load match details."}
                 </p>
                 <div className="mt-6">
                     <Link href="/dashboard/stats" className="text-blue-400 hover:underline">
@@ -160,7 +161,7 @@ export async function MatchContent({ matchId, puuid }: Props) {
     }
 
     const matchData = matchRes.data;
-    const participant = matchData.info.participants.find((p: any) => p.puuid === puuid) || null;
+    const participant = matchData.info.participants.find((p) => p.puuid === puuid) || null;
 
     return (
         <MatchContentClient

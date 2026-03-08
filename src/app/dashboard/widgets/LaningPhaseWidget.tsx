@@ -29,7 +29,7 @@ export default function LaningPhaseWidget({ stats, matchCount }: { stats: Unique
                                 {t('widgets.laningPhase.last')} {matchCount}
                             </span>
                         </div>
-                        <p className="text-[10px] text-slate-500 font-mono">{t('widgets.laningPhase.subtitle')}</p>
+                        <p className="text-[10px] text-slate-400 font-mono">{t('widgets.laningPhase.subtitle')}</p>
                     </div>
                 </div>
                 <InfoTooltip 
@@ -85,7 +85,7 @@ export default function LaningPhaseWidget({ stats, matchCount }: { stats: Unique
                      </div>
                      
                      <div className="w-full max-w-[80px] mt-2">
-                        <div className="flex justify-between text-[9px] text-slate-500 mb-0.5 font-mono">
+                        <div className="flex justify-between text-[9px] text-slate-400 mb-0.5 font-mono">
                             <span>{t('widgets.skillRadar.avg')}</span>
                             <span>{t('widgets.laningPhase.target')}: 80</span>
                         </div>

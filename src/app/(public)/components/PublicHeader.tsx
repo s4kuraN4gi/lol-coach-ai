@@ -85,6 +85,7 @@ export default function PublicHeader() {
                 <button
                     className="md:hidden text-gray-400 hover:text-white"
                     onClick={() => setMenuOpen(!menuOpen)}
+                    aria-label={menuOpen ? "Close menu" : "Open menu"}
                 >
                     {menuOpen ? <LuX size={24} /> : <LuMenu size={24} />}
                 </button>

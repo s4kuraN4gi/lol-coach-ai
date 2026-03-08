@@ -8,6 +8,7 @@ import { getAnalysisStatus } from "@/app/actions/analysis";
 import { useTranslation } from "@/contexts/LanguageContext";
 import TeamOverviewCard from "./TeamOverviewCard";
 import DamageCalculator from "./DamageCalculator/DamageCalculator";
+import AdSenseBanner from "@/app/components/ads/AdSenseBanner";
 import { MatchContentSkeleton } from "./MatchContent";
 
 type Props = {
@@ -43,7 +44,7 @@ export default function MatchClientPage({ matchId, puuid }: Props) {
                         {t('matchDetail.backToStats')}
                     </Link>
                     <div className="flex items-center gap-2">
-                        <span className="text-xs text-slate-500 flex items-center gap-1">
+                        <span className="text-xs text-slate-400 flex items-center gap-1">
                             <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>
                             {t('matchDetail.loading')}
                         </span>
@@ -61,8 +62,8 @@ export default function MatchClientPage({ matchId, puuid }: Props) {
                 <div className="p-10 text-center text-red-400">
                     <h2 className="text-2xl font-bold mb-4">{t('matchDetail.errorTitle')}</h2>
                     <p className="font-mono bg-slate-900 border border-slate-800 p-4 rounded inline-block text-left text-sm max-w-2xl whitespace-pre-wrap">
-                        <span className="text-slate-500">ID:</span> {matchId}<br />
-                        <span className="text-slate-500">Error:</span> {t('matchDetail.errorDesc')}
+                        <span className="text-slate-400">ID:</span> {matchId}<br />
+                        <span className="text-slate-400">Error:</span> {t('matchDetail.errorDesc')}
                     </p>
                     <div className="mt-6">
                         <Link href="/dashboard/stats" className="text-blue-400 hover:underline">
@@ -74,14 +75,14 @@ export default function MatchClientPage({ matchId, puuid }: Props) {
         );
     }
 
-    const participant = matchData.info.participants.find((p: any) => p.puuid === puuid) || null;
+    const participant = matchData.info.participants.find((p) => p.puuid === puuid) || null;
     const summonerName = participant?.summonerName || "Unknown";
     const championName = participant?.championName || "Unknown";
     const kda = participant ? `${participant.kills}/${participant.deaths}/${participant.assists}` : "0/0/0";
     const win = participant?.win || false;
 
-    const team100 = matchData.info.participants.filter((p: any) => p.teamId === 100) || [];
-    const team200 = matchData.info.participants.filter((p: any) => p.teamId === 200) || [];
+    const team100 = matchData.info.participants.filter((p) => p.teamId === 100) || [];
+    const team200 = matchData.info.participants.filter((p) => p.teamId === 200) || [];
     const team100Win = team100[0]?.win;
     const team200Win = team200[0]?.win;
 
@@ -100,7 +101,7 @@ export default function MatchClientPage({ matchId, puuid }: Props) {
                         {t('matchDetail.backToStats')}
                     </Link>
                     {isValidating && (
-                        <span className="text-xs text-slate-500 flex items-center gap-1">
+                        <span className="text-xs text-slate-400 flex items-center gap-1">
                             <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>
                             {t('matchDetail.syncing')}
                         </span>
@@ -140,7 +141,7 @@ export default function MatchClientPage({ matchId, puuid }: Props) {
                             </div>
                         </div>
 
-                        <div className="text-xs font-mono text-slate-500 border border-slate-800 bg-slate-900/50 px-3 py-1.5 rounded-full">
+                        <div className="text-xs font-mono text-slate-400 border border-slate-800 bg-slate-900/50 px-3 py-1.5 rounded-full">
                             {t('matchDetail.patch')} {matchData.info.gameVersion.split('.').slice(0, 2).join('.')} (View: {ddVersion})
                         </div>
                     </div>
@@ -171,6 +172,11 @@ export default function MatchClientPage({ matchId, puuid }: Props) {
                         </div>
                     </div>
                 </div>
+            </div>
+
+            {/* Ad Banner (hidden for Premium) */}
+            <div className="px-4 md:px-8 mt-6 flex justify-center">
+                <AdSenseBanner className="w-full max-w-[728px] h-[90px] bg-slate-800/30 rounded" isPremium={analysisStatus?.is_premium} />
             </div>
 
             {/* Damage Calculator - wider container for browser panel */}

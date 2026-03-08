@@ -1,9 +1,22 @@
 'use server'
 
-import { createClient } from '@/utils/supabase/server'
+import { createClient, getUser } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { createHmac } from 'crypto'
 
 import { fetchRiotAccount, fetchSummonerByPuuid, fetchThirdPartyCode } from './riot'
+import { logger } from "@/lib/logger"
+import { z } from "zod"
+
+function signChallenge(puuid: string, targetIconId: number, expiresAt: number): string {
+  const secret = process.env.VERIFICATION_SIGNING_SECRET;
+  if (!secret) {
+    throw new Error("VERIFICATION_UNAVAILABLE");
+  }
+  return createHmac('sha256', secret)
+    .update(`${puuid}:${targetIconId}:${expiresAt}`)
+    .digest('hex');
+}
 
 export type SummonerAccount = {
   id: string
@@ -21,8 +34,8 @@ export type SummonerAccount = {
 // アクティブなサモナーを取得
 export async function getActiveSummoner() {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    
+    const user = await getUser()
+
     if(!user) return null;
 
     // プロフィールとそれに紐づくサモナー情報を一括取得 (JOIN)
@@ -77,8 +90,8 @@ export async function getActiveSummoner() {
 // ユーザーの全サモナーを取得
 export async function getSummoners() {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    
+    const user = await getUser()
+
     if(!user) return [];
 
     const { data } = await supabase
@@ -97,7 +110,7 @@ const DEFAULT_ICONS = [
 // Step 1: Lookup Summoner & Generate Icon Challenge
 export async function lookupSummoner(inputName: string) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getUser()
   if (!user) return { error: 'Not authenticated' }
 
   // 1. Check Security Status
@@ -111,7 +124,7 @@ export async function lookupSummoner(inputName: string) {
   if (profile?.verification_locked_until) {
       const lockDate = new Date(profile.verification_locked_until);
       if (lockDate > new Date()) {
-          return { error: `アカウント連携機能は制限されています。\n解除日時: ${lockDate.toLocaleString()}` };
+          return { error: 'VERIFICATION_LOCKED' as const, meta: { lockedUntil: lockDate.toLocaleString() } };
       } else {
           // Lock expired: Reset
           await supabase.from('profiles').update({ 
@@ -123,17 +136,17 @@ export async function lookupSummoner(inputName: string) {
 
   const [gameName, tagLine] = inputName.split('#');
   if (!gameName || !tagLine) {
-      return { error: '正しい形式で入力してください (例: Hide on bush#KR1)' };
+      return { error: 'FORMAT_ERROR' as const };
   }
 
   const riotAccount = await fetchRiotAccount(gameName, tagLine);
   if (!riotAccount) {
-      return { error: 'サモナーが見つかりませんでした' };
+      return { error: 'SUMMONER_NOT_FOUND' as const };
   }
 
   const summonerDetail = await fetchSummonerByPuuid(riotAccount.puuid);
   if (!summonerDetail) {
-      return { error: '詳細情報の取得に失敗しました' };
+      return { error: 'DETAIL_FETCH_FAILED' as const };
   }
 
   // Already Registered Check (Global)
@@ -141,14 +154,14 @@ export async function lookupSummoner(inputName: string) {
   const { data: isTaken, error: rpcError } = await supabase.rpc('check_summoner_taken', { target_puuid: riotAccount.puuid });
   
   if (rpcError) {
-      console.error('RPC Error:', rpcError);
+      logger.error('RPC Error:', rpcError);
       // Fallback: If RPC fails, we can't be sure, so maybe let it slide to the unique constraint check later?
       // Or block it. Let's block to be safe or treat as system error.
       // But for now, let's assume if it exists it returns true.
   }
 
   if (isTaken) {
-      return { error: 'このサモナーは既に他のアカウントに登録されています' };
+      return { error: 'ALREADY_REGISTERED' as const };
   }
 
   // Generate Challenge (Random Icon)
@@ -158,10 +171,12 @@ export async function lookupSummoner(inputName: string) {
       targetIconId = DEFAULT_ICONS[Math.floor(Math.random() * DEFAULT_ICONS.length)];
   }
 
+  const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
   const challenge = {
       targetIconId,
       puuid: riotAccount.puuid,
-      expiresAt: Date.now() + 10 * 60 * 1000 // 10 minutes
+      expiresAt,
+      sig: signChallenge(riotAccount.puuid, targetIconId, expiresAt),
   };
 
   const { error: updateError } = await supabase.from('profiles').update({
@@ -169,8 +184,8 @@ export async function lookupSummoner(inputName: string) {
   }).eq('id', user.id);
 
   if (updateError) {
-      console.error('Profile update error:', updateError);
-      return { error: '認証の準備に失敗しました。管理者に連絡してください (DB Error)' };
+      logger.error('Profile update error:', updateError);
+      return { error: 'DB_ERROR' as const };
   }
 
   return {
@@ -190,11 +205,29 @@ export async function lookupSummoner(inputName: string) {
   }
 }
 
+const summonerDataSchema = z.object({
+    gameName: z.string().min(1).max(32),
+    tagLine: z.string().min(1).max(8),
+    puuid: z.string().min(1).max(128),
+    summonerId: z.string().optional(),
+    accountId: z.string().optional(),
+    profileIconId: z.number().int().nonnegative().optional(),
+    summonerLevel: z.number().int().nonnegative().optional(),
+    targetIconId: z.number().int().nonnegative().optional(),
+    expiresAt: z.number().optional(),
+    failedCount: z.number().int().nonnegative().optional(),
+});
+
 // Step 2: Verify Icon Change and Add to DB
 // We don't need 'expectedCode' anymore, we check the DB challenge
-export async function verifyAndAddSummoner(summonerData: any) {
+export async function verifyAndAddSummoner(summonerData: unknown) {
+    const parsed = summonerDataSchema.safeParse(summonerData);
+    if (!parsed.success) {
+        return { error: 'INVALID_INPUT' as const };
+    }
+    const validData = parsed.data;
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getUser()
     if (!user) return { error: 'Not authenticated' }
 
     // 1. Fetch Profile & Challenge
@@ -208,56 +241,63 @@ export async function verifyAndAddSummoner(summonerData: any) {
 
     // Check Lock
     if (profile.verification_locked_until && new Date(profile.verification_locked_until) > new Date()) {
-        return { error: "アカウント連携は一時的にロックされています。" };
+        return { error: 'VERIFICATION_LOCKED' as const };
     }
 
     const challenge = profile.verification_challenge as any; // Type Assertion
 
     if (!challenge || !challenge.targetIconId) {
-        return { error: "認証セッションが無効です。最初からやり直してください。" };
+        return { error: 'INVALID_SESSION' as const };
+    }
+
+    // Verify HMAC signature (prevents direct DB manipulation of challenge)
+    const expectedSig = signChallenge(challenge.puuid, challenge.targetIconId, challenge.expiresAt);
+    if (!challenge.sig || challenge.sig !== expectedSig) {
+        return { error: 'INVALID_SESSION' as const };
     }
 
     // Check Expiration
     if (Date.now() > challenge.expiresAt) {
-        return { error: "認証の有効期限(10分)が切れました。再試行してください。" };
+        return { error: 'SESSION_EXPIRED' as const };
     }
 
     // Check consistency (Did they verify the same summoner?)
-    if (challenge.puuid !== summonerData.puuid) {
-        return { error: "対象のサモナーが一致しません。" };
+    if (challenge.puuid !== validData.puuid) {
+        return { error: 'PUUID_MISMATCH' as const };
+    }
+
+    // Re-check summoner ownership (TOCTOU: another user may have registered between lookup and verify)
+    const { data: isTaken } = await supabase.rpc('check_summoner_taken', { target_puuid: validData.puuid });
+    if (isTaken) {
+        return { error: 'ALREADY_REGISTERED' as const };
     }
 
     // 2. Fetch Current Riot Data
     // We need fresh data to check if icon changed (Disable Cache)
-    const freshSummoner = await fetchSummonerByPuuid(summonerData.puuid, true);
-    if (!freshSummoner) return { error: "サモナー情報の再取得に失敗しました。" };
+    const freshSummoner = await fetchSummonerByPuuid(validData.puuid, true);
+    if (!freshSummoner) return { error: 'FETCH_FAILED' as const };
 
     // 3. Verify Icon ID
     if (freshSummoner.profileIconId !== challenge.targetIconId) {
         // --- FAILURE HANDLING ---
         const newCount = (profile.verification_failed_count || 0) + 1;
-        const updates: any = { verification_failed_count: newCount };
-
-        let errorMsg = `アイコンが変更されていません。\n(現在: ${freshSummoner.profileIconId} / 指定: ${challenge.targetIconId})`;
+        const updates: Record<string, unknown> = { verification_failed_count: newCount };
 
         if (newCount >= 3) {
-            // Lockout Logic: Lock until tomorrow 00:00 (or just +24h)
-            // User requested "Next day reset". 
-            // Simple: 24h from now, or midnight? Midnight is better for "Next day".
+            // Lockout Logic: Lock until tomorrow 00:00
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
             tomorrow.setHours(0, 0, 0, 0);
-            
+
             updates.verification_locked_until = tomorrow.toISOString();
-            errorMsg = "認証に3回失敗したため、本日の認証機能をロックしました。\n明日またお試しください。";
-            // Also clear challenge? Yes.
             updates.verification_challenge = null;
-        } else {
-            errorMsg += `\n残り試行回数: ${3 - newCount}回`;
+
+            await supabase.from('profiles').update(updates).eq('id', user.id);
+            return { error: 'LOCKED_TRIPLE_FAIL' as const };
         }
 
         await supabase.from('profiles').update(updates).eq('id', user.id);
-        return { error: errorMsg };
+        return { error: 'ICON_NOT_CHANGED' as const, meta: { current: freshSummoner.profileIconId, target: challenge.targetIconId, remaining: 3 - newCount } };
     }
 
     // --- SUCCESS ---
@@ -266,8 +306,8 @@ export async function verifyAndAddSummoner(summonerData: any) {
         .from('summoner_accounts')
         .insert({ 
         user_id: user.id,
-        summoner_name: summonerData.gameName || freshSummoner.name, // Prefer Riot ID GameName
-        tag_line: summonerData.tagLine, // Tagline might not be in v4 summoner, stick to input/account v1 data
+        summoner_name: validData.gameName || freshSummoner.name, // Prefer Riot ID GameName
+        tag_line: validData.tagLine, // Tagline might not be in v4 summoner, stick to input/account v1 data
         region: 'JP1', 
         puuid: freshSummoner.puuid,
         account_id: freshSummoner.accountId,
@@ -279,12 +319,12 @@ export async function verifyAndAddSummoner(summonerData: any) {
         .single()
 
     if (insertError) {
-        console.error('Insert error:', insertError)
+        logger.error('Insert error:', insertError)
         // PostgreSQL Error 23505 = Unique Violation
         if (insertError.code === '23505') {
-             return { error: 'このサモナーは既に他のアカウントに登録されています。' }
+             return { error: 'ALREADY_REGISTERED' as const }
         }
-        return { error: `システムエラー（保存失敗）: ${insertError.message}` }
+        return { error: 'SYSTEM_ERROR' as const }
     }
 
     // 5. Cleanup & Set Active
@@ -303,7 +343,7 @@ export async function verifyAndAddSummoner(summonerData: any) {
 // サモナーを切り替える
 export async function switchSummoner(summonerId: string) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getUser()
   if (!user) return { error: 'Not authenticated' }
 
   // IDが自分の所有するものか確認（RLSがあるが念のため）
@@ -332,7 +372,7 @@ export async function switchSummoner(summonerId: string) {
 // サモナーを削除
 export async function removeSummoner(summonerId: string) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getUser()
   if (!user) return { error: 'Not authenticated' }
 
   const { error } = await supabase
@@ -351,7 +391,7 @@ export async function removeSummoner(summonerId: string) {
 // タイムアウト時の処理 (失敗カウント加算)
 export async function registerVerificationTimeout() {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getUser()
     if (!user) return { error: 'Not authenticated' }
 
     const { data: profile } = await supabase
@@ -359,7 +399,7 @@ export async function registerVerificationTimeout() {
         .select('*')
         .eq('id', user.id)
         .single();
-    
+
     if (!profile) return { error: "Profile not found" };
 
     const challenge = profile.verification_challenge as any;
@@ -368,29 +408,28 @@ export async function registerVerificationTimeout() {
     // 期限切れか確認 (クライアント・サーバー間の時計ズレを考慮し、1分の猶予を持たせる)
     // クライアントが「切れた」と言ってきた場合、サーバー時刻がまだでも1分以内なら許容する
     if (Date.now() < challenge.expiresAt - 60 * 1000) {
-        return { error: "まだ期限切れではありません" }; 
+        return { error: 'NOT_EXPIRED_YET' as const };
     }
     
     // --- FAILURE HANDLING ---
     const newCount = (profile.verification_failed_count || 0) + 1;
-    const updates: any = { verification_failed_count: newCount, verification_challenge: null }; // Clear challenge on timeout
-
-    let msg = "時間切れのため、認証は失敗扱いとなりました。";
+    const updates: Record<string, string | number | null> = { verification_failed_count: newCount, verification_challenge: null }; // Clear challenge on timeout
 
     if (newCount >= 3) {
          const tomorrow = new Date();
          tomorrow.setDate(tomorrow.getDate() + 1);
          tomorrow.setHours(0, 0, 0, 0);
-         
+
          updates.verification_locked_until = tomorrow.toISOString();
-         msg = "時間切れを含め3回失敗したため、本日の認証機能をロックしました。\n明日またお試しください。";
-    } else {
-         msg += `\n残り試行回数: ${3 - newCount}回`;
+
+         await supabase.from('profiles').update(updates).eq('id', user.id);
+
+         return { success: true, errorCode: 'TIMEOUT_LOCKED' as const };
     }
 
     await supabase.from('profiles').update(updates).eq('id', user.id);
-    
+
     // revalidatePath calls removed to prevent client state reset (notification loss)
-    
-    return { success: true, message: msg };
+
+    return { success: true, errorCode: 'TIMEOUT' as const, meta: { remaining: 3 - newCount } };
 }

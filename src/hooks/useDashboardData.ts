@@ -29,16 +29,18 @@ async function fetchRankHistoryData(
 
 /**
  * Hook for dashboard stats with SWR caching
- * - First visit: fetches data, shows loading state
- * - Subsequent visits: returns cached data instantly, revalidates in background
+ * - With fallbackData (SSR): returns data instantly, revalidates in background
+ * - Without fallbackData: fetches data, shows loading state
+ * - Subsequent visits: returns SWR cached data instantly
  */
-export function useDashboardStats(puuid: string | null) {
+export function useDashboardStats(puuid: string | null, fallbackData?: DashboardStats) {
     const { data, error, isLoading, isValidating, mutate } = useSWR(
         puuid ? `dashboard-stats-${puuid}` : null,
         () => fetchDashboardStats(puuid!),
         {
             dedupingInterval: 10000, // 10 seconds
             revalidateOnFocus: false,
+            ...(fallbackData ? { fallbackData } : {}),
         }
     );
 
@@ -54,13 +56,14 @@ export function useDashboardStats(puuid: string | null) {
 /**
  * Hook for enhanced profile data with SWR caching
  */
-export function useEnhancedData(puuid: string | null) {
+export function useEnhancedData(puuid: string | null, fallbackData?: ProfileEnhancedData) {
     const { data, error, isLoading, isValidating, mutate } = useSWR(
         puuid ? `enhanced-data-${puuid}` : null,
         () => fetchEnhancedData(puuid!),
         {
             dedupingInterval: 10000,
             revalidateOnFocus: false,
+            ...(fallbackData ? { fallbackData } : {}),
         }
     );
 
@@ -100,25 +103,29 @@ export function useRankHistory(
 
 /**
  * Combined hook for all dashboard data
- * - First visit: fetches all data in parallel, shows loading state
- * - Subsequent visits: returns cached data instantly, revalidates in background
+ * - With SSR fallback: instant first paint, revalidates in background
+ * - Without fallback: fetches all data in parallel, shows loading state
+ * - Subsequent visits: returns SWR cached data instantly
  */
-export function useDashboard(puuid: string | null) {
+export function useDashboard(
+    puuid: string | null,
+    options?: { initialStats?: DashboardStats; initialEnhancedData?: ProfileEnhancedData }
+) {
     const { stats, isLoading: statsLoading, isValidating: statsValidating, refresh: refreshStats } =
-        useDashboardStats(puuid);
+        useDashboardStats(puuid, options?.initialStats);
 
     const { enhancedData, isLoading: enhancedLoading, isValidating: enhancedValidating, refresh: refreshEnhanced } =
-        useEnhancedData(puuid);
+        useEnhancedData(puuid, options?.initialEnhancedData);
 
     // Determine queue type from stats
-    const hasSolo = stats?.ranks?.some((r: any) => r.queueType === "RANKED_SOLO_5x5");
+    const hasSolo = stats?.ranks?.some((r) => r.queueType === "RANKED_SOLO_5x5");
     const queueType = hasSolo ? 'RANKED_SOLO_5x5' : 'RANKED_FLEX_SR';
 
     const { rankHistory, isLoading: historyLoading, isValidating: historyValidating, refresh: refreshHistory } =
         useRankHistory(puuid, queueType as 'RANKED_SOLO_5x5' | 'RANKED_FLEX_SR');
 
     // Get displayed rank
-    const displayedRank = stats?.ranks?.find((r: any) => r.queueType === queueType) || null;
+    const displayedRank = stats?.ranks?.find((r) => r.queueType === queueType) || null;
 
     // Refresh all data
     const refreshAll = async () => {

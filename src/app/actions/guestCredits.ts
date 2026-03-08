@@ -1,35 +1,43 @@
 "use server";
 
-import { createClient } from "@supabase/supabase-js";
+import { createServiceRoleClient } from "@/utils/supabase/server";
 import { headers } from "next/headers";
+import { logger } from "@/lib/logger";
+import { z } from "zod";
+import { isIP } from "net";
 
-// Create Supabase client with service role for server-side operations
-function getSupabaseAdmin() {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    return createClient(supabaseUrl, supabaseServiceKey);
-}
+// IP address format validation using Node.js built-in net.isIP()
+// Returns 4 for IPv4, 6 for IPv6, 0 for invalid
+const ipSchema = z.string().refine(
+    (val) => isIP(val) !== 0,
+    { message: "Invalid IP address format" }
+);
 
-// Get client IP from headers (CF-Connecting-IP preferred for Cloudflare deployments)
+// Get client IP from trusted headers only
+// Priority: Vercel/CF trusted headers > x-forwarded-for > fail-closed
 async function getClientIP(): Promise<string> {
     const headersList = await headers();
 
     // 1. Cloudflare's trusted header (cannot be spoofed behind CF)
     const cfIP = headersList.get("cf-connecting-ip");
     if (cfIP) {
-        return cfIP;
+        const parsed = ipSchema.safeParse(cfIP.trim());
+        if (parsed.success) return parsed.data;
     }
 
-    // 2. x-real-ip (set by reverse proxies like nginx)
+    // 2. x-real-ip (set by Vercel/nginx, trustworthy in platform environments)
     const realIP = headersList.get("x-real-ip");
     if (realIP) {
-        return realIP;
+        const parsed = ipSchema.safeParse(realIP.trim());
+        if (parsed.success) return parsed.data;
     }
 
-    // 3. x-forwarded-for (take first entry only)
+    // 3. x-forwarded-for (take first entry only, validated)
     const forwarded = headersList.get("x-forwarded-for");
     if (forwarded) {
-        return forwarded.split(",")[0].trim();
+        const firstIP = forwarded.split(",")[0].trim();
+        const parsed = ipSchema.safeParse(firstIP);
+        if (parsed.success) return parsed.data;
     }
 
     // Fallback for local development
@@ -56,14 +64,14 @@ const FAIL_CLOSED: GuestCreditStatus = {
  */
 export async function getGuestCreditStatus(): Promise<GuestCreditStatus> {
     const ip = await getClientIP();
-    const supabase = getSupabaseAdmin();
+    const supabase = createServiceRoleClient();
 
     try {
         const { data, error } = await supabase
             .rpc("replenish_guest_credits", { p_ip_address: ip });
 
         if (error) {
-            console.error("Error getting guest credits:", error);
+            logger.error("Error getting guest credits:", error);
             return FAIL_CLOSED;
         }
 
@@ -92,7 +100,7 @@ export async function getGuestCreditStatus(): Promise<GuestCreditStatus> {
             isGuest: true,
         };
     } catch (err) {
-        console.error("Error in getGuestCreditStatus:", err);
+        logger.error("Error in getGuestCreditStatus:", err);
         return FAIL_CLOSED;
     }
 }
@@ -103,14 +111,14 @@ export async function getGuestCreditStatus(): Promise<GuestCreditStatus> {
  */
 export async function useGuestCredit(): Promise<{ success: boolean; remainingCredits: number }> {
     const ip = await getClientIP();
-    const supabase = getSupabaseAdmin();
+    const supabase = createServiceRoleClient();
 
     try {
         const { data, error } = await supabase
             .rpc("use_guest_credit", { p_ip_address: ip });
 
         if (error) {
-            console.error("Error using guest credit:", error);
+            logger.error("Error using guest credit:", error);
             return { success: false, remainingCredits: 0 };
         }
 
@@ -122,7 +130,7 @@ export async function useGuestCredit(): Promise<{ success: boolean; remainingCre
             remainingCredits: status.credits,
         };
     } catch (err) {
-        console.error("Error in useGuestCredit:", err);
+        logger.error("Error in useGuestCredit:", err);
         return { success: false, remainingCredits: 0 };
     }
 }
@@ -131,8 +139,7 @@ export async function useGuestCredit(): Promise<{ success: boolean; remainingCre
  * Check if the current request is from a guest (not logged in)
  */
 export async function isGuestUser(): Promise<boolean> {
-    const { createClient: createServerClient } = await import("@/utils/supabase/server");
-    const supabase = await createServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const { getUser } = await import("@/utils/supabase/server");
+    const user = await getUser();
     return !user;
 }

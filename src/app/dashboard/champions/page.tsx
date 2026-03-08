@@ -8,6 +8,7 @@ import { getStatsFromCache, type MatchStatsDTO, type BasicStatsDTO } from "@/app
 import LoadingAnimation from "../../components/LoadingAnimation";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { useDDragonVersion } from "@/hooks/useDDragonVersion";
+import { logger } from "@/lib/logger";
 
 type ChampionStat = {
     name: string;
@@ -45,7 +46,7 @@ export default function AllChampionsPage() {
                 const data = await getStatsFromCache(activeSummoner!.puuid!);
                 setStats(data);
             } catch (e) {
-                console.error(e);
+                logger.error(e);
             } finally {
                 setLoading(false);
             }
@@ -61,8 +62,8 @@ export default function AllChampionsPage() {
         );
 
         result.sort((a, b) => {
-            let valA: any = a[sortKey as keyof ChampionStat];
-            let valB: any = b[sortKey as keyof ChampionStat];
+            let valA: string | number = a[sortKey as keyof ChampionStat] as string | number;
+            let valB: string | number = b[sortKey as keyof ChampionStat] as string | number;
             
             // Special handling for KDA string "x.xx" or "Perfect"
             if (sortKey === "avgKda") {
@@ -96,7 +97,7 @@ export default function AllChampionsPage() {
                     <h1 className="text-3xl font-black text-slate-100 uppercase tracking-tighter">
                         {t('championsPage.title')}
                     </h1>
-                    <p className="text-slate-500 text-sm">
+                    <p className="text-slate-400 text-sm">
                         {t('championsPage.subtitle')}
                     </p>
                 </div>
@@ -162,7 +163,7 @@ export default function AllChampionsPage() {
                                 <h3 className="font-bold text-slate-100 text-lg truncate group-hover:text-blue-400 transition-colors">
                                     {champ.name}
                                 </h3>
-                                <div className="text-xs text-slate-500 font-medium">
+                                <div className="text-xs text-slate-400 font-medium">
                                     {champ.games} {t('championsPage.games')}
                                 </div>
                             </div>
@@ -172,7 +173,7 @@ export default function AllChampionsPage() {
                                 <div className={`text-xl font-bold ${champ.winRate >= 50 ? 'text-green-400' : 'text-slate-400'}`}>
                                     {champ.winRate}%
                                 </div>
-                                <div className="text-[10px] text-slate-500 font-mono">
+                                <div className="text-[10px] text-slate-400 font-mono">
                                     {champ.avgKda} KDA
                                 </div>
                             </div>
@@ -191,7 +192,7 @@ export default function AllChampionsPage() {
                 ))}
 
                 {filteredChampions.length === 0 && (
-                    <div className="col-span-full py-12 text-center text-slate-500">
+                    <div className="col-span-full py-12 text-center text-slate-400">
                         {t('championsPage.noChampions')}
                     </div>
                 )}

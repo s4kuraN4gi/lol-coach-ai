@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/utils/supabase/server";
 import { randomBytes } from "crypto";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -88,81 +89,88 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
     const adminClient = createServiceRoleClient();
 
-    const rsoEmail = `rso_${puuid}@lolcoach.ai`;
     let userId: string;
+    let rsoEmail: string;
 
-    // Generate a cryptographically secure random password for new/reset users
-    const securePassword = randomBytes(32).toString('base64url');
+    // Check if user already exists by puuid (summoners table lookup)
+    const { data: existingUser } = await adminClient
+        .from('summoners')
+        .select('user_id')
+        .eq('puuid', puuid)
+        .single();
 
-    // Try to create the user first (will fail if already exists)
-    const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
-        email: rsoEmail,
-        password: securePassword,
-        email_confirm: true,
-        user_metadata: {
-            rso_puuid: puuid,
-            full_name: `${gameName}#${tagLine}`,
-        },
-    });
+    if (existingUser?.user_id) {
+        // Returning RSO user — get their auth email
+        userId = existingUser.user_id;
+        const { data: authUser } = await adminClient.auth.admin.getUserById(userId);
+        if (!authUser?.user?.email) {
+            throw new Error("RSO user auth record not found");
+        }
+        rsoEmail = authUser.user.email;
+        // Ensure app_metadata marks this as RSO user
+        await adminClient.auth.admin.updateUserById(userId, {
+            app_metadata: { auth_method: 'rso' },
+        });
+    } else {
+        // New RSO user — create with salted synthetic email
+        const salt = randomBytes(8).toString('hex');
+        rsoEmail = `rso_${salt}_${puuid.slice(0, 8)}@lolcoach.ai`;
+        const securePassword = randomBytes(32).toString('base64url');
 
-    if (!createError && newUser.user) {
-        // New user created — sign in with the new credentials
-        const { error: signInError } = await supabase.auth.signInWithPassword({
+        const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
             email: rsoEmail,
             password: securePassword,
+            email_confirm: true,
+            user_metadata: {
+                rso_puuid: puuid,
+                full_name: `${gameName}#${tagLine}`,
+            },
+            app_metadata: {
+                auth_method: 'rso',
+            },
         });
-        if (signInError) {
-            throw new Error("Failed to sign in newly created RSO user");
-        }
-        userId = newUser.user.id;
-    } else {
-        // User already exists — reset password and sign in
-        // Find the existing user by email
-        const { data: existingUsers } = await adminClient.auth.admin.listUsers({ perPage: 1 });
-        // listUsers doesn't filter by email, so use a workaround: update by looking up via profiles
-        // Actually, we can just reset their password and sign in
-        const { data: profileData } = await adminClient
-            .from('profiles')
-            .select('id')
-            .eq('email', rsoEmail)
-            .single();
 
-        // If we can't find by profiles, try signInWithPassword with a reset approach
-        // The most reliable approach: reset password via admin, then sign in
-        if (profileData) {
-            await adminClient.auth.admin.updateUserById(profileData.id, {
-                password: securePassword,
-            });
-            const { error: signInError } = await supabase.auth.signInWithPassword({
-                email: rsoEmail,
-                password: securePassword,
-            });
-            if (signInError) {
-                throw new Error("Failed to authenticate existing RSO user");
-            }
-            userId = profileData.id;
+        if (!createError && newUser.user) {
+            userId = newUser.user.id;
         } else {
-            // Fallback: try generateLink for magic link
-            const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
-                type: 'magiclink',
-                email: rsoEmail,
-            });
-            if (linkError || !linkData.user) {
-                throw new Error("Failed to generate magic link for RSO user");
-            }
-            // Use the token from generateLink to verify OTP and create session
-            const token = linkData.properties?.hashed_token;
-            if (token) {
-                const { error: verifyError } = await supabase.auth.verifyOtp({
-                    type: 'email',
-                    token_hash: token,
+            // Fallback: check profiles by legacy email format
+            const legacyEmail = `rso_${puuid}@lolcoach.ai`;
+            const { data: profileData } = await adminClient
+                .from('profiles')
+                .select('id')
+                .eq('email', legacyEmail)
+                .single();
+
+            if (profileData) {
+                userId = profileData.id;
+                rsoEmail = legacyEmail;
+                await adminClient.auth.admin.updateUserById(userId, {
+                    app_metadata: { auth_method: 'rso' },
                 });
-                if (verifyError) {
-                    throw new Error("Failed to verify RSO user session");
-                }
+            } else {
+                throw new Error("RSO user creation failed and not found in profiles");
             }
-            userId = linkData.user.id;
         }
+    }
+
+    // Sign in via magic link (never use password-based sign-in for RSO users)
+    const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
+        type: 'magiclink',
+        email: rsoEmail,
+    });
+    if (linkError || !linkData.user) {
+        throw new Error("Failed to generate session for RSO user");
+    }
+    const token = linkData.properties?.hashed_token;
+    if (!token) {
+        throw new Error("Failed to get session token for RSO user");
+    }
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+        type: 'email',
+        token_hash: token,
+    });
+    if (verifyError) {
+        throw new Error("Failed to verify RSO user session");
     }
     
     // Check if summoner exists (use adminClient to bypass RLS)
@@ -206,7 +214,7 @@ export async function GET(request: NextRequest) {
     return redirectResponse;
 
   } catch (error) {
-    console.error("RSO Error:", error);
+    logger.error("RSO Error:", error);
     const errorResponse = NextResponse.redirect(new URL("/login?error=rso_failed", request.url));
     errorResponse.cookies.delete("rso_state");
     return errorResponse;

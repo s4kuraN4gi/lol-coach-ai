@@ -19,7 +19,7 @@ export default function KeystoneSelector({ selectedId, onChange }: Props) {
         className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
           selectedId === null
             ? "bg-slate-600 text-white"
-            : "bg-slate-800 text-slate-500 hover:bg-slate-700"
+            : "bg-slate-800 text-slate-400 hover:bg-slate-700"
         }`}
       >
         {language === "ja" ? "なし" : language === "ko" ? "없음" : "None"}

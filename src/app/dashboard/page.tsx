@@ -1,10 +1,11 @@
-// Server Component - Minimal server work, data fetching on client with SWR
-// - Server: Auth check + summoner info only (fast)
-// - Client: SWR fetches data, caches it, instant on subsequent visits
+// Server Component - SSR prefetch for instant first paint
+// - Server: Auth + summoner + stats prefetch (parallel)
+// - Client: SWR uses SSR data as fallback, revalidates in background
 
 import { redirect } from "next/navigation";
-import { createClient } from "@/utils/supabase/server";
+import { getUser } from "@/utils/supabase/server";
 import { getActiveSummoner } from "@/app/actions/profile";
+import { getCachedStats, getCachedEnhancedData } from "./lib/cachedData";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import DashboardContent from "./components/DashboardContent";
 
@@ -12,9 +13,8 @@ import DashboardContent from "./components/DashboardContent";
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
-    // 1. Auth check (fast - from cookie)
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    // 1. Auth check (fast - cached per request via React.cache)
+    const user = await getUser();
 
     if (!user) {
         redirect('/login');
@@ -27,18 +27,29 @@ export default async function DashboardPage() {
         redirect('/onboarding');
     }
 
-    // 3. Only pass summoner info - data fetching handled by SWR on client
+    const puuid = activeSummoner.puuid;
+
+    // 3. SSR prefetch: stats + enhanced data in parallel
+    const [initialStats, initialEnhancedData] = await Promise.all([
+        getCachedStats(puuid).catch(() => null),
+        getCachedEnhancedData(puuid).catch(() => null),
+    ]);
+
     const summoner = {
         name: activeSummoner.summoner_name,
         tagLine: activeSummoner.tag_line || "",
         profileIconId: activeSummoner.profile_icon_id || 29,
         summonerLevel: activeSummoner.summoner_level || 0,
-        puuid: activeSummoner.puuid,
+        puuid,
     };
 
     return (
         <DashboardLayout>
-            <DashboardContent summoner={summoner} />
+            <DashboardContent
+                summoner={summoner}
+                initialStats={initialStats}
+                initialEnhancedData={initialEnhancedData}
+            />
         </DashboardLayout>
     );
 }

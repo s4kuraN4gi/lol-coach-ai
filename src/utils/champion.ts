@@ -1,4 +1,5 @@
 import { fetchLatestVersion } from "@/app/actions/riot";
+import { logger } from "@/lib/logger";
 
 const LOCALE = "en_US";
 
@@ -20,16 +21,17 @@ export async function getChampionData(championName: string): Promise<ChampionDat
             const data = await res.json();
             
             championCache = new Map();
-            Object.values(data.data).forEach((c: any) => {
-                championCache!.set(c.id.toLowerCase(), {
-                    id: c.id,
-                    key: c.key,
-                    name: c.name,
-                    image: c.image
+            Object.values(data.data).forEach((c: unknown) => {
+                const champ = c as { id: string; key: string; name: string; image: { full: string } };
+                championCache!.set(champ.id.toLowerCase(), {
+                    id: champ.id,
+                    key: champ.key,
+                    name: champ.name,
+                    image: champ.image
                 });
             });
         } catch (e) {
-            console.error("Failed to fetch DDragon data", e);
+            logger.error("Failed to fetch DDragon data", e);
             return null;
         }
     }

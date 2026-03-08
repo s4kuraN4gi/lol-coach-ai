@@ -48,21 +48,18 @@ export type ChampionDetailsDTO = {
 export async function getChampionStats(puuid: string, championName: string): Promise<ChampionDetailsDTO | null> {
     if (!puuid || !championName) return null;
 
-    console.log(`[ChampionStats] Fetching for PUUID: ${puuid?.slice(0, 10)}..., Champion: ${championName}`);
 
     // Fetch matches (limit 50, same as dashboard for consistency)
     const { matches } = await fetchAndCacheMatches(puuid, 50);
-    console.log(`[ChampionStats] Matches Fetched: ${matches.length}`);
 
     // Filter for specific champion
     // Normalize championName comparison (case-insensitive)
     const championMatches = matches.filter(m => {
-        const p = m.info.participants.find((p: any) => p.puuid === puuid);
+        const p = m.info.participants.find((p) => p.puuid === puuid);
         if (!p) return false;
         return p.championName.toLowerCase() === championName.toLowerCase();
     });
 
-    console.log(`[ChampionStats] Filtered Matches: ${championMatches.length}`);
 
     if (championMatches.length === 0) {
         return null;
@@ -88,8 +85,9 @@ export async function getChampionStats(puuid: string, championName: string): Pro
     const matchupItemsMap = new Map<string, Map<number, number>>();
 
     championMatches.forEach(m => {
-        const p = m.info.participants.find((p: any) => p.puuid === puuid);
-        const team = m.info.participants.filter((t: any) => t.teamId === p.teamId);
+        const p = m.info.participants.find((p) => p.puuid === puuid);
+        if (!p) return;
+        const team = m.info.participants.filter((t) => t.teamId === p.teamId);
         
         // Basic Stats
         if (p.win) wins++;
@@ -103,7 +101,7 @@ export async function getChampionStats(puuid: string, championName: string): Pro
         if (p.challenges?.teamDamagePercentage) {
             damageShare += p.challenges.teamDamagePercentage;
         } else {
-             const totalTeamDmg = team.reduce((sum: number, t: any) => sum + t.totalDamageDealtToChampions, 0);
+             const totalTeamDmg = team.reduce((sum: number, t) => sum + t.totalDamageDealtToChampions, 0);
              if (totalTeamDmg > 0) damageShare += (p.totalDamageDealtToChampions / totalTeamDmg);
         }
 
@@ -112,7 +110,7 @@ export async function getChampionStats(puuid: string, championName: string): Pro
         }
 
         // Matchup & Laning
-        const opponent = m.info.participants.find((o: any) => 
+        const opponent = m.info.participants.find((o) => 
             o.teamId !== p.teamId && o.teamPosition === p.teamPosition && p.teamPosition !== 'UTILITY'
         );
 

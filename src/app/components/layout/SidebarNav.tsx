@@ -2,27 +2,47 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { signOut } from "../../actions/auth";
 import { useTranslation } from "@/contexts/LanguageContext";
 
-import { LuLayoutDashboard, LuTrendingUp, LuBrainCircuit, LuMessageSquare, LuSettings, LuLogOut, LuCircleDollarSign, LuSwords, LuBox, LuSparkles, LuExternalLink, LuMenu, LuX } from "react-icons/lu";
+import { LuLayoutDashboard, LuTrendingUp, LuBrainCircuit, LuMessageSquare, LuSettings, LuLogOut, LuCircleDollarSign, LuSwords, LuBox, LuSparkles, LuExternalLink, LuMenu, LuX, LuCrown } from "react-icons/lu";
 
 export default function SidebarNav() {
     const router = useRouter();
     const pathname = usePathname();
     const { t } = useTranslation();
     const [isOpen, setIsOpen] = useState(false);
+    const drawerRef = useRef<HTMLElement>(null);
 
     // Close drawer on route change
     useEffect(() => {
         setIsOpen(false);
     }, [pathname]);
 
-    // Prevent scroll when drawer is open
+    // Prevent scroll when drawer is open + focus trap + Escape
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = "hidden";
+            // Focus trap for mobile drawer
+            const drawer = drawerRef.current;
+            if (drawer) {
+                const focusable = drawer.querySelectorAll<HTMLElement>('a, button, input, [tabindex]:not([tabindex="-1"])');
+                const first = focusable[0];
+                const last = focusable[focusable.length - 1];
+                first?.focus();
+                const handleKeyDown = (e: KeyboardEvent) => {
+                    if (e.key === 'Escape') { setIsOpen(false); return; }
+                    if (e.key !== 'Tab') return;
+                    if (e.shiftKey) {
+                        if (document.activeElement === first) { e.preventDefault(); last?.focus(); }
+                    } else {
+                        if (document.activeElement === last) { e.preventDefault(); first?.focus(); }
+                    }
+                };
+                document.addEventListener('keydown', handleKeyDown);
+                return () => { document.body.style.overflow = ""; document.removeEventListener('keydown', handleKeyDown); };
+            }
         } else {
             document.body.style.overflow = "";
         }
@@ -37,8 +57,9 @@ export default function SidebarNav() {
       { name: t('sidebar.nav.dashboard'), href: "/dashboard", icon: <LuLayoutDashboard /> },
       { name: t('sidebar.nav.stats'), href: "/dashboard/stats", icon: <LuTrendingUp /> },
       { name: t('sidebar.nav.coach'), href: "/dashboard/coach", icon: <LuBrainCircuit /> },
-      { name: t('sidebar.nav.analysis'), href: "/chat", icon: <LuMessageSquare /> },
+      { name: t('sidebar.nav.chat'), href: "/chat", icon: <LuMessageSquare /> },
       { name: t('sidebar.nav.account'), href: "/account", icon: <LuSettings /> },
+      { name: t('sidebar.nav.pricing', 'プラン'), href: "/pricing", icon: <LuCrown /> },
     ];
 
     const referenceItems = [
@@ -89,7 +110,7 @@ export default function SidebarNav() {
               {/* Reference Pages */}
               <div className="mt-6 pt-4 border-t border-slate-800/50">
                   <div className="text-[10px] font-bold uppercase tracking-widest text-slate-600 px-4 mb-2">{t('sidebar.reference')}</div>
-                  <nav className="flex flex-col gap-1 text-slate-500">
+                  <nav className="flex flex-col gap-1 text-slate-400">
                       {referenceItems.map((item) => (
                           <Link
                               key={item.href}
@@ -107,7 +128,7 @@ export default function SidebarNav() {
               </div>
             </div>
             <div className="mt-8 pt-6 border-t border-slate-800">
-              <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-500 px-4 mb-4">
+              <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-400 px-4 mb-4">
                   <Link href="/terms" className="hover:text-blue-400 transition">{t('sidebar.footer.terms')}</Link>
                   <Link href="/privacy" className="hover:text-blue-400 transition">{t('sidebar.footer.privacy')}</Link>
                   <Link href="/legal" className="hover:text-blue-400 transition">{t('sidebar.footer.legal')}</Link>
@@ -143,7 +164,12 @@ export default function SidebarNav() {
         )}
 
         {/* Sidebar: always visible on lg+, drawer on mobile */}
-        <aside className={`
+        <aside
+            ref={drawerRef}
+            role={isOpen ? "dialog" : undefined}
+            aria-modal={isOpen ? "true" : undefined}
+            aria-label={isOpen ? t('sidebar.nav.dashboard') : undefined}
+            className={`
             fixed lg:sticky top-0 left-0 h-screen z-50
             w-64 bg-[#0f0f15]/95 lg:bg-[#0f0f15]/80 backdrop-blur-xl border-r border-white/5 p-6
             flex flex-col justify-between

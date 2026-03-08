@@ -17,7 +17,7 @@ const CATEGORIES = [
     { key: "boots" },
 ] as const;
 
-function categorizeItem(item: any): string[] {
+function categorizeItem(item: { stats?: Record<string, number>; tags?: string[] }): string[] {
     const cats: string[] = [];
     const stats = item.stats || {};
     const tags = item.tags || [];
@@ -38,7 +38,7 @@ function categorizeItem(item: any): string[] {
 }
 
 type Props = {
-    itemDataMap: Record<string, any>;
+    itemDataMap: Record<string, { name: string; description?: string; gold?: { total: number; purchasable: boolean }; stats?: Record<string, number>; tags?: string[]; image?: { full: string }; from?: string[] }>;
     version: string;
 };
 
@@ -63,7 +63,7 @@ export default function ItemDatabaseClient({ itemDataMap: initialItemDataMap, ve
     // Filter to completed items, deduplicate by name (keep highest ID)
     const completedItems = useMemo(() => {
         const entries = Object.entries(itemDataMap);
-        const nameMap = new Map<string, { id: string; item: any }>();
+        const nameMap = new Map<string, { id: string; item: { name: string; description?: string; gold?: { total: number; purchasable: boolean }; stats?: Record<string, number>; tags?: string[]; image?: { full: string }; from?: string[] } }>();
 
         for (const [id, item] of entries) {
             const gold = item.gold?.total || 0;

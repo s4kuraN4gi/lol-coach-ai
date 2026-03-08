@@ -3,6 +3,10 @@ import {
   FREE_WEEKLY_ANALYSIS_LIMIT,
   PREMIUM_WEEKLY_ANALYSIS_LIMIT,
   EXTRA_WEEKLY_ANALYSIS_LIMIT,
+  FREE_MAX_SEGMENTS,
+  PREMIUM_MAX_SEGMENTS,
+  EXTRA_MAX_SEGMENTS,
+  FRAMES_PER_SEGMENT,
   getWeeklyLimit,
   isExtraTier,
   isPremiumOrExtra,
@@ -25,8 +29,8 @@ function makeStatus(overrides: Partial<AnalysisStatus> = {}): AnalysisStatus {
 }
 
 describe("constants", () => {
-  it("FREE_WEEKLY_ANALYSIS_LIMIT should be 1", () => {
-    expect(FREE_WEEKLY_ANALYSIS_LIMIT).toBe(1);
+  it("FREE_WEEKLY_ANALYSIS_LIMIT should be 3 (weekly limit)", () => {
+    expect(FREE_WEEKLY_ANALYSIS_LIMIT).toBe(3);
   });
 
   it("PREMIUM_WEEKLY_ANALYSIS_LIMIT should be 20", () => {
@@ -137,5 +141,33 @@ describe("getNextMonday", () => {
     expect(result.getMinutes()).toBe(0);
     expect(result.getSeconds()).toBe(0);
     expect(result.getMilliseconds()).toBe(0);
+  });
+});
+
+describe("segment & frame constants", () => {
+  it("FREE_MAX_SEGMENTS should be 2", () => {
+    expect(FREE_MAX_SEGMENTS).toBe(2);
+  });
+
+  it("PREMIUM_MAX_SEGMENTS should be 4", () => {
+    expect(PREMIUM_MAX_SEGMENTS).toBe(4);
+  });
+
+  it("EXTRA_MAX_SEGMENTS should be 5", () => {
+    expect(EXTRA_MAX_SEGMENTS).toBe(5);
+  });
+
+  it("FRAMES_PER_SEGMENT should be 4", () => {
+    expect(FRAMES_PER_SEGMENT).toBe(4);
+  });
+
+  it("tier hierarchy: FREE < PREMIUM < EXTRA segments", () => {
+    expect(FREE_MAX_SEGMENTS).toBeLessThan(PREMIUM_MAX_SEGMENTS);
+    expect(PREMIUM_MAX_SEGMENTS).toBeLessThan(EXTRA_MAX_SEGMENTS);
+  });
+
+  it("tier hierarchy: FREE < PREMIUM < EXTRA weekly limits", () => {
+    expect(FREE_WEEKLY_ANALYSIS_LIMIT).toBeLessThan(PREMIUM_WEEKLY_ANALYSIS_LIMIT);
+    expect(PREMIUM_WEEKLY_ANALYSIS_LIMIT).toBeLessThan(EXTRA_WEEKLY_ANALYSIS_LIMIT);
   });
 });

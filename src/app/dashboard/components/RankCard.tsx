@@ -52,7 +52,7 @@ export default function RankCard({
             <div className="flex items-center gap-6">
                 {/* Rank Icon Placeholder */}
                 <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 relative group">
-                    <span className="text-2xl font-black text-slate-600 group-hover:text-slate-500 transition-colors">
+                    <span className="text-2xl font-black text-slate-600 group-hover:text-slate-400 transition-colors">
                         {rank.tier ? rank.tier[0] : "?"}
                     </span>
                     {rank.tier && (
@@ -77,7 +77,7 @@ export default function RankCard({
                     <p className={`text-2xl font-bold ${winRate >= 50 ? 'text-green-400' : 'text-red-400'}`}>
                         {winRate}%
                     </p>
-                    <p className="text-xs text-slate-500 font-mono">{wins}W - {losses}L</p>
+                    <p className="text-xs text-slate-400 font-mono">{wins}W - {losses}L</p>
                 </div>
             </div>
         </div>

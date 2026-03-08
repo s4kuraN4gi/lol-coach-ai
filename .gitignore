@@ -12,6 +12,9 @@
 
 # testing
 /coverage
+/test-results/
+/playwright-report/
+/blob-report/
 
 # next.js
 /.next/
@@ -40,6 +43,9 @@ yarn-error.log*
 
 # vercel
 .vercel
+
+# data crawl scripts (not for production)
+scripts/crawl_stats.ts
 
 # typescript
 *.tsbuildinfo

@@ -13,8 +13,11 @@ export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }
     if (!stats || stats.length === 0) {
         return (
              <div className="glass-panel rounded-xl p-4 flex flex-col items-center justify-center min-h-[200px] text-center h-full w-full">
-                 <div className="text-slate-500 font-bold mb-2">{t('widgets.championPerformance.noData')}</div>
-                 <div className="text-xs text-slate-600">{t('widgets.championPerformance.noDataDesc')}</div>
+                 <div className="text-slate-400 font-bold mb-2">{t('widgets.championPerformance.noData')}</div>
+                 <div className="text-xs text-slate-600 mb-3">{t('widgets.championPerformance.noDataDesc')}</div>
+                 <Link href="/dashboard/champions" className="text-xs text-blue-400 hover:text-blue-300 font-bold transition">
+                     {t('widgets.common.viewChampions', 'View Champion Stats →')}
+                 </Link>
             </div>
         )
     }
@@ -61,7 +64,7 @@ export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }
                              <span className={topChamp.winRate >= 60 ? "text-yellow-400 font-bold" : topChamp.winRate >= 50 ? "text-blue-400 font-bold" : "text-slate-400"}>
                                  {topChamp.winRate}% WR
                              </span>
-                             <span className="text-slate-500">•</span>
+                             <span className="text-slate-400">•</span>
                              <span className="text-slate-300">{topChamp.games} {t('widgets.championPerformance.games')}</span>
                          </div>
                          <div className="text-xs text-slate-400 mt-0.5 font-mono">
@@ -89,7 +92,7 @@ export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }
                                  </div>
                                  <div className="flex-1">
                                      <div className="text-sm font-bold text-slate-200 group-hover/list:text-blue-400 transition-colors">{champ.name}</div>
-                                     <div className="text-[10px] text-slate-500">{champ.games} {t('widgets.championPerformance.games')}</div>
+                                     <div className="text-[10px] text-slate-400">{champ.games} {t('widgets.championPerformance.games')}</div>
                                  </div>
                              </div>
                              <div className="flex items-center gap-3">
@@ -97,7 +100,7 @@ export default function ChampionPerformance({ stats }: { stats: ChampionStat[] }
                                     <div className={`text-sm font-black tabular-nums ${champ.winRate >= 50 ? 'text-blue-400' : 'text-slate-400'}`}>
                                         {champ.winRate}%
                                     </div>
-                                    <div className="text-[10px] text-slate-500 font-mono">
+                                    <div className="text-[10px] text-slate-400 font-mono">
                                         {champ.avgKda} KDA
                                     </div>
                                 </div>

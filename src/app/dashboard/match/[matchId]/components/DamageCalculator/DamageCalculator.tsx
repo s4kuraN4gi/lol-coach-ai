@@ -5,6 +5,7 @@ import { useTranslation } from "@/contexts/LanguageContext";
 import { useChampionDetail } from "@/hooks/useChampionDetail";
 import useSWR from "swr";
 
+import type { MatchV5Response, MatchV5Participant } from "@/app/actions/riot/types";
 import type {
   CalculatorState,
   CalculatorSide,
@@ -28,7 +29,7 @@ import ItemSelectorModal from "./ItemSelectorModal";
 import ItemChampionBrowser from "./ItemChampionBrowser";
 
 type Props = {
-  matchData: any;
+  matchData: MatchV5Response;
   puuid: string;
   ddVersion: string;
   isExtra: boolean;
@@ -45,20 +46,20 @@ async function fetchChampionList(key: string): Promise<{ id: string; name: strin
   const res = await fetch(url);
   if (!res.ok) return [];
   const data = await res.json();
-  return Object.values(data.data as Record<string, any>)
-    .map((c: any) => ({ id: c.id as string, name: c.name as string, tags: (c.tags || []) as string[] }))
+  return Object.values(data.data as Record<string, { id: string; name: string; tags?: string[] }>)
+    .map((c) => ({ id: c.id, name: c.name, tags: c.tags || [] }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 // Fetch item data
-async function fetchItemData(key: string): Promise<Record<string, any> | null> {
+async function fetchItemData(key: string): Promise<Record<string, { name: string; description?: string; gold?: { total: number }; stats?: Record<string, number> }> | null> {
   const [, language] = key.split(":");
   const { fetchDDItemData } = await import("@/app/actions/riot");
   const result = await fetchDDItemData(language as 'ja' | 'en' | 'ko');
   return result?.idMap ?? null;
 }
 
-function extractKeystoneId(participant: any): string | null {
+function extractKeystoneId(participant: MatchV5Participant): string | null {
   const riotId = participant?.perks?.styles?.[0]?.selections?.[0]?.perk;
   if (typeof riotId !== 'number') return null;
   return findKeystoneByRiotId(riotId);
@@ -76,14 +77,14 @@ function estimateSpellRanks(level: number): [number, number, number, number] {
   return [qRank, wRank, eRank, rRank];
 }
 
-function getInitialState(matchData: any, puuid: string): CalculatorState {
+function getInitialState(matchData: MatchV5Response, puuid: string): CalculatorState {
   const participants = matchData?.info?.participants || [];
-  const user = participants.find((p: any) => p.puuid === puuid);
+  const user = participants.find((p) => p.puuid === puuid);
   const opponent = user
-    ? participants.find((p: any) => p.teamId !== user.teamId && p.teamPosition === user.teamPosition)
+    ? participants.find((p) => p.teamId !== user.teamId && p.teamPosition === user.teamPosition)
     : null;
 
-  const extractItems = (p: any): (string | null)[] => {
+  const extractItems = (p: MatchV5Participant | null | undefined): (string | null)[] => {
     if (!p) return [null, null, null, null, null, null];
     return [p.item0, p.item1, p.item2, p.item3, p.item4, p.item5].map(
       (id: number) => (id && id !== 0 ? String(id) : null)
@@ -93,20 +94,22 @@ function getInitialState(matchData: any, puuid: string): CalculatorState {
   const userLevel = user?.champLevel || 1;
   const opponentLevel = opponent?.champLevel || 1;
 
+  const defaultParticipant: MatchV5Participant = {} as MatchV5Participant;
+
   return {
     left: {
       champion: user?.championName || "Aatrox",
       level: userLevel,
       items: extractItems(user),
       spellRanks: estimateSpellRanks(userLevel),
-      keystone: extractKeystoneId(user),
+      keystone: extractKeystoneId(user || defaultParticipant),
     },
     right: {
       champion: opponent?.championName || "Aatrox",
       level: opponentLevel,
       items: extractItems(opponent),
       spellRanks: estimateSpellRanks(opponentLevel),
-      keystone: extractKeystoneId(opponent),
+      keystone: extractKeystoneId(opponent || defaultParticipant),
     },
   };
 }
@@ -449,7 +452,7 @@ export default function DamageCalculator({ matchData, puuid, ddVersion, isExtra 
                 {/* Stats Comparison (center) */}
                 {leftStats && rightStats && (
                   <div className="hidden md:flex flex-col items-center justify-center pt-16">
-                    <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-2">
+                    <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-2">
                       {t("damageCalculator.stats", "ステータス")}
                     </div>
                     <StatsComparison leftStats={leftStats} rightStats={rightStats} />
@@ -480,7 +483,7 @@ export default function DamageCalculator({ matchData, puuid, ddVersion, isExtra 
               {/* Mobile Stats Comparison */}
               {leftStats && rightStats && (
                 <div className="md:hidden bg-slate-800/30 rounded-lg p-3">
-                  <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-2 text-center">
+                  <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-2 text-center">
                     {t("damageCalculator.stats", "ステータス")}
                   </div>
                   <StatsComparison leftStats={leftStats} rightStats={rightStats} />
@@ -567,7 +570,7 @@ export default function DamageCalculator({ matchData, puuid, ddVersion, isExtra 
 
               {/* Loading indicator */}
               {(!leftDetail || !rightDetail) && (
-                <div className="text-center text-slate-500 text-sm py-4">
+                <div className="text-center text-slate-400 text-sm py-4">
                   {t("damageCalculator.loading", "チャンピオンデータを読み込み中...")}
                 </div>
               )}

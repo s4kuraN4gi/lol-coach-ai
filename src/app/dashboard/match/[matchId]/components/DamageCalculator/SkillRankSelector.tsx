@@ -35,7 +35,7 @@ const DAMAGE_TYPE_COLORS: Record<string, string> = {
   physical: "text-orange-400",
   magic: "text-purple-400",
   true: "text-white",
-  unknown: "text-slate-500",
+  unknown: "text-slate-400",
 };
 
 const SCALING_STAT_LABELS: Record<string, string> = {
@@ -69,7 +69,7 @@ function SpellTooltip({ ability, currentRank }: { ability: ParsedAbility; curren
           <div className="min-w-0">
             <div className="text-xs font-bold text-white truncate">{ability.name}</div>
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-slate-500">{ability.key}</span>
+              <span className="text-[10px] text-slate-400">{ability.key}</span>
               <span className={`text-[10px] ${dmgTypeColor}`}>{dmgTypeLabel}</span>
             </div>
           </div>
@@ -78,7 +78,7 @@ function SpellTooltip({ ability, currentRank }: { ability: ParsedAbility; curren
         {/* Base damage per rank */}
         {ability.baseDamage.length > 0 && ability.isDataComplete && (
           <div className="mb-1.5">
-            <div className="text-[10px] text-slate-500 mb-0.5">Base Damage</div>
+            <div className="text-[10px] text-slate-400 mb-0.5">Base Damage</div>
             <div className="flex gap-1">
               {ability.baseDamage.map((dmg, i) => (
                 <span
@@ -101,7 +101,7 @@ function SpellTooltip({ ability, currentRank }: { ability: ParsedAbility; curren
         {/* Scaling ratios */}
         {ability.scalings.length > 0 && (
           <div className="mb-1.5">
-            <div className="text-[10px] text-slate-500 mb-0.5">Scaling</div>
+            <div className="text-[10px] text-slate-400 mb-0.5">Scaling</div>
             <div className="flex flex-wrap gap-1.5">
               {ability.scalings.map((s, i) => (
                 <span key={i} className="text-[10px] text-green-400">
@@ -115,13 +115,13 @@ function SpellTooltip({ ability, currentRank }: { ability: ParsedAbility; curren
         {/* Cooldown */}
         {ability.cooldown.length > 0 && ability.cooldown.some(cd => cd > 0) && (
           <div className="border-t border-slate-700 pt-1.5 mt-1">
-            <div className="text-[10px] text-slate-500 mb-0.5">Cooldown</div>
+            <div className="text-[10px] text-slate-400 mb-0.5">Cooldown</div>
             <div className="flex gap-1">
               {ability.cooldown.map((cd, i) => (
                 <span
                   key={i}
                   className={`text-[10px] font-mono ${
-                    i + 1 === currentRank ? "text-sky-300 font-bold" : "text-slate-500"
+                    i + 1 === currentRank ? "text-sky-300 font-bold" : "text-slate-400"
                   }`}
                 >
                   {cd}s

@@ -9,7 +9,7 @@ import { fetchChampionDetail } from "@/app/actions/riot";
 import AdSenseBanner from "@/app/components/ads/AdSenseBanner";
 
 type Props = {
-    champion: any;
+    champion: { id: string; name: string; title: string; lore: string; tags: string[]; info: Record<string, number>; stats: Record<string, number>; image: { full: string }; spells: { id: string; name: string; description: string; image: { full: string }; cooldownBurn?: string; costBurn?: string; costType?: string }[]; passive: { name: string; description: string; image: { full: string } }; allytips?: string[]; enemytips?: string[] };
     version: string;
     champId: string;
 };
@@ -159,7 +159,7 @@ export default function ChampionDetailContent({ champion: initialChampion, versi
                         )}
 
                         {/* Q/W/E/R */}
-                        {spells.map((spell: any, idx: number) => (
+                        {spells.map((spell, idx) => (
                             <div
                                 key={spell.id}
                                 className="flex gap-4 bg-white/[0.03] border border-white/5 rounded-lg p-4"

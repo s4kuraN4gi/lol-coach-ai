@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useMemo, useRef, useEffect, useCallback } from "react";
 import type { MatchSummary } from "@/app/actions/coach";
 import { getLatestActiveAnalysis } from "@/app/actions/analysis";
+import { logger } from "@/lib/logger";
 
 // localStorage keys
 const DETAIL_TAB_KEY = 'coachDetailTab';
@@ -77,19 +78,16 @@ export function CoachUIProvider({ children }: { children: React.ReactNode }) {
 
         if (microJobId) {
             // MICRO analysis in progress - switch to MICRO tab
-            console.log("[CoachUI] Active MICRO job detected, switching to MICRO tab");
             setDetailTabState('MICRO');
             localStorage.setItem(DETAIL_TAB_KEY, 'MICRO');
         } else if (macroJobId) {
             // MACRO analysis in progress - switch to MACRO tab
-            console.log("[CoachUI] Active MACRO job detected, switching to MACRO tab");
             setDetailTabState('MACRO');
             localStorage.setItem(DETAIL_TAB_KEY, 'MACRO');
         } else {
             // No active analysis - restore saved tab preference
             const savedTab = localStorage.getItem(DETAIL_TAB_KEY) as 'MACRO' | 'MICRO' | null;
             if (savedTab && (savedTab === 'MACRO' || savedTab === 'MICRO')) {
-                console.log("[CoachUI] Restoring saved tab:", savedTab);
                 setDetailTabState(savedTab);
             }
         }
@@ -134,7 +132,7 @@ export function CoachUIProvider({ children }: { children: React.ReactNode }) {
                 }
             }
         } catch (e) {
-            console.error("Restore error:", e);
+            logger.error("Restore error:", e);
         }
     };
 

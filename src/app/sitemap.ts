@@ -29,7 +29,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         { url: `${BASE}/privacy`, changeFrequency: 'yearly', priority: 0.2 },
         { url: `${BASE}/terms`, changeFrequency: 'yearly', priority: 0.2 },
         { url: `${BASE}/contact`, changeFrequency: 'yearly', priority: 0.2 },
-        ...champions.map((c: any) => ({
+        ...champions.map((c: { id: string }) => ({
             url: `${BASE}/champions/${c.id}`,
             changeFrequency: 'weekly' as const,
             priority: 0.8,

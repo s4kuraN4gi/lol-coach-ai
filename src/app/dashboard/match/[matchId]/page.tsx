@@ -1,6 +1,6 @@
 // Server Component - Minimal server work, data fetching on client with SWR
 import { redirect } from "next/navigation";
-import { createClient } from "@/utils/supabase/server";
+import { getUser } from "@/utils/supabase/server";
 import { getActiveSummoner } from "@/app/actions/profile";
 import DashboardLayout from "@/app/components/layout/DashboardLayout";
 import MatchClientPage from "./components/MatchClientPage";
@@ -15,9 +15,8 @@ type Props = {
 export default async function MatchDetailsPage({ params }: Props) {
     const { matchId } = await params;
 
-    // 1. Auth check (fast)
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    // 1. Auth check (cached per request via React.cache)
+    const user = await getUser();
 
     if (!user) {
         redirect('/login');

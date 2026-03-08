@@ -22,6 +22,13 @@ export default function ResetPasswordPage() {
     setLoading(true);
     setError("");
 
+    // Block password reset for RSO synthetic accounts
+    if (email.trim().toLowerCase().endsWith('@lolcoach.ai')) {
+      setError(t('resetPasswordPage.rsoBlocked', 'Riotアカウント連携ユーザーはパスワードリセットできません'));
+      setLoading(false);
+      return;
+    }
+
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth/callback`,
     });
@@ -29,7 +36,7 @@ export default function ResetPasswordPage() {
     setLoading(false);
 
     if (resetError) {
-      setError(resetError.message);
+      setError(t('resetPasswordPage.resetFailed'));
       return;
     }
 
@@ -100,7 +107,7 @@ export default function ResetPasswordPage() {
               <div className="text-center">
                 <Link
                   href="/login"
-                  className="text-sm text-slate-500 hover:text-slate-400 transition"
+                  className="text-sm text-slate-400 hover:text-slate-400 transition"
                 >
                   {t('resetPasswordPage.backToLogin')}
                 </Link>

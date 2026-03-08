@@ -4,7 +4,7 @@ import goldConstants from "@/data/gold_constants.json";
 import Link from "next/link";
 import { LuBookOpen, LuTarget, LuCoins, LuInfo } from "react-icons/lu";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { getLocalizedName, getLocalizedTooltip, getLocalizedBuffValue } from "@/utils/goldLocalization";
+import { getLocalizedName, getLocalizedTooltip, getLocalizedBuffValue, type GoldItem } from "@/utils/goldLocalization";
 import AdSenseBanner from "@/app/components/ads/AdSenseBanner";
 
 type Props = { id: string; basePath?: string };
@@ -12,11 +12,11 @@ type Props = { id: string; basePath?: string };
 export default function GoldAssetDetailContent({ id, basePath = "/guide/gold" }: Props) {
   const { t, language } = useLanguage();
 
-  const getName = (item: any) => getLocalizedName(item, language);
-  const getTooltip = (item: any) => getLocalizedTooltip(item, language);
-  const getBuffValue = (item: any) => getLocalizedBuffValue(item, language);
+  const getName = (item: GoldItem) => getLocalizedName(item, language);
+  const getTooltip = (item: GoldItem) => getLocalizedTooltip(item, language);
+  const getBuffValue = (item: GoldItem) => getLocalizedBuffValue(item, language);
 
-  let asset: any = null;
+  let asset: GoldItem | null = null;
   let category = "";
 
   if (id.startsWith("dragon_")) {

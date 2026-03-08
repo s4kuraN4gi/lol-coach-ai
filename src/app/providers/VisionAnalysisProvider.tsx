@@ -13,6 +13,7 @@ import { getAnalysisJobStatus, getLatestMicroAnalysisForMatch } from "@/app/acti
 import { fetchMatchDetail } from "@/app/actions/riot";
 import type { MatchSummary } from "@/app/actions/coach";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { logger } from "@/lib/logger";
 
 const MICRO_JOB_STORAGE_KEY = 'microJobId';
 const MICRO_MATCH_STORAGE_KEY = 'microJobMatchId';
@@ -92,7 +93,7 @@ export function VisionAnalysisProvider({ children }: { children: React.ReactNode
                         localStorage.removeItem(MICRO_COMPLETED_MATCH_KEY);
                     }
                 } catch (e) {
-                    console.error("[GlobalProvider] Failed to restore result:", e);
+                    logger.error("[GlobalProvider] Failed to restore result:", e);
                     localStorage.removeItem(MICRO_COMPLETED_MATCH_KEY);
                 }
             }
@@ -110,14 +111,15 @@ export function VisionAnalysisProvider({ children }: { children: React.ReactNode
 
         const checkMicroStatus = async () => {
             if (!microJobId) return;
-            let res: any;
+            let res: Awaited<ReturnType<typeof getAnalysisJobStatus>> | null = null;
             try {
                 res = await getAnalysisJobStatus(microJobId);
-            } catch (pollError: any) {
-                console.error("[GlobalProvider] POLL ERROR:", pollError.message);
+            } catch (pollError) {
+                const msg = pollError instanceof Error ? pollError.message : String(pollError);
+                logger.error("[GlobalProvider] POLL ERROR:", msg);
                 // Show error to user with location info
                 setAsyncStatus('failed');
-                setErrorMsg(`[POLL] ${pollError.message}`);
+                setErrorMsg(`[POLL] ${msg}`);
                 setMicroJobId(null);
                 localStorage.removeItem(MICRO_JOB_STORAGE_KEY);
                 localStorage.removeItem(MICRO_MATCH_STORAGE_KEY);
@@ -129,7 +131,7 @@ export function VisionAnalysisProvider({ children }: { children: React.ReactNode
             if (res.status === 'completed' && res.result) {
                 // Check for corrupted result
                 if (res.result.error && res.result.error.includes('corrupted')) {
-                    console.error("[GlobalProvider] Result was corrupted");
+                    logger.error("[GlobalProvider] Result was corrupted");
                     setAsyncStatus('failed');
                     setErrorMsg(t('visionAnalysis.resultCorrupted'));
                     setMicroJobId(null);
@@ -161,9 +163,9 @@ export function VisionAnalysisProvider({ children }: { children: React.ReactNode
                 }, 1000);
 
             } else if (res.status === 'failed') {
-                console.error("[GlobalProvider] Job Failed", res.error);
+                logger.error("[GlobalProvider] Job Failed", res.error);
                 setAsyncStatus('failed');
-                setErrorMsg(res.error || t('visionAnalysis.analysisFailed'));
+                setErrorMsg(t(`serverErrors.${res.error}`, res.error) || t('visionAnalysis.analysisFailed'));
                 setProgress(0);
                 setMicroJobId(null);
                 localStorage.removeItem(MICRO_JOB_STORAGE_KEY);
@@ -186,9 +188,9 @@ export function VisionAnalysisProvider({ children }: { children: React.ReactNode
 
     // --- Actions ---
 
-    const clearError = () => setErrorMsg(null);
-    
-    const resetAnalysis = (keepDebugFrames: boolean = false) => {
+    const clearError = useCallback(() => setErrorMsg(null), []);
+
+    const resetAnalysis = useCallback((keepDebugFrames: boolean = false) => {
         setAsyncStatus('idle');
         setVisionResult(null);
         setProgress(0);
@@ -203,7 +205,7 @@ export function VisionAnalysisProvider({ children }: { children: React.ReactNode
         localStorage.removeItem(MICRO_JOB_STORAGE_KEY);
         localStorage.removeItem(MICRO_MATCH_STORAGE_KEY);
         localStorage.removeItem(MICRO_COMPLETED_MATCH_KEY);
-    };
+    }, []);
 
     // Restore result for a specific match (called by component when match changes)
     // Note: This function intentionally has no dependencies to maintain stable reference
@@ -219,7 +221,7 @@ export function VisionAnalysisProvider({ children }: { children: React.ReactNode
                 return true;
             }
         } catch (e) {
-            console.error("[GlobalProvider] Failed to restore MICRO result:", e);
+            logger.error("[GlobalProvider] Failed to restore MICRO result:", e);
         }
         return false;
     }, []); // Empty deps for stable reference - state checks moved to effect level
@@ -241,14 +243,14 @@ export function VisionAnalysisProvider({ children }: { children: React.ReactNode
             if (!matchRes.success || !matchRes.data) throw new Error(t('visionAnalysis.matchDataFetchFailed'));
             const matchInfo = matchRes.data.info;
 
-            const me = matchInfo.participants.find((p: any) => p.puuid === puuid);
+            const me = matchInfo.participants.find((p) => p.puuid === puuid);
             if (!me) throw new Error(t('visionAnalysis.playerNotFound'));
             const myTeamId = me.teamId;
 
             const context = {
                 myChampion: me.championName,
-                allies: matchInfo.participants.filter((p: any) => p.teamId === myTeamId).map((p: any) => p.championName),
-                enemies: matchInfo.participants.filter((p: any) => p.teamId !== myTeamId).map((p: any) => p.championName),
+                allies: matchInfo.participants.filter((p) => p.teamId === myTeamId).map((p) => p.championName),
+                enemies: matchInfo.participants.filter((p) => p.teamId !== myTeamId).map((p) => p.championName),
             };
 
             // 2. Extract Frames (FAST)
@@ -281,14 +283,14 @@ export function VisionAnalysisProvider({ children }: { children: React.ReactNode
                  throw new Error(`MATCH_INTEGRITY_ERROR: ${reason}`);
             }
 
-        } catch (e: any) {
-            console.error(e);
+        } catch (e) {
+            logger.error(e);
             throw e;
         }
     }, [t]);
 
     // Main Entry Point
-    const startAnalysis = async (file: File, match: MatchSummary, puuid: string, question: string, startTime: number = 0) => {
+    const startAnalysis = useCallback(async (file: File, match: MatchSummary, puuid: string, question: string, startTime: number = 0) => {
         // Reset previous state, but keep debug frames (from verifyVideo)
         resetAnalysis(true);
         setAsyncStatus('processing');
@@ -302,24 +304,25 @@ export function VisionAnalysisProvider({ children }: { children: React.ReactNode
             setStatusMessage(t('visionAnalysis.verifyingVideoMatch'));
             
             // 1-A. Context
-            let matchDetail: any;
+            let matchDetail: Awaited<ReturnType<typeof fetchMatchDetail>> | null = null;
             try {
                 matchDetail = await fetchMatchDetail(match.matchId);
-            } catch (fetchError: any) {
-                console.error("[GlobalProvider] FETCH ERROR:", fetchError.message);
-                throw new Error(`[FETCH] ${fetchError.message}`);
+            } catch (fetchError) {
+                const msg = fetchError instanceof Error ? fetchError.message : String(fetchError);
+                logger.error("[GlobalProvider] FETCH ERROR:", msg);
+                throw new Error(`[FETCH] ${msg}`);
             }
             if (!matchDetail.success || !matchDetail.data) {
-                console.error("[GlobalProvider] matchDetail failed:", matchDetail.error);
+                logger.error("[GlobalProvider] matchDetail failed:", matchDetail.error);
                 throw new Error(t('visionAnalysis.cannotSkipVerification') + ` (${matchDetail.error || 'unknown'})`);
             }
             const parts = matchDetail.data.info.participants;
-            const me = parts.find((p: any) => p.puuid === puuid);
+            const me = parts.find((p) => p.puuid === puuid);
             const myTeamId = me ? me.teamId : 0;
             const context = {
                 myChampion: match.championName, 
-                allies: parts.filter((p: any) => p.teamId === myTeamId).map((p: any) => p.championName),
-                enemies: parts.filter((p: any) => p.teamId !== myTeamId).map((p: any) => p.championName)
+                allies: parts.filter((p) => p.teamId === myTeamId).map((p) => p.championName),
+                enemies: parts.filter((p) => p.teamId !== myTeamId).map((p) => p.championName)
             };
 
             // 1-B. Extract Verification Frames
@@ -327,21 +330,19 @@ export function VisionAnalysisProvider({ children }: { children: React.ReactNode
             const vFrames = await processor.extractVerificationFrames(file); // Fast extraction
 
             // [DEBUG] Expose frames (Internal Check)
-            console.log(`[GlobalProvider] Setting Internal Frames. Count: ${vFrames.length}`);
             setDebugFrames(vFrames.map((f, i) => ({
                 url: `data:image/jpeg;base64,${f}`, // Fix: Prepend data prefix
                 info: `Internal Verify ${i+1}`
             })));
 
             // 1-C. Server Check
-            console.log("[GlobalProvider] Calling verifyMatchVideo...");
-            let vResult: any;
+            let vResult: Awaited<ReturnType<typeof verifyMatchVideo>> | null = null;
             try {
                 vResult = await verifyMatchVideo(vFrames, context);
-                console.log("[GlobalProvider] verifyMatchVideo returned:", vResult.success);
-            } catch (verifyError: any) {
-                console.error("[GlobalProvider] VERIFY ERROR (verifyMatchVideo):", verifyError.message);
-                throw new Error(`[VERIFY] ${verifyError.message}`);
+            } catch (verifyError) {
+                const msg = verifyError instanceof Error ? verifyError.message : String(verifyError);
+                logger.error("[GlobalProvider] VERIFY ERROR (verifyMatchVideo):", msg);
+                throw new Error(`[VERIFY] ${msg}`);
             }
 
             if (!vResult.success || !vResult.data) {
@@ -382,12 +383,6 @@ export function VisionAnalysisProvider({ children }: { children: React.ReactNode
             const totalFrameSize = frameDataUrls.reduce((sum, url) => sum + url.length, 0);
 
             // Detailed frame size breakdown
-            console.log("[GlobalProvider] Frame size breakdown:");
-            console.log("  - Frame count:", frames.length);
-            console.log("  - Frame dimensions:", frames[0]?.width, "x", frames[0]?.height);
-            console.log("  - Individual frame sizes (KB):", frameDataUrls.map(url => Math.round(url.length / 1024)));
-            console.log("  - Total frame data size:", Math.round(totalFrameSize / 1024), "KB");
-            console.log("  - Average frame size:", Math.round(totalFrameSize / frames.length / 1024), "KB");
 
             // Build the request object
             const analysisRequest = {
@@ -403,40 +398,32 @@ export function VisionAnalysisProvider({ children }: { children: React.ReactNode
             let serializedPayload: string;
             try {
                 serializedPayload = JSON.stringify(analysisRequest);
-            } catch (serializeError: any) {
-                console.error("[GlobalProvider] Failed to serialize request:", serializeError.message);
-                throw new Error(`[SERIALIZE] ${serializeError.message}`);
+            } catch (serializeError) {
+                const msg = serializeError instanceof Error ? serializeError.message : String(serializeError);
+                logger.error("[GlobalProvider] Failed to serialize request:", msg);
+                throw new Error(`[SERIALIZE] ${msg}`);
             }
-
-            console.log("[GlobalProvider] Request stats:", {
-                frameCount: frames.length,
-                frameSizeKB: Math.round(totalFrameSize / 1024),
-                fullPayloadKB: Math.round(serializedPayload.length / 1024),
-                matchId: match.matchId,
-                startTime: startTime
-            });
 
             // Verify serialization round-trip works
             try {
                 JSON.parse(serializedPayload);
-                console.log("[GlobalProvider] Serialization round-trip OK");
-            } catch (parseError: any) {
-                console.error("[GlobalProvider] Serialization round-trip FAILED:", parseError.message);
-                console.error("[GlobalProvider] Payload preview (first 500 chars):", serializedPayload.substring(0, 500));
-                console.error("[GlobalProvider] Payload preview (last 500 chars):", serializedPayload.substring(serializedPayload.length - 500));
-                throw new Error(`[ROUNDTRIP] ${parseError.message}`);
+            } catch (parseError) {
+                const msg = parseError instanceof Error ? parseError.message : String(parseError);
+                logger.error("[GlobalProvider] Serialization round-trip FAILED:", msg);
+                logger.error("[GlobalProvider] Payload preview (first 500 chars):", serializedPayload.substring(0, 500));
+                logger.error("[GlobalProvider] Payload preview (last 500 chars):", serializedPayload.substring(serializedPayload.length - 500));
+                throw new Error(`[ROUNDTRIP] ${msg}`);
             }
 
-            console.log("[GlobalProvider] Calling startVisionAnalysis...");
-            let result: any;
+            let result: Awaited<ReturnType<typeof startVisionAnalysis>> | null = null;
             try {
                 result = await startVisionAnalysis(analysisRequest);
-                console.log("[GlobalProvider] startVisionAnalysis returned:", result.success, result.jobId);
-            } catch (startError: any) {
-                console.error("[GlobalProvider] START ERROR (startVisionAnalysis):", startError.message);
-                console.error("[GlobalProvider] Full error:", startError);
-                console.error("[GlobalProvider] Payload size was:", Math.round(serializedPayload.length / 1024), "KB");
-                throw new Error(`[START] ${startError.message}`);
+            } catch (startError) {
+                const msg = startError instanceof Error ? startError.message : String(startError);
+                logger.error("[GlobalProvider] START ERROR (startVisionAnalysis):", msg);
+                logger.error("[GlobalProvider] Full error:", startError);
+                logger.error("[GlobalProvider] Payload size was:", Math.round(serializedPayload.length / 1024), "KB");
+                throw new Error(`[START] ${msg}`);
             }
 
             if (!result.success || !result.jobId) {
@@ -444,7 +431,6 @@ export function VisionAnalysisProvider({ children }: { children: React.ReactNode
             }
 
             // --- Step 4: Handover to Polling ---
-            console.log("[GlobalProvider] Job Started:", result.jobId);
             setMicroJobId(result.jobId);
             setMatchId(match.matchId);
             localStorage.setItem(MICRO_JOB_STORAGE_KEY, result.jobId);
@@ -452,14 +438,14 @@ export function VisionAnalysisProvider({ children }: { children: React.ReactNode
 
             // Polling effect will take over from here...
 
-        } catch (e: any) {
-            console.error(e);
+        } catch (e) {
+            logger.error(e);
             setAsyncStatus('failed');
             setIsVerifying(false);
-            setErrorMsg(e.message || t('visionAnalysis.unexpectedError'));
+            setErrorMsg(e instanceof Error ? e.message : t('visionAnalysis.unexpectedError'));
             setStatusMessage(t('visionAnalysis.error'));
         }
-    };
+    }, [t, language, resetAnalysis]);
 
 
     const contextValue = useMemo<VisionAnalysisContextType>(() => ({

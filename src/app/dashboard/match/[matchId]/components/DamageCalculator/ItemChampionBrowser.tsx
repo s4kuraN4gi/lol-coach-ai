@@ -30,7 +30,7 @@ const CATEGORIES = [
   { key: "boots", ja: "靴", en: "Boots", ko: "신발" },
 ];
 
-function categorizeItem(item: any): string[] {
+function categorizeItem(item: { stats?: Record<string, number>; tags?: string[] }): string[] {
   const cats: string[] = [];
   const stats = item.stats || {};
   const tags = item.tags || [];
@@ -128,7 +128,7 @@ export default function ItemChampionBrowser({
           className={`flex-1 py-2 text-xs font-bold transition-colors ${
             tab === "items"
               ? "text-blue-400 border-b-2 border-blue-400"
-              : "text-slate-500 hover:text-slate-300"
+              : "text-slate-400 hover:text-slate-300"
           }`}
         >
           {language === "ja"
@@ -142,7 +142,7 @@ export default function ItemChampionBrowser({
           className={`flex-1 py-2 text-xs font-bold transition-colors ${
             tab === "champions"
               ? "text-blue-400 border-b-2 border-blue-400"
-              : "text-slate-500 hover:text-slate-300"
+              : "text-slate-400 hover:text-slate-300"
           }`}
         >
           {language === "ja"
@@ -204,7 +204,7 @@ export default function ItemChampionBrowser({
               className={`flex-1 px-2 py-1 rounded text-[10px] font-bold transition-colors ${
                 activeSide === "left"
                   ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
-                  : "bg-slate-800 text-slate-500 border border-slate-700 hover:text-slate-300"
+                  : "bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-300"
               }`}
             >
               {language === "ja"
@@ -218,7 +218,7 @@ export default function ItemChampionBrowser({
               className={`flex-1 px-2 py-1 rounded text-[10px] font-bold transition-colors ${
                 activeSide === "right"
                   ? "bg-red-500/20 text-red-400 border border-red-500/30"
-                  : "bg-slate-800 text-slate-500 border border-slate-700 hover:text-slate-300"
+                  : "bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-300"
               }`}
             >
               {language === "ja"
@@ -297,7 +297,7 @@ export default function ItemChampionBrowser({
         )}
 
         {tab === "items" && filteredItems.length === 0 && (
-          <div className="text-center text-slate-500 text-[10px] py-4">
+          <div className="text-center text-slate-400 text-[10px] py-4">
             {language === "ja"
               ? "アイテムが見つかりません"
               : language === "ko"
@@ -306,7 +306,7 @@ export default function ItemChampionBrowser({
           </div>
         )}
         {tab === "champions" && filteredChampions.length === 0 && (
-          <div className="text-center text-slate-500 text-[10px] py-4">
+          <div className="text-center text-slate-400 text-[10px] py-4">
             {language === "ja"
               ? "チャンピオンが見つかりません"
               : language === "ko"

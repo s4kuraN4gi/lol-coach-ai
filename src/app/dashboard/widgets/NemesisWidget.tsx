@@ -6,6 +6,7 @@ import DashboardCard from "../components/DashboardCard";
 import InfoTooltip from "../components/InfoTooltip";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { useDDragonVersion } from "@/hooks/useDDragonVersion";
+import Link from "next/link";
 
 type MatchupData = {
     name: string;
@@ -25,13 +26,12 @@ function MatchupCard({
 }) {
     const losses = champ.games - champ.wins;
     const isNemesis = type === 'nemesis';
-    const accentColor = isNemesis ? 'red' : 'emerald';
 
     return (
-        <div className={`bg-slate-800/40 rounded-lg p-2.5 border border-${accentColor}-500/10 hover:border-${accentColor}-500/30 transition-all duration-300 group/card`}>
+        <div className={`bg-slate-800/40 rounded-lg p-2.5 border transition-all duration-300 group/card ${isNemesis ? 'border-red-500/10 hover:border-red-500/30' : 'border-emerald-500/10 hover:border-emerald-500/30'}`}>
             <div className="flex items-center gap-2.5">
                 {/* Champion Icon */}
-                <div className={`relative w-10 h-10 rounded-lg overflow-hidden ring-2 ring-${accentColor}-500/30 group-hover/card:ring-${accentColor}-500/50 transition-all`}>
+                <div className={`relative w-10 h-10 rounded-lg overflow-hidden ring-2 transition-all ${isNemesis ? 'ring-red-500/30 group-hover/card:ring-red-500/50' : 'ring-emerald-500/30 group-hover/card:ring-emerald-500/50'}`}>
                     <Image
                         src={`https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${champ.name}.png`}
                         alt={champ.name}
@@ -63,7 +63,7 @@ function MatchupCard({
                         <span className="text-emerald-400 font-medium">{champ.wins}W</span>
                         <span className="text-slate-600">/</span>
                         <span className="text-red-400 font-medium">{losses}L</span>
-                        <span className="text-slate-500 ml-auto">{champ.games}G</span>
+                        <span className="text-slate-400 ml-auto">{champ.games}G</span>
                     </div>
                 </div>
             </div>
@@ -75,7 +75,16 @@ export default function NemesisWidget({ stats }: { stats: UniqueStats | null }) 
     const { t } = useTranslation();
     const version = useDDragonVersion();
 
-    if (!stats) return <DashboardCard className="h-full">{t('widgets.nemesis.noData')}</DashboardCard>;
+    if (!stats) return (
+        <DashboardCard className="h-full">
+            <div className="flex flex-col items-center justify-center h-full gap-2">
+                <span className="text-slate-400 text-sm">{t('widgets.nemesis.noData')}</span>
+                <Link href="/dashboard/coach" className="text-xs text-blue-400 hover:text-blue-300 font-bold transition">
+                    {t('widgets.common.tryCoaching', 'Try AI Coaching →')}
+                </Link>
+            </div>
+        </DashboardCard>
+    );
 
     const hasData = stats.nemesis.length > 0 || stats.prey.length > 0;
 
@@ -95,7 +104,7 @@ export default function NemesisWidget({ stats }: { stats: UniqueStats | null }) 
                             how: t('tooltip.nemesis.how')
                         }} />
                     </h3>
-                    <p className="text-xs text-slate-500">{t('widgets.nemesis.subtitle')}</p>
+                    <p className="text-xs text-slate-400">{t('widgets.nemesis.subtitle')}</p>
                 </div>
             </div>
 
@@ -142,8 +151,11 @@ export default function NemesisWidget({ stats }: { stats: UniqueStats | null }) 
                     </div>
                 </div>
             ) : (
-                <div className="text-center py-6 text-slate-500 text-sm">
-                    {t('widgets.nemesis.noData')}
+                <div className="flex flex-col items-center justify-center py-6 gap-2">
+                    <span className="text-slate-400 text-sm">{t('widgets.nemesis.noData')}</span>
+                    <Link href="/dashboard/coach" className="text-xs text-blue-400 hover:text-blue-300 font-bold transition">
+                        {t('widgets.common.tryCoaching', 'Try AI Coaching →')}
+                    </Link>
                 </div>
             )}
         </DashboardCard>

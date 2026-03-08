@@ -4,7 +4,7 @@
 // Note: Both free and premium users can use this page (with different segment limits)
 
 import { redirect } from "next/navigation";
-import { createClient } from "@/utils/supabase/server";
+import { getUser } from "@/utils/supabase/server";
 import { getActiveSummoner } from "@/app/actions/profile";
 import CoachClientPage from "./components/CoachClientPage";
 
@@ -12,9 +12,8 @@ import CoachClientPage from "./components/CoachClientPage";
 export const dynamic = 'force-dynamic';
 
 export default async function CoachPage() {
-    // 1. Authentication check on server (fast)
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    // 1. Auth check (cached per request via React.cache)
+    const user = await getUser();
 
     if (!user) {
         redirect('/login');

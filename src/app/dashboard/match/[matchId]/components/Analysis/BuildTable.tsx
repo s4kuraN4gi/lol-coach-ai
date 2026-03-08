@@ -48,7 +48,7 @@ export default function BuildTable({ comparison }: Props) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
                     {/* User Build */}
                     <div>
-                        <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Your Final Build</h5>
+                        <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Your Final Build</h5>
                         <div className="flex flex-wrap gap-2">
                             {comparison.userItems.map((item, i) => (
                                 <ItemIcon key={i} item={item} />

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 declare global {
   interface Window {
-    adsbygoogle: any[];
+    adsbygoogle: Record<string, unknown>[];
   }
 }
 
@@ -16,16 +16,37 @@ interface Props {
   format?: AdFormat;
   responsive?: boolean;
   slotId?: string;
+  /** When provided, skips the server action call for premium check */
+  isPremium?: boolean;
 }
 
 import { getAnalysisStatus } from "@/app/actions/analysis";
 
-export default function AdSenseBanner({ className, style, format = "auto", responsive = true, slotId = "1234567890" }: Props) {
+export default function AdSenseBanner({ className, style, format = "auto", responsive = true, slotId, isPremium }: Props) {
   const adRef = useRef<HTMLModElement>(null);
-  const [shouldRender, setShouldRender] = useState(true);
+  const [shouldRender, setShouldRender] = useState(isPremium === undefined ? true : !isPremium);
   const [isLoaded, setIsLoaded] = useState(false);
 
+  const resolvedSlotId = slotId || process.env.NEXT_PUBLIC_ADSENSE_SLOT_ID;
+
   useEffect(() => {
+    // If isPremium was passed as prop, skip the server action call
+    if (isPremium !== undefined) {
+      if (isPremium) {
+        setShouldRender(false);
+        return;
+      }
+      setIsLoaded(true);
+      try {
+        if (typeof window !== 'undefined' && window.adsbygoogle && process.env.NEXT_PUBLIC_ADSENSE_ID) {
+          (window.adsbygoogle = window.adsbygoogle || []).push({});
+        }
+      } catch (e) {
+        // Ad load error — silently ignore
+      }
+      return;
+    }
+
     let isMounted = true;
 
     const checkPremiumAndLoadAd = async () => {
@@ -34,13 +55,11 @@ export default function AdSenseBanner({ className, style, format = "auto", respo
         if (!isMounted) return;
 
         if (status?.is_premium) {
-          console.log("[AdSense] User is Premium. Hiding Ad.");
           setShouldRender(false);
           return;
         }
       } catch (e) {
         // Guest user or error - show ads
-        console.log("[AdSense] Guest or error, showing ads");
       }
 
       // Load ad for non-premium users
@@ -51,7 +70,7 @@ export default function AdSenseBanner({ className, style, format = "auto", respo
             (window.adsbygoogle = window.adsbygoogle || []).push({});
           }
         } catch (e) {
-          console.error("AdSense Error:", e);
+          // Ad load error — silently ignore
         }
       }
     };
@@ -61,22 +80,13 @@ export default function AdSenseBanner({ className, style, format = "auto", respo
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isPremium]);
 
   if (!shouldRender) return null;
 
-  // Placeholder for development / when env is missing
-  if (!process.env.NEXT_PUBLIC_ADSENSE_ID) {
-    return (
-      <div
-        className={`bg-slate-800/50 border-2 border-dashed border-slate-600 flex items-center justify-center text-slate-500 rounded-lg ${className || ''}`}
-        style={style}
-      >
-        <div className="text-center p-2">
-          <p className="text-xs font-mono">AD SPACE</p>
-        </div>
-      </div>
-    );
+  // Don't render if AdSense is not configured
+  if (!process.env.NEXT_PUBLIC_ADSENSE_ID || !resolvedSlotId) {
+    return null;
   }
 
   return (
@@ -86,7 +96,7 @@ export default function AdSenseBanner({ className, style, format = "auto", respo
         className="adsbygoogle"
         style={{ display: "block", width: "100%", height: "100%" }}
         data-ad-client={process.env.NEXT_PUBLIC_ADSENSE_ID}
-        data-ad-slot={slotId}
+        data-ad-slot={resolvedSlotId}
         data-ad-format={format}
         data-full-width-responsive={responsive ? "true" : "false"}
       />

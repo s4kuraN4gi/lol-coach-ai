@@ -10,7 +10,7 @@ export default function LPWidget({ rank, recentMatches }: { rank: LeagueEntryDTO
         return (
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col items-center justify-center min-h-[200px] text-center">
                  <div className="w-16 h-16 bg-slate-800 rounded-full mb-4 animate-pulse"></div>
-                 <div className="text-slate-500 font-bold mb-2">{t('widgets.lpWidget.unranked')}</div>
+                 <div className="text-slate-400 font-bold mb-2">{t('widgets.lpWidget.unranked')}</div>
                  <div className="text-xs text-slate-600">{t('widgets.lpWidget.unrankedDesc')}</div>
             </div>
         );
@@ -54,7 +54,7 @@ export default function LPWidget({ rank, recentMatches }: { rank: LeagueEntryDTO
                        <span className="text-3xl font-black text-white italic">{tier} {division}</span>
                        <span className="text-lg text-slate-300 font-bold">{leaguePoints} LP</span>
                    </div>
-                   <div className="text-xs text-slate-500 mt-1">
+                   <div className="text-xs text-slate-400 mt-1">
                        {wins}W {losses}L ({winRate}%)
                    </div>
                 </div>
@@ -96,7 +96,7 @@ export default function LPWidget({ rank, recentMatches }: { rank: LeagueEntryDTO
 
             {/* Recent Form Trend */}
             <div className="relative z-10">
-                 <div className="text-xs text-slate-500 font-bold mb-2 flex justify-between">
+                 <div className="text-xs text-slate-400 font-bold mb-2 flex justify-between">
                      <span>{t('widgets.lpWidget.recentForm')}</span>
                      <span className={trendData[trendData.length-1] > 0 ? "text-blue-400" : "text-red-400"}>
                          {trendData[trendData.length-1] > 0 ? "+" : ""}{trendData[trendData.length-1]} Net

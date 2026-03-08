@@ -62,7 +62,7 @@ export default function HistoryList({histories, onSelect, selectedHistory}: prop
                                 <span className={`text-lg font-bold ${item.selectedSummoner ? 'text-slate-200' : ''}`}>{item.champion}</span>
                                 <span className="text-xs text-slate-400 font-mono tracking-wider">{item.role}</span>
                             </div>
-                            <div className="text-xs text-slate-500 mt-1">{item.date}</div>
+                            <div className="text-xs text-slate-400 mt-1">{item.date}</div>
                         </div>
                         
                         <div className="text-right">

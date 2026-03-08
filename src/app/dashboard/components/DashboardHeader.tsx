@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { useSummoner } from "@/app/providers/SummonerProvider";
 import DashboardUpdater from "./DashboardUpdater";
+import { logger } from "@/lib/logger";
 
 type Props = {
     puuid: string;
@@ -27,7 +28,7 @@ export default function DashboardHeader({ puuid }: Props) {
                 router.refresh();
             });
         } catch (e) {
-            console.error(e);
+            logger.error(e);
         }
         setIsRefreshing(false);
     }, [puuid, refreshSummoner, router]);

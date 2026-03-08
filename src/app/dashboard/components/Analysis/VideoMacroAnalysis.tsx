@@ -7,6 +7,7 @@ import { useTranslation } from "@/contexts/LanguageContext";
 import { getAnalysisStatus } from "@/app/actions/analysis";
 import { FREE_MAX_SEGMENTS, PREMIUM_MAX_SEGMENTS, EXTRA_MAX_SEGMENTS, FRAMES_PER_SEGMENT } from "@/app/actions/constants";
 import { useVideoMacroAnalysis } from "@/app/providers/VideoMacroAnalysisProvider";
+import { logger } from "@/lib/logger";
 
 type Props = {
     matchId: string;
@@ -87,8 +88,8 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
             } else {
                 setLocalError(res.error || t('coachPage.videoMacro.errors.segmentFetchFailed', 'Failed to fetch segments'));
             }
-        } catch (e: any) {
-            setLocalError(e.message);
+        } catch (e) {
+            setLocalError(e instanceof Error ? e.message : String(e));
         }
         setLoadingSegments(false);
     };
@@ -203,7 +204,7 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
                     setIsCalibrated(true);
                 } else {
                     // Fallback: assume no offset
-                    console.warn("[VideoMacro] Could not detect time, assuming offset=0");
+                    logger.warn("[VideoMacro] Could not detect time, assuming offset=0");
                     currentOffset = 0;
                 }
             }
@@ -228,11 +229,10 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
 
             // Check payload size (rough estimate)
             const payloadSize = allFrames.reduce((acc, f) => acc + f.base64Data.length, 0);
-            console.log(`[VideoMacro] Total frames: ${allFrames.length}, Payload size: ${(payloadSize / 1024 / 1024).toFixed(2)}MB`);
 
             // If payload is too large (>8MB), warn and reduce quality further
             if (payloadSize > 8 * 1024 * 1024) {
-                console.warn("[VideoMacro] Payload too large, analysis may fail");
+                logger.warn("[VideoMacro] Payload too large, analysis may fail");
                 setLocalError(t('coachPage.videoMacro.errors.payloadTooLarge', 'Frame data too large') + ` (${(payloadSize / 1024 / 1024).toFixed(1)}MB)`);
                 setExtractingFrames(false);
                 return;
@@ -259,8 +259,8 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
             }
             // If successful, provider will poll for results and update state
 
-        } catch (e: any) {
-            setLocalError(e.message);
+        } catch (e) {
+            setLocalError(e instanceof Error ? e.message : String(e));
             setExtractingFrames(false);
         }
     };
@@ -325,15 +325,14 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
             if (result.success && result.gameTimeSeconds !== undefined) {
                 // offset = videoTime - gameTime
                 const offset = videoTimeSec - result.gameTimeSeconds;
-                console.log(`[VideoMacro] Auto-detected: videoTime=${videoTimeSec}s, gameTime=${result.gameTimeStr}(${result.gameTimeSeconds}s), offset=${offset}s`);
                 setCalibrationStatus(`${t('coachPage.videoMacro.calibration.detected', 'Detected')}: ${result.gameTimeStr}`);
                 return offset;
             } else {
                 setCalibrationStatus(t('coachPage.videoMacro.calibration.failed', 'Detection failed'));
                 return null;
             }
-        } catch (e: any) {
-            console.error("[VideoMacro] Time detection error:", e);
+        } catch (e) {
+            logger.error("[VideoMacro] Time detection error:", e);
             setCalibrationStatus(t('coachPage.videoMacro.calibration.error', 'Detection error'));
             return null;
         }
@@ -401,7 +400,7 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
             {error && (
                 <div className="mb-4 p-3 bg-red-900/20 border border-red-500/30 rounded-lg text-red-300 text-sm">
                     {error}
-                    <button onClick={() => { setLocalError(null); clearError(); }} className="ml-2 text-red-400 hover:text-red-300">✕</button>
+                    <button onClick={() => { setLocalError(null); clearError(); }} className="ml-2 text-red-400 hover:text-red-300" aria-label={t('common.close', 'Close')}>✕</button>
                 </div>
             )}
 
@@ -424,7 +423,7 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
                     {isCalibrated && timeOffset !== 0 && (
                         <div className="mt-2 text-xs text-slate-400">
                             {t('coachPage.videoMacro.timeSync.offset', 'Offset')}: <span className="text-emerald-300 font-mono">{formatTime(timeOffset)}</span>
-                            <span className="text-slate-500 ml-2">
+                            <span className="text-slate-400 ml-2">
                                 ({t('coachPage.videoMacro.timeSync.video', 'Video')} {timeOffset > 0 ? `+${formatTime(timeOffset)}` : formatTime(timeOffset)})
                             </span>
                         </div>
@@ -467,7 +466,7 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
                         disabled={disabled || !videoFile || segments.length === 0 || loadingSegments}
                         className={`w-full py-3 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 ${
                             disabled || !videoFile || segments.length === 0 || loadingSegments
-                                ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                                ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
                                 : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
                         }`}
                     >
@@ -558,7 +557,7 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
                                 <div className="flex items-center gap-2 text-sm">
                                     <span className="text-slate-400">{t('coachPage.videoMacro.build.you', 'You')}:</span>
                                     <span className="text-white font-bold">{result.buildRecommendation.userChampionName}</span>
-                                    <span className="text-slate-500">vs</span>
+                                    <span className="text-slate-400">vs</span>
                                     <span className="text-red-400 font-bold">{result.buildRecommendation.opponentChampionName}</span>
                                 </div>
 
@@ -636,19 +635,19 @@ export default function VideoMacroAnalysis({ matchId, puuid, videoFile, videoEle
                                             <div className="text-xs font-bold text-slate-400 mb-2">📍 {t('coachPage.videoMacro.scene.observation', 'Observation')}</div>
                                             <div className="grid grid-cols-2 gap-2 text-xs">
                                                 <div className="p-2 bg-slate-900/50 rounded">
-                                                    <span className="text-slate-500">{t('coachPage.videoMacro.scene.yourPosition', 'Your Position')}:</span>
+                                                    <span className="text-slate-400">{t('coachPage.videoMacro.scene.yourPosition', 'Your Position')}:</span>
                                                     <p className="text-slate-300">{seg.observation.userPosition}</p>
                                                 </div>
                                                 <div className="p-2 bg-slate-900/50 rounded">
-                                                    <span className="text-slate-500">{t('coachPage.videoMacro.scene.allyPositions', 'Ally Positions')}:</span>
+                                                    <span className="text-slate-400">{t('coachPage.videoMacro.scene.allyPositions', 'Ally Positions')}:</span>
                                                     <p className="text-slate-300">{seg.observation.allyPositions}</p>
                                                 </div>
                                                 <div className="p-2 bg-slate-900/50 rounded">
-                                                    <span className="text-slate-500">{t('coachPage.videoMacro.scene.waveState', 'Wave State')}:</span>
+                                                    <span className="text-slate-400">{t('coachPage.videoMacro.scene.waveState', 'Wave State')}:</span>
                                                     <p className="text-slate-300">{seg.observation.waveState}</p>
                                                 </div>
                                                 <div className="p-2 bg-slate-900/50 rounded">
-                                                    <span className="text-slate-500">{t('coachPage.videoMacro.scene.objective', 'Objective')}:</span>
+                                                    <span className="text-slate-400">{t('coachPage.videoMacro.scene.objective', 'Objective')}:</span>
                                                     <p className="text-slate-300">{seg.observation.objectiveState}</p>
                                                 </div>
                                             </div>

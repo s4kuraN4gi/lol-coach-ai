@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -9,20 +9,22 @@ import Footer from "../components/layout/Footer";
 import { useTranslation } from "@/contexts/LanguageContext";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { toast } from "sonner";
+import { loginWithPassword } from "../actions/auth";
 
 
 export default function LoginPage() {
   const router = useRouter();
-  const [LoginId, setLoginId] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
+  const failCountRef = useRef(0);
   const supabase = createClient();
   const { t } = useTranslation();
-  //ログイン画面に遷移した時にサモナーネームの入力値を削除
-  useEffect(() => {
-    localStorage.removeItem("LoginID");
-  }, []);
+
+  const isLockedOut = lockoutUntil !== null && Date.now() < lockoutUntil;
+
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
@@ -33,7 +35,7 @@ export default function LoginPage() {
       },
     });
     if (error) {
-      toast.error(error.message);
+      toast.error(t('loginPage.googleAuthFailed', 'Google authentication failed. Please try again.'));
       setGoogleLoading(false);
     }
   };
@@ -41,32 +43,44 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!LoginId.trim() || !password.trim()) {
+    if (!email.trim() || !password.trim()) {
       toast.warning(t('loginPage.emptyFields'));
+      return;
+    }
+
+    // Client-side rate limiting: lock out after 5 consecutive failures
+    if (isLockedOut) {
+      const remainSec = Math.ceil(((lockoutUntil ?? 0) - Date.now()) / 1000);
+      toast.error(t('loginPage.tooManyAttempts', `ログイン試行回数が上限に達しました。${remainSec}秒後に再試行してください。`));
       return;
     }
 
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: LoginId.trim(),
-      password: password,
-    });
+    // Server Action handles RSO block, sign-in, and email verification atomically
+    const result = await loginWithPassword(email, password);
 
-    if (error) {
-      toast.error(t('loginPage.loginFailed') + error.message);
+    if (result.error) {
+      if (result.error === 'RSO_BLOCKED') {
+        toast.error(t('loginPage.rsoPasswordBlocked', 'Riotアカウント連携ユーザーはRSO認証でログインしてください'));
+      } else if (result.error === 'EMAIL_NOT_VERIFIED') {
+        toast.warning(t('loginPage.emailNotVerified'));
+      } else {
+        failCountRef.current += 1;
+        if (failCountRef.current >= 5) {
+          setLockoutUntil(Date.now() + 60_000);
+          failCountRef.current = 0;
+          toast.error(t('loginPage.tooManyAttempts', 'Too many login attempts. Please try again in 60 seconds.'));
+        } else {
+          toast.error(t('loginPage.invalidCredentials'));
+        }
+      }
       setLoading(false);
       return;
     }
 
-    if (data.user && !data.user.email_confirmed_at) {
-        // メール認証未完了の場合
-        toast.warning(t('loginPage.emailNotVerified'));
-        await supabase.auth.signOut(); // セッションを破棄
-        setLoading(false);
-        return;
-    }
-
+    // Reset fail counter on success
+    failCountRef.current = 0;
     router.push("/dashboard");
     setLoading(false);
   };
@@ -109,30 +123,34 @@ export default function LoginPage() {
                 </button>
                 <div className="relative my-6">
                     <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-700"></div></div>
-                    <div className="relative flex justify-center text-xs uppercase"><span className="bg-[#0a0a0f] px-2 text-slate-500">{t('loginPage.orContinueWithEmail')}</span></div>
+                    <div className="relative flex justify-center text-xs uppercase"><span className="bg-[#0a0a0f] px-2 text-slate-400">{t('loginPage.orContinueWithEmail')}</span></div>
                 </div>
             </div>
 
             <form onSubmit={handleLogin} className="space-y-5">
             {/* サモナーネーム入力欄 */}
             <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
+                <label htmlFor="login-email" className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
                     {t('loginPage.emailLabel')}
                 </label>
                 <input
+                id="login-email"
                 type="email"
-                onChange={(e) => setLoginId(e.target.value)}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3 text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition placeholder-slate-600"
                 placeholder="name@example.com"
                 />
             </div>
             {/* パスワード入力欄 */}
             <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
+                <label htmlFor="login-password" className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
                 {t('loginPage.passwordLabel')}
                 </label>
                 <input
+                id="login-password"
                 type="password"
+                value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3 text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition placeholder-slate-600"
                 placeholder="••••••••"
@@ -142,7 +160,7 @@ export default function LoginPage() {
             <button
                 type="submit"
                 className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold py-3.5 rounded-lg hover:from-blue-500 hover:to-cyan-500 transition shadow-lg shadow-blue-900/20 active:scale-95 transform"
-                disabled={loading}
+                disabled={loading || isLockedOut}
             >
                 {loading ? t('loginPage.initializing') : t('loginPage.loginButton')}
             </button>
@@ -150,17 +168,17 @@ export default function LoginPage() {
 
             {/* アカウント誘導 */}
             <div className="mt-8 text-center space-y-4">
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-slate-400">
                 {t('loginPage.noAccount')}{" "}
-                <a href="/signup" className="text-blue-400 hover:text-blue-300 font-semibold transition hover:underline">
+                <Link href="/signup" className="text-blue-400 hover:text-blue-300 font-semibold transition hover:underline">
                     {t('loginPage.register')}
-                </a>
+                </Link>
                 </p>
 
                 <p className="text-xs text-slate-600">
-                    <a href="/reset-password" className="hover:text-slate-400 transition">
+                    <Link href="/reset-password" className="hover:text-slate-400 transition">
                     {t('loginPage.forgotPassword')}
-                    </a>
+                    </Link>
                 </p>
             </div>
         </div>

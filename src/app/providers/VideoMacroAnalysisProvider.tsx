@@ -8,6 +8,8 @@ import {
     type VideoMacroAnalysisRequest,
     type VideoMacroAnalysisResult
 } from "@/app/actions/videoMacroAnalysis";
+import { useTranslation } from "@/contexts/LanguageContext";
+import { logger } from "@/lib/logger";
 
 // --- Types ---
 interface VideoMacroAnalysisContextType {
@@ -35,6 +37,8 @@ const MATCH_STORAGE_KEY = 'macroJobMatchId';
 const COMPLETED_MATCH_KEY = 'macroCompletedMatchId';
 
 export function VideoMacroAnalysisProvider({ children }: { children: React.ReactNode }) {
+    const { t } = useTranslation();
+
     // --- State ---
     const [jobId, setJobId] = useState<string | null>(null);
     const [matchId, setMatchId] = useState<string | null>(null);
@@ -57,22 +61,19 @@ export function VideoMacroAnalysisProvider({ children }: { children: React.React
 
             // Case 1: There's a job in progress - restore and poll
             if (savedJobId) {
-                console.log("[MacroProvider] Restoring job:", savedJobId);
                 setJobId(savedJobId);
                 setMatchId(savedMatchId);
                 setAsyncStatus('processing');
-                setStatusMessage("バックグラウンド解析を復元中...");
+                setStatusMessage(t('videoMacroProvider.restoringBackground'));
                 setProgress(50);
                 return;
             }
 
             // Case 2: There's a completed match - try to restore result from DB
             if (completedMatchId) {
-                console.log("[MacroProvider] Restoring completed result for match:", completedMatchId);
                 try {
                     const { found, result: savedResult } = await getLatestMacroAnalysisForMatch(completedMatchId);
                     if (found && savedResult) {
-                        console.log("[MacroProvider] Restored completed result from DB");
                         setResult(savedResult);
                         setMatchId(completedMatchId);
                         setAsyncStatus('completed');
@@ -82,7 +83,7 @@ export function VideoMacroAnalysisProvider({ children }: { children: React.React
                         localStorage.removeItem(COMPLETED_MATCH_KEY);
                     }
                 } catch (e) {
-                    console.error("[MacroProvider] Failed to restore result:", e);
+                    logger.error("[MacroProvider] Failed to restore result:", e);
                     localStorage.removeItem(COMPLETED_MATCH_KEY);
                 }
             }
@@ -100,19 +101,16 @@ export function VideoMacroAnalysisProvider({ children }: { children: React.React
 
         const checkStatus = async () => {
             if (!jobId) return;
-            console.log("[MacroProvider] Polling job status:", jobId);
 
             try {
                 const res = await getVideoMacroJobStatus(jobId);
-                console.log("[MacroProvider] Poll result:", res.status);
 
                 if (!isMounted) return;
 
                 if (res.status === 'completed' && res.result) {
-                    console.log("[MacroProvider] Job completed");
                     setResult(res.result);
                     setProgress(100);
-                    setStatusMessage("分析完了！");
+                    setStatusMessage(t("analyzePage.progress.analysisComplete"));
 
                     // Get current matchId before clearing
                     const currentMatch = localStorage.getItem(MATCH_STORAGE_KEY);
@@ -131,9 +129,9 @@ export function VideoMacroAnalysisProvider({ children }: { children: React.React
                     }, 1000);
 
                 } else if (res.status === 'failed') {
-                    console.error("[MacroProvider] Job failed:", res.error);
+                    logger.error("[MacroProvider] Job failed:", res.error);
                     setAsyncStatus('failed');
-                    setError(res.error || "分析に失敗しました");
+                    setError(t(`serverErrors.${res.error}`, res.error) || t('videoMacroProvider.analysisFailed'));
                     setProgress(0);
                     setJobId(null);
                     localStorage.removeItem(STORAGE_KEY);
@@ -142,13 +140,13 @@ export function VideoMacroAnalysisProvider({ children }: { children: React.React
                 } else if (res.status === 'processing') {
                     // Simulate progress (50% -> 95%)
                     setProgress(prev => Math.min(prev + 3, 95));
-                    setStatusMessage("AI解析中... (サーバー処理中)");
+                    setStatusMessage(t('videoMacroProvider.aiAnalyzingServer'));
                 }
-            } catch (pollError: any) {
-                console.error("[MacroProvider] Poll error:", pollError);
+            } catch (pollError) {
+                logger.error("[MacroProvider] Poll error:", pollError);
                 if (isMounted) {
                     setAsyncStatus('failed');
-                    setError(`ポーリングエラー: ${pollError.message}`);
+                    setError(`${t('videoMacroProvider.pollingError')}: ${pollError instanceof Error ? pollError.message : String(pollError)}`);
                     setJobId(null);
                     localStorage.removeItem(STORAGE_KEY);
                     localStorage.removeItem(MATCH_STORAGE_KEY);
@@ -188,11 +186,9 @@ export function VideoMacroAnalysisProvider({ children }: { children: React.React
     // Restore result for a specific match (called by component when match changes)
     // Note: This function intentionally has no dependencies to maintain stable reference
     const restoreResultForMatch = useCallback(async (targetMatchId: string): Promise<boolean> => {
-        console.log("[MacroProvider] Trying to restore result for match:", targetMatchId);
         try {
             const { found, result: savedResult } = await getLatestMacroAnalysisForMatch(targetMatchId);
             if (found && savedResult) {
-                console.log("[MacroProvider] Found and restored result from DB");
                 setResult(savedResult);
                 setMatchId(targetMatchId);
                 setAsyncStatus('completed');
@@ -201,7 +197,7 @@ export function VideoMacroAnalysisProvider({ children }: { children: React.React
                 return true;
             }
         } catch (e) {
-            console.error("[MacroProvider] Failed to restore result:", e);
+            logger.error("[MacroProvider] Failed to restore result:", e);
         }
         return false;
     }, []); // Empty deps for stable reference - state checks moved to effect level
@@ -213,7 +209,7 @@ export function VideoMacroAnalysisProvider({ children }: { children: React.React
         // Reset previous state
         setAsyncStatus('processing');
         setProgress(10);
-        setStatusMessage("分析ジョブを開始中...");
+        setStatusMessage(t('coachPage.macro.startingJob'));
         setError(null);
         setResult(null);
         setMatchId(request.matchId);
@@ -223,7 +219,7 @@ export function VideoMacroAnalysisProvider({ children }: { children: React.React
 
             if (!response.success || !response.jobId) {
                 setAsyncStatus('failed');
-                setError(response.error || "分析の開始に失敗しました");
+                setError(t(`serverErrors.${response.error}`, response.error) || t('videoMacroProvider.startFailed'));
                 setProgress(0);
                 return { success: false, error: response.error };
             }
@@ -234,16 +230,17 @@ export function VideoMacroAnalysisProvider({ children }: { children: React.React
             localStorage.setItem(MATCH_STORAGE_KEY, request.matchId);
 
             setProgress(30);
-            setStatusMessage("サーバーで分析中...");
+            setStatusMessage(t('videoMacroProvider.analyzingOnServer'));
 
             return { success: true };
 
-        } catch (e: any) {
-            console.error("[MacroProvider] Start analysis error:", e);
+        } catch (e) {
+            logger.error("[MacroProvider] Start analysis error:", e);
+            const msg = e instanceof Error ? e.message : String(e);
             setAsyncStatus('failed');
-            setError(e.message);
+            setError(msg);
             setProgress(0);
-            return { success: false, error: e.message };
+            return { success: false, error: msg };
         }
     }, []);
 

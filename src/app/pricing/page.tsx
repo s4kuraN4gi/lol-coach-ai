@@ -3,11 +3,14 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FaCheck, FaTimes, FaCrown, FaUser, FaUserPlus, FaArrowLeft, FaStar } from "react-icons/fa";
+import { FaCheck, FaTimes, FaCrown, FaUser, FaUserPlus, FaArrowLeft, FaStar, FaChevronDown, FaChevronUp } from "react-icons/fa";
 import { useTranslation } from "@/contexts/LanguageContext";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { canPerformGuestAnalysis } from "@/app/actions/guestAnalysis";
 import { triggerStripeCheckout, triggerStripePortal } from "@/lib/checkout";
+import { type AnalysisStatus } from "@/app/actions/constants";
+import CancelConfirmModal from "@/app/components/subscription/CancelConfirmModal";
+import { getStripePrices, FALLBACK_PRICES, type PriceInfo } from "@/app/actions/pricing";
 
 type PlanFeature = {
     name: string;
@@ -20,16 +23,27 @@ type PlanFeature = {
 type UserPlan = "guest" | "free" | "premium" | "extra";
 
 export default function PricingPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const router = useRouter();
     const [userPlan, setUserPlan] = useState<UserPlan | null>(null); // null = loading
     const [isActionLoading, setIsActionLoading] = useState(false);
+    const [analysisStatus, setAnalysisStatus] = useState<AnalysisStatus | null>(null);
+    const [showCancelModal, setShowCancelModal] = useState(false);
+    const [billing, setBilling] = useState<'monthly' | 'annual'>('annual');
+    const [prices, setPrices] = useState<PriceInfo>(FALLBACK_PRICES);
+    const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+    useEffect(() => {
+        // Fetch dynamic prices from Stripe (re-fetch when locale changes)
+        getStripePrices(language).then(setPrices).catch(() => {});
+    }, [language]);
 
     useEffect(() => {
         // First try getAnalysisStatus for logged-in users (gives subscription_tier)
         import("@/app/actions/analysis").then(({ getAnalysisStatus }) => {
             getAnalysisStatus().then((status) => {
                 if (status) {
+                    setAnalysisStatus(status);
                     if (status.subscription_tier === 'extra') {
                         setUserPlan("extra");
                     } else if (status.is_premium) {
@@ -197,6 +211,33 @@ export default function PricingPage() {
                     <p className="text-slate-400 text-lg">
                         {t('pricingPage.subtitle')}
                     </p>
+
+                    {/* Billing Toggle */}
+                    <div className="mt-6 flex items-center justify-center gap-3">
+                        <span className={`text-sm font-medium ${billing === 'monthly' ? 'text-white' : 'text-slate-400'}`}>
+                            {t('pricingPage.billing.monthly', '月額')}
+                        </span>
+                        <button
+                            onClick={() => setBilling(billing === 'monthly' ? 'annual' : 'monthly')}
+                            className="relative w-14 h-7 rounded-full bg-slate-700 transition-colors"
+                        >
+                            <div className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${billing === 'annual' ? 'translate-x-7' : 'translate-x-0.5'}`} />
+                        </button>
+                        <span className={`text-sm font-medium ${billing === 'annual' ? 'text-white' : 'text-slate-400'}`}>
+                            {t('pricingPage.billing.annual', '年額')}
+                        </span>
+                        {billing === 'annual' && (
+                            <span className="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
+                                {t('pricingPage.billing.discount', '最大50%OFF')}
+                            </span>
+                        )}
+                    </div>
+
+                    {prices.isFallback && (
+                        <p className="mt-3 text-xs text-slate-400">
+                            {t('pricingPage.fallbackNotice', 'Prices shown are approximate. Exact amounts will be confirmed at checkout.')}
+                        </p>
+                    )}
                 </div>
 
                 {/* Pricing Cards */}
@@ -210,10 +251,10 @@ export default function PricingPage() {
                             </div>
                             <h2 className="text-xl font-bold text-white mb-2">{t('pricingPage.guest.name')}</h2>
                             <div className="text-3xl font-black text-white">
-                                ¥0
-                                <span className="text-sm font-normal text-slate-500">{t('pricingPage.guest.price')}</span>
+                                {prices.currencySymbol}0
+                                <span className="text-sm font-normal text-slate-400">{t('pricingPage.guest.price')}</span>
                             </div>
-                            <p className="text-sm text-slate-500 mt-2">
+                            <p className="text-sm text-slate-400 mt-2">
                                 {t('pricingPage.guest.desc')}
                             </p>
                         </div>
@@ -231,11 +272,11 @@ export default function PricingPage() {
                                 <FaCheck className="text-emerald-400 mt-0.5 flex-shrink-0" />
                                 <span className="text-slate-300">{t('pricingPage.guest.aiMacro')}</span>
                             </li>
-                            <li className="flex items-start gap-3 text-sm text-slate-500">
+                            <li className="flex items-start gap-3 text-sm text-slate-400">
                                 <FaTimes className="mt-0.5 flex-shrink-0" />
                                 <span>{t('pricingPage.guest.noMatchData')}</span>
                             </li>
-                            <li className="flex items-start gap-3 text-sm text-slate-500">
+                            <li className="flex items-start gap-3 text-sm text-slate-400">
                                 <FaTimes className="mt-0.5 flex-shrink-0" />
                                 <span>{t('pricingPage.guest.noSaveHistory')}</span>
                             </li>
@@ -264,10 +305,10 @@ export default function PricingPage() {
                             </div>
                             <h2 className="text-xl font-bold text-white mb-2">{t('pricingPage.free.name')}</h2>
                             <div className="text-3xl font-black text-white">
-                                ¥0
-                                <span className="text-sm font-normal text-slate-500">{t('pricingPage.free.price')}</span>
+                                {prices.currencySymbol}0
+                                <span className="text-sm font-normal text-slate-400">{t('pricingPage.free.price')}</span>
                             </div>
-                            <p className="text-sm text-slate-500 mt-2">
+                            <p className="text-sm text-slate-400 mt-2">
                                 {t('pricingPage.free.desc')}
                             </p>
                         </div>
@@ -301,7 +342,7 @@ export default function PricingPage() {
                                 <FaCheck className="text-emerald-400 mt-0.5 flex-shrink-0" />
                                 <span className="text-slate-300">{t('pricingPage.free.saveHistory')}</span>
                             </li>
-                            <li className="flex items-start gap-3 text-sm text-slate-500">
+                            <li className="flex items-start gap-3 text-sm text-slate-400">
                                 <FaTimes className="mt-0.5 flex-shrink-0" />
                                 <span>{t('pricingPage.free.noBuildAdvice')}</span>
                             </li>
@@ -325,26 +366,48 @@ export default function PricingPage() {
                     </div>
 
                     {/* Premium Plan */}
-                    <div className="bg-gradient-to-b from-amber-900/20 to-orange-900/10 border border-amber-500/50 rounded-2xl p-6 flex flex-col relative overflow-hidden">
+                    <div className="bg-gradient-to-b from-amber-900/20 to-orange-900/10 border-2 border-amber-500/50 rounded-2xl p-6 flex flex-col relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl" />
-                        {userPlan !== "premium" && userPlan !== "extra" && (
-                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-                                <span className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 flex gap-2">
+                            <span className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">
+                                {t('pricingPage.premium.popularBadge', 'POPULAR')}
+                            </span>
+                            {userPlan !== "premium" && userPlan !== "extra" && (
+                                <span className="bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">
                                     {t('pricingPage.premium.trialBadge')}
                                 </span>
-                            </div>
-                        )}
+                            )}
+                        </div>
 
                         <div className="text-center mb-6 relative">
                             <div className="w-12 h-12 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <FaCrown className="text-amber-400 text-xl" />
                             </div>
                             <h2 className="text-xl font-bold text-white mb-2">{t('pricingPage.premium.name')}</h2>
-                            <div className="text-3xl font-black text-white">
-                                ¥980
-                                <span className="text-sm font-normal text-slate-500">{t('pricingPage.premium.priceUnit')}</span>
-                            </div>
-                            <p className="text-sm text-slate-500 mt-2">
+                            {billing === 'annual' ? (
+                                <>
+                                    <div className="text-3xl font-black text-white">
+                                        {prices.currencySymbol}{prices.premiumAnnual}
+                                        <span className="text-sm font-normal text-slate-400">{t('pricingPage.billing.perYear', '/年')}</span>
+                                    </div>
+                                    <p className="text-xs text-emerald-400 mt-1">
+                                        {prices.currencySymbol}{prices.premiumAnnualMonthly}{t('pricingPage.billing.perMonthEquivalent')} — {prices.premiumDiscount}{t('pricingPage.billing.percentOff')}
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="text-3xl font-black text-white">
+                                        {prices.currencySymbol}{prices.premiumMonthly}
+                                        <span className="text-sm font-normal text-slate-400">{t('pricingPage.premium.priceUnit')}</span>
+                                    </div>
+                                    <p className="text-xs text-emerald-400/70 mt-1">
+                                        {t('pricingPage.billing.annualSaving', 'Annual plan: {price} (-{discount}%)')
+                                            .replace('{price}', `${prices.currencySymbol}${prices.premiumAnnualMonthly}${t('pricingPage.premium.priceUnit')}`)
+                                            .replace('{discount}', `${prices.premiumDiscount}`)}
+                                    </p>
+                                </>
+                            )}
+                            <p className="text-sm text-slate-400 mt-2">
                                 {t('pricingPage.premium.desc')}
                             </p>
                         </div>
@@ -394,25 +457,17 @@ export default function PricingPage() {
 
                         {userPlan === "premium" ? (
                             <button
-                                onClick={async () => {
-                                    setIsActionLoading(true);
-                                    try {
-                                        await triggerStripePortal();
-                                    } finally {
-                                        setIsActionLoading(false);
-                                    }
-                                }}
-                                disabled={isActionLoading}
-                                className="block w-full py-3 text-center bg-red-900/30 border border-red-500/30 hover:bg-red-900/50 text-red-300 font-bold rounded-lg transition disabled:opacity-50"
+                                onClick={() => setShowCancelModal(true)}
+                                className="block w-full py-3 text-center bg-red-900/30 border border-red-500/30 hover:bg-red-900/50 text-red-300 font-bold rounded-lg transition"
                             >
-                                {isActionLoading ? t('pricingPage.premium.processing') : t('pricingPage.premium.unsubscribe')}
+                                {t('pricingPage.premium.unsubscribe')}
                             </button>
                         ) : userPlan === "free" ? (
                             <button
                                 onClick={async () => {
                                     setIsActionLoading(true);
                                     try {
-                                        await triggerStripeCheckout('premium');
+                                        await triggerStripeCheckout('premium', t, billing);
                                     } finally {
                                         setIsActionLoading(false);
                                     }
@@ -433,19 +488,43 @@ export default function PricingPage() {
                     </div>
 
                     {/* Extra Plan */}
-                    <div className="bg-gradient-to-b from-violet-900/20 to-purple-900/10 border border-violet-500/50 rounded-2xl p-6 flex flex-col relative overflow-hidden">
+                    <div className="bg-gradient-to-b from-violet-900/20 to-purple-900/10 border-2 border-violet-500/60 rounded-2xl p-6 flex flex-col relative overflow-hidden ring-1 ring-violet-500/20">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/10 rounded-full blur-3xl" />
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                            <span className="bg-gradient-to-r from-violet-500 to-purple-500 text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap shadow-lg shadow-violet-500/30">
+                                {t('pricingPage.extra.badge', 'BEST VALUE')}
+                            </span>
+                        </div>
 
                         <div className="text-center mb-6 relative">
                             <div className="w-12 h-12 bg-violet-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <FaStar className="text-violet-400 text-xl" />
                             </div>
                             <h2 className="text-xl font-bold text-white mb-2">{t('pricingPage.extra.name')}</h2>
-                            <div className="text-3xl font-black text-white">
-                                ¥2,980
-                                <span className="text-sm font-normal text-slate-500">{t('pricingPage.extra.priceUnit')}</span>
-                            </div>
-                            <p className="text-sm text-slate-500 mt-2">
+                            {billing === 'annual' ? (
+                                <>
+                                    <div className="text-3xl font-black text-white">
+                                        {prices.currencySymbol}{prices.extraAnnual}
+                                        <span className="text-sm font-normal text-slate-400">{t('pricingPage.billing.perYear', '/年')}</span>
+                                    </div>
+                                    <p className="text-xs text-emerald-400 mt-1">
+                                        {prices.currencySymbol}{prices.extraAnnualMonthly}{t('pricingPage.billing.perMonthEquivalent')} — {prices.extraDiscount}{t('pricingPage.billing.percentOff')}
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="text-3xl font-black text-white">
+                                        {prices.currencySymbol}{prices.extraMonthly}
+                                        <span className="text-sm font-normal text-slate-400">{t('pricingPage.extra.priceUnit')}</span>
+                                    </div>
+                                    <p className="text-xs text-emerald-400/70 mt-1">
+                                        {t('pricingPage.billing.annualSaving', 'Annual plan: {price} (-{discount}%)')
+                                            .replace('{price}', `${prices.currencySymbol}${prices.extraAnnualMonthly}${t('pricingPage.extra.priceUnit')}`)
+                                            .replace('{discount}', `${prices.extraDiscount}`)}
+                                    </p>
+                                </>
+                            )}
+                            <p className="text-sm text-slate-400 mt-2">
                                 {t('pricingPage.extra.desc')}
                             </p>
                         </div>
@@ -482,44 +561,37 @@ export default function PricingPage() {
                             <li className="flex items-start gap-3 text-sm">
                                 <FaCheck className="text-violet-400 mt-0.5 flex-shrink-0" />
                                 <span className="text-slate-300">
-                                    <strong className="text-violet-400">{t('pricingPage.premium.buildAdvice')}</strong>
+                                    <strong className="text-violet-400">{t('pricingPage.extra.buildAdvice')}</strong>
                                 </span>
                             </li>
                             <li className="flex items-start gap-3 text-sm">
                                 <FaCheck className="text-violet-400 mt-0.5 flex-shrink-0" />
                                 <span className="text-slate-300">
-                                    <strong className="text-violet-400">{t('pricingPage.premium.noAds')}</strong>
+                                    <strong className="text-violet-400">{t('pricingPage.extra.noAds')}</strong>
                                 </span>
                             </li>
                             <li className="flex items-start gap-3 text-sm">
                                 <FaCheck className="text-violet-400 mt-0.5 flex-shrink-0" />
-                                <span className="text-slate-300">
+                                <div>
                                     <strong className="text-violet-400">{t('pricingPage.extra.aiDamageAnalysis')}</strong>
-                                </span>
+                                    <p className="text-xs text-slate-400 mt-0.5">{t('pricingPage.extra.aiDamageDesc', 'ダメージ計算・ルーン・アイテムの最適化をAIが提案')}</p>
+                                </div>
                             </li>
                         </ul>
 
                         {userPlan === "extra" ? (
                             <button
-                                onClick={async () => {
-                                    setIsActionLoading(true);
-                                    try {
-                                        await triggerStripePortal();
-                                    } finally {
-                                        setIsActionLoading(false);
-                                    }
-                                }}
-                                disabled={isActionLoading}
-                                className="block w-full py-3 text-center bg-red-900/30 border border-red-500/30 hover:bg-red-900/50 text-red-300 font-bold rounded-lg transition disabled:opacity-50"
+                                onClick={() => setShowCancelModal(true)}
+                                className="block w-full py-3 text-center bg-red-900/30 border border-red-500/30 hover:bg-red-900/50 text-red-300 font-bold rounded-lg transition"
                             >
-                                {isActionLoading ? t('pricingPage.extra.processing') : t('pricingPage.extra.unsubscribe')}
+                                {t('pricingPage.extra.unsubscribe')}
                             </button>
                         ) : userPlan === "free" || userPlan === "premium" ? (
                             <button
                                 onClick={async () => {
                                     setIsActionLoading(true);
                                     try {
-                                        await triggerStripeCheckout('extra');
+                                        await triggerStripeCheckout('extra', t, billing);
                                     } finally {
                                         setIsActionLoading(false);
                                     }
@@ -540,8 +612,8 @@ export default function PricingPage() {
                     </div>
                 </div>
 
-                {/* Feature Comparison Table */}
-                <div className="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden">
+                {/* Feature Comparison Table — Desktop */}
+                <div className="hidden md:block bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden">
                     <div className="p-6 border-b border-slate-800">
                         <h2 className="text-xl font-bold text-white">{t('pricingPage.comparison.title')}</h2>
                     </div>
@@ -552,7 +624,7 @@ export default function PricingPage() {
                                     <th className="text-left p-4 text-slate-400 font-medium">{t('pricingPage.comparison.feature')}</th>
                                     <th className="p-4 text-center text-slate-400 font-medium w-28">
                                         <div className="flex flex-col items-center gap-1">
-                                            <FaUser className="text-slate-500" />
+                                            <FaUser className="text-slate-400" />
                                             <span>{t('pricingPage.guest.name')}</span>
                                         </div>
                                     </th>
@@ -568,10 +640,11 @@ export default function PricingPage() {
                                             <span>{t('pricingPage.premium.name')}</span>
                                         </div>
                                     </th>
-                                    <th className="p-4 text-center text-violet-400 font-medium w-28">
+                                    <th className="p-4 text-center text-violet-400 font-bold w-28 bg-violet-500/10">
                                         <div className="flex flex-col items-center gap-1">
                                             <FaStar className="text-violet-400" />
                                             <span>{t('pricingPage.extra.name')}</span>
+                                            <span className="text-[10px] bg-violet-500/20 text-violet-300 px-1.5 py-0.5 rounded-full">{t('pricingPage.extra.recommended', 'Recommended')}</span>
                                         </div>
                                     </th>
                                 </tr>
@@ -592,7 +665,7 @@ export default function PricingPage() {
                                         <td className="p-4 text-center text-slate-300">
                                             {renderFeatureValue(feature.premium)}
                                         </td>
-                                        <td className="p-4 text-center text-slate-300">
+                                        <td className="p-4 text-center text-slate-300 bg-violet-500/5">
                                             {renderFeatureValue(feature.extra)}
                                         </td>
                                     </tr>
@@ -602,44 +675,67 @@ export default function PricingPage() {
                     </div>
                 </div>
 
+                {/* Feature Comparison Cards — Mobile */}
+                <div className="md:hidden space-y-4">
+                    <h2 className="text-xl font-bold text-white text-center">{t('pricingPage.comparison.title')}</h2>
+                    {([
+                        { key: 'guest' as const, name: t('pricingPage.guest.name'), icon: <FaUser className="text-slate-400" />, textColor: 'text-slate-400', borderColor: 'border-slate-700' },
+                        { key: 'free' as const, name: t('pricingPage.free.name'), icon: <FaUserPlus className="text-blue-400" />, textColor: 'text-blue-400', borderColor: 'border-blue-500/30' },
+                        { key: 'premium' as const, name: t('pricingPage.premium.name'), icon: <FaCrown className="text-amber-400" />, textColor: 'text-amber-400', borderColor: 'border-amber-500/30' },
+                        { key: 'extra' as const, name: t('pricingPage.extra.name'), icon: <FaStar className="text-violet-400" />, textColor: 'text-violet-400', borderColor: 'border-violet-500/30' },
+                    ] as const).map((plan) => (
+                        <div key={plan.key} className={`bg-slate-900/50 border ${plan.borderColor} rounded-xl p-4`}>
+                            <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-800">
+                                {plan.icon}
+                                <span className={`font-bold ${plan.textColor}`}>{plan.name}</span>
+                            </div>
+                            <div className="space-y-2">
+                                {features.map((feature) => (
+                                    <div key={feature.name} className="flex items-center justify-between text-sm">
+                                        <span className="text-slate-400">{feature.name}</span>
+                                        <span className="text-slate-300 ml-2 text-right">
+                                            {renderFeatureValue(feature[plan.key])}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
                 {/* FAQ Section */}
                 <div className="mt-16">
                     <h2 className="text-2xl font-bold text-white text-center mb-8">
                         {t('pricingPage.faq.title')}
                     </h2>
-                    <div className="grid md:grid-cols-2 gap-6">
-                        <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
-                            <h3 className="font-bold text-white mb-2">
-                                {t('pricingPage.faq.q1')}
-                            </h3>
-                            <p className="text-sm text-slate-400">
-                                {t('pricingPage.faq.a1')}
-                            </p>
-                        </div>
-                        <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
-                            <h3 className="font-bold text-white mb-2">
-                                {t('pricingPage.faq.q2')}
-                            </h3>
-                            <p className="text-sm text-slate-400">
-                                {t('pricingPage.faq.a2')}
-                            </p>
-                        </div>
-                        <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
-                            <h3 className="font-bold text-white mb-2">
-                                {t('pricingPage.faq.q3')}
-                            </h3>
-                            <p className="text-sm text-slate-400">
-                                {t('pricingPage.faq.a3')}
-                            </p>
-                        </div>
-                        <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
-                            <h3 className="font-bold text-white mb-2">
-                                {t('pricingPage.faq.q4')}
-                            </h3>
-                            <p className="text-sm text-slate-400">
-                                {t('pricingPage.faq.a4')}
-                            </p>
-                        </div>
+                    <div className="max-w-3xl mx-auto space-y-3">
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
+                            <div key={i} className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
+                                <button
+                                    onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                                    aria-expanded={openFaq === i}
+                                    className="w-full flex items-center justify-between p-5 text-left hover:bg-slate-800/30 transition"
+                                >
+                                    <span className="font-bold text-white pr-4">
+                                        {t(`pricingPage.faq.q${i}`)}
+                                    </span>
+                                    {openFaq === i ? (
+                                        <FaChevronUp className="text-slate-400 flex-shrink-0" />
+                                    ) : (
+                                        <FaChevronDown className="text-slate-400 flex-shrink-0" />
+                                    )}
+                                </button>
+                                <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${openFaq === i ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                                    <div className="overflow-hidden">
+                                        <div className="px-5 pb-5">
+                                            <p className="text-sm text-slate-400 leading-relaxed">
+                                                {t(`pricingPage.faq.a${i}`)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
 
@@ -648,34 +744,50 @@ export default function PricingPage() {
                     <div className="mt-16 text-center">
                         <div className="bg-gradient-to-r from-violet-900/20 to-purple-900/20 border border-violet-500/30 rounded-2xl p-8">
                             <h2 className="text-2xl font-bold text-white mb-4">
-                                {t('pricingPage.ctaPremium.title')}
+                                {t('pricingPage.ctaExtra.title')}
                             </h2>
                             <p className="text-slate-400 mb-6">
-                                {t('pricingPage.ctaPremium.desc')}
+                                {t('pricingPage.ctaExtra.desc')}
                             </p>
                             <Link
                                 href="/dashboard"
                                 className="px-8 py-3 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-lg transition inline-block"
                             >
-                                {t('pricingPage.ctaPremium.button')}
+                                {t('pricingPage.ctaExtra.button')}
                             </Link>
                         </div>
                     </div>
                 ) : userPlan === "premium" ? (
                     <div className="mt-16 text-center">
-                        <div className="bg-gradient-to-r from-amber-900/20 to-orange-900/20 border border-amber-500/30 rounded-2xl p-8">
+                        <div className="bg-gradient-to-r from-amber-900/20 to-violet-900/20 border border-amber-500/30 rounded-2xl p-8">
                             <h2 className="text-2xl font-bold text-white mb-4">
                                 {t('pricingPage.ctaPremium.title')}
                             </h2>
                             <p className="text-slate-400 mb-6">
                                 {t('pricingPage.ctaPremium.desc')}
                             </p>
-                            <Link
-                                href="/dashboard"
-                                className="px-8 py-3 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-lg transition inline-block"
-                            >
-                                {t('pricingPage.ctaPremium.button')}
-                            </Link>
+                            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                                <button
+                                    onClick={async () => {
+                                        setIsActionLoading(true);
+                                        try {
+                                            await triggerStripeCheckout('extra', t, billing);
+                                        } finally {
+                                            setIsActionLoading(false);
+                                        }
+                                    }}
+                                    disabled={isActionLoading}
+                                    className="px-8 py-3 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-bold rounded-lg transition shadow-lg shadow-violet-500/20 disabled:opacity-50"
+                                >
+                                    {isActionLoading ? t('pricingPage.extra.processing') : t('pricingPage.ctaPremium.upgradeToExtra')}
+                                </button>
+                                <Link
+                                    href="/dashboard"
+                                    className="px-8 py-3 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg transition inline-block"
+                                >
+                                    {t('pricingPage.ctaPremium.button')}
+                                </Link>
+                            </div>
                         </div>
                     </div>
                 ) : userPlan === "free" ? (
@@ -691,7 +803,7 @@ export default function PricingPage() {
                                 onClick={async () => {
                                     setIsActionLoading(true);
                                     try {
-                                        await triggerStripeCheckout('premium');
+                                        await triggerStripeCheckout('premium', t, billing);
                                     } finally {
                                         setIsActionLoading(false);
                                     }
@@ -733,7 +845,7 @@ export default function PricingPage() {
 
             {/* Footer */}
             <footer className="border-t border-slate-800 mt-16 py-8">
-                <div className="max-w-6xl mx-auto px-4 text-center text-slate-500 text-sm">
+                <div className="max-w-6xl mx-auto px-4 text-center text-slate-400 text-sm">
                     <p>{t('footer.copyright').replace('{year}', new Date().getFullYear().toString())}</p>
                     <div className="mt-2 flex justify-center gap-4">
                         <Link href="/terms" className="hover:text-slate-300">{t('footer.terms')}</Link>
@@ -741,6 +853,10 @@ export default function PricingPage() {
                     </div>
                 </div>
             </footer>
+
+            {showCancelModal && analysisStatus && (
+                <CancelConfirmModal status={analysisStatus} onClose={() => setShowCancelModal(false)} />
+            )}
         </div>
     );
 }

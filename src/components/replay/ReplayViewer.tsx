@@ -80,7 +80,7 @@ export default function ReplayViewer({ data }: ReplayViewerProps) {
                 ></div>
 
                 {/* Champions */}
-                {participants.map((p: any) => {
+                {participants.map((p: { participantId: number; championName: string; teamId: number }) => {
                     // Get position from frame
                     if (!currentFrame?.participantFrames) return null;
                     const pFrame = currentFrame.participantFrames[p.participantId.toString()];

@@ -100,7 +100,7 @@ export default function StatsPage() {
                             {t('statsPage.title')}
                         </h1>
                         {isValidating && (
-                            <span className="text-xs text-slate-500 flex items-center gap-1">
+                            <span className="text-xs text-slate-400 flex items-center gap-1">
                                 <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>
                                 Syncing...
                             </span>
@@ -119,22 +119,22 @@ export default function StatsPage() {
                         <div className={`text-3xl font-black ${winRate >= 50 ? 'text-blue-400' : 'text-slate-200'}`}>
                             {winRate}%
                         </div>
-                        <div className="text-xs text-slate-500 mt-1">{stats.wins}W - {stats.losses}L</div>
+                        <div className="text-xs text-slate-400 mt-1">{stats.wins}W - {stats.losses}L</div>
                     </div>
                     <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
                         <div className="text-slate-400 text-xs font-bold tracking-wider mb-1">{t('statsPage.stats.kdaRatio')}</div>
                         <div className="text-3xl font-black text-yellow-500">{avgKda}</div>
-                        <div className="text-xs text-slate-500 mt-1">{t('statsPage.stats.avgPerformance')}</div>
+                        <div className="text-xs text-slate-400 mt-1">{t('statsPage.stats.avgPerformance')}</div>
                     </div>
                     <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl opacity-75">
                         <div className="text-slate-400 text-xs font-bold tracking-wider mb-1">{t('statsPage.stats.csPerMin')}</div>
                         <div className="text-3xl font-black text-purple-400">7.2</div>
-                        <div className="text-xs text-slate-500 mt-1">{t('statsPage.stats.top15')}</div>
+                        <div className="text-xs text-slate-400 mt-1">{t('statsPage.stats.top15')}</div>
                     </div>
                     <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl opacity-75">
                         <div className="text-slate-400 text-xs font-bold tracking-wider mb-1">{t('statsPage.stats.visionScore')}</div>
                         <div className="text-3xl font-black text-green-400">24.5</div>
-                        <div className="text-xs text-slate-500 mt-1">{t('statsPage.stats.excellent')}</div>
+                        <div className="text-xs text-slate-400 mt-1">{t('statsPage.stats.excellent')}</div>
                     </div>
                 </div>
 
@@ -226,7 +226,7 @@ export default function StatsPage() {
                 )}
 
                 {history.length === 0 && !isLoading && (
-                    <div className="text-center py-10 text-slate-500 border border-slate-800 border-dashed rounded-xl">
+                    <div className="text-center py-10 text-slate-400 border border-slate-800 border-dashed rounded-xl">
                         {t('statsPage.noMatches')}
                     </div>
                 )}

@@ -60,7 +60,7 @@ export async function StatsSection({ puuid, section }: Props) {
             getCachedEnhancedData(puuid),
         ]);
         const recentWinRate = stats?.recentMatches
-            ? Math.round((stats.recentMatches.slice(0, 10).filter((m: any) => m.win).length / Math.min(10, stats.recentMatches.length)) * 100)
+            ? Math.round((stats.recentMatches.slice(0, 10).filter((m: { win: boolean }) => m.win).length / Math.min(10, stats.recentMatches.length)) * 100)
             : 50;
 
         return (

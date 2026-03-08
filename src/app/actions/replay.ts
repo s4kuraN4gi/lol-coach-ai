@@ -2,13 +2,15 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { fetchMatchTimeline, fetchMatchDetail, fetchDDItemData, fetchSummonerByPuuid } from "./riot";
+import type { TimelineV5Response, MatchV5Response } from "./riot/types";
+import { logger } from "@/lib/logger";
 
 export type ReplayData = {
     matchId: string;
-    timeline: any;
-    matchDetail: any;
-    itemMap: any;
-    championMap: any; // ID -> Name map for icon lookup
+    timeline: TimelineV5Response;
+    matchDetail: MatchV5Response;
+    itemMap: Record<string, { name: string; description?: string }>;
+    championMap: Record<string, string>; // ID -> Name map for icon lookup
 }
 
 export async function getReplayData(matchId: string): Promise<{ success: boolean, data?: ReplayData, error?: string }> {
@@ -25,10 +27,8 @@ export async function getReplayData(matchId: string): Promise<{ success: boolean
         let timelineData = null;
 
         if (cached && cached.timeline_json) {
-            console.log(`[Replay] Cache Hit for ${matchId}`);
             timelineData = cached.timeline_json;
         } else {
-            console.log(`[Replay] Cache Miss for ${matchId}. Fetching from Riot...`);
             // 2. Fetch from Riot API
             const timelineRes = await fetchMatchTimeline(matchId);
             if (!timelineRes.success || !timelineRes.data) {
@@ -45,7 +45,7 @@ export async function getReplayData(matchId: string): Promise<{ success: boolean
                 });
             
             if (insertError) {
-                console.error("[Replay] Failed to cache timeline:", insertError);
+                logger.error("[Replay] Failed to cache timeline:", insertError);
             }
         }
 
@@ -72,8 +72,8 @@ export async function getReplayData(matchId: string): Promise<{ success: boolean
             }
         };
 
-    } catch (e: any) {
-        console.error("getReplayData exception:", e);
-        return { success: false, error: e.message };
+    } catch (e) {
+        logger.error("getReplayData exception:", e);
+        return { success: false, error: "REPLAY_FETCH_FAILED" };
     }
 }
