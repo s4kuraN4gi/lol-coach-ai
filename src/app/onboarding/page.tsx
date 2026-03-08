@@ -263,23 +263,15 @@ export default function OnboardingPage() {
                     )}
                 </div>
                 
-                <div className="mt-6 text-center space-y-3">
+                <div className="mt-6 text-center">
                     <button
-                        onClick={() => router.push("/dashboard")}
-                        className="text-sm text-slate-400 hover:text-slate-200 underline underline-offset-4 transition"
+                        onClick={async () => {
+                            await signOut();
+                        }}
+                        className="text-xs text-slate-600 hover:text-slate-400 underline"
                     >
-                        {t('onboardingPage.skipForNow')}
+                        {t('onboardingPage.logout')}
                     </button>
-                    <div>
-                        <button
-                            onClick={async () => {
-                                await signOut();
-                            }}
-                            className="text-xs text-slate-600 hover:text-slate-400 underline"
-                        >
-                            {t('onboardingPage.logout')}
-                        </button>
-                    </div>
                 </div>
             </div>
         </div>
