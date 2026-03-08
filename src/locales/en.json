@@ -1305,7 +1305,7 @@
       "q3": "Can I change my plan?",
       "a3": "Yes, you can upgrade or downgrade anytime. Plan changes are prorated, so you only pay the difference for the remaining period.",
       "q4": "What are the benefits of the annual plan?",
-      "a4": "The annual plan offers up to 50% off compared to monthly billing. If you cancel mid-term, the remaining period will be refunded.",
+      "a4": "The annual plan offers up to 50% off compared to monthly billing. After cancellation, premium features remain active until the end of your current billing period.",
       "q5": "What payment methods are accepted?",
       "a5": "We accept credit cards (Visa, Mastercard, JCB, American Express). All payments are securely processed through Stripe.",
       "q6": "What can I do as a Free member?",
@@ -1313,7 +1313,7 @@
       "q7": "Which regions are supported?",
       "a7": "Currently, the Japan (JP) server is supported. Support for other regions is planned for the future.",
       "q8": "What's the difference between Premium and Extra?",
-      "a8": "Premium includes 20 AI analyses per week, 4 auto-selected segments, and AI coaching. Extra adds damage analysis, 5 segment selection, and unlimited AI analyses.",
+      "a8": "Premium includes 20 AI analyses per week, 4 auto-selected segments, and AI coaching. Extra adds damage analysis, 5 segment selection, and 50 AI analyses per week.",
       "q9": "Will I be charged if I cancel during the trial?",
       "a9": "No, if you cancel during the free trial period, you won't be charged at all. Simply cancel before the trial ends to avoid any charges.",
       "q10": "Can I pause my subscription?",
@@ -1332,7 +1332,7 @@
     },
     "ctaUpgrade": {
       "title": "Level Up with Premium",
-      "desc": "20 analyses/week and 5 auto-selected segments for efficient improvement"
+      "desc": "20 analyses/week and 4 auto-selected segments for efficient improvement"
     },
     "ctaGuest": {
       "title": "Want to try it for free?",
