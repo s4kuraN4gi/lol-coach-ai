@@ -10,7 +10,8 @@ import { canPerformGuestAnalysis } from "@/app/actions/guestAnalysis";
 import { triggerStripeCheckout, triggerStripePortal } from "@/lib/checkout";
 import { type AnalysisStatus } from "@/app/actions/constants";
 import CancelConfirmModal from "@/app/components/subscription/CancelConfirmModal";
-import { getStripePrices, FALLBACK_PRICES, type PriceInfo } from "@/app/actions/pricing";
+import { getStripePrices } from "@/app/actions/pricing";
+import { FALLBACK_PRICES, type PriceInfo } from "@/app/actions/pricingConstants";
 
 type PlanFeature = {
     name: string;
@@ -408,7 +409,7 @@ export default function PricingPage() {
                                         <span className="text-sm font-normal text-slate-400">{t('pricingPage.premium.priceUnit')}</span>
                                     </div>
                                     <p className="text-xs text-emerald-400/70 mt-1">
-                                        {t('pricingPage.billing.withAnnual', '年間プランなら')} {prices.currencySymbol}{prices.premiumAnnualMonthly || '650'}{t('pricingPage.premium.priceUnit')} (-{prices.premiumDiscount || '34'}{t('pricingPage.billing.percentOff')})
+                                        {t('pricingPage.billing.withAnnual', '年間プランなら')} {prices.currencySymbol}{prices.premiumAnnualMonthly}{t('pricingPage.premium.priceUnit')} (-{prices.premiumDiscount}{t('pricingPage.billing.percentOff')})
                                     </p>
                                 </>
                             )}
@@ -524,7 +525,7 @@ export default function PricingPage() {
                                         <span className="text-sm font-normal text-slate-400">{t('pricingPage.extra.priceUnit')}</span>
                                     </div>
                                     <p className="text-xs text-emerald-400/70 mt-1">
-                                        {t('pricingPage.billing.withAnnual', '年間プランなら')} {prices.currencySymbol}{prices.extraAnnualMonthly || '733'}{t('pricingPage.extra.priceUnit')} (-{prices.extraDiscount || '50'}{t('pricingPage.billing.percentOff')})
+                                        {t('pricingPage.billing.withAnnual', '年間プランなら')} {prices.currencySymbol}{prices.extraAnnualMonthly}{t('pricingPage.extra.priceUnit')} (-{prices.extraDiscount}{t('pricingPage.billing.percentOff')})
                                     </p>
                                 </>
                             )}
