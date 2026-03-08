@@ -213,24 +213,28 @@ export default function PricingPage() {
                     </p>
 
                     {/* Billing Toggle */}
-                    <div className="mt-6 flex items-center justify-center gap-3">
-                        <span className={`text-sm font-medium ${billing === 'monthly' ? 'text-white' : 'text-slate-400'}`}>
-                            {t('pricingPage.billing.monthly', '月額')}
-                        </span>
-                        <button
-                            onClick={() => setBilling(billing === 'monthly' ? 'annual' : 'monthly')}
-                            className="relative w-14 h-7 rounded-full bg-slate-700 transition-colors"
-                        >
-                            <div className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${billing === 'annual' ? 'translate-x-7' : 'translate-x-0.5'}`} />
-                        </button>
-                        <span className={`text-sm font-medium ${billing === 'annual' ? 'text-white' : 'text-slate-400'}`}>
-                            {t('pricingPage.billing.annual', '年額')}
-                        </span>
-                        {billing === 'annual' && (
-                            <span className="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
-                                {t('pricingPage.billing.discount', '最大50%OFF')}
+                    <div className="mt-6 flex flex-col items-center gap-2">
+                        <div className="flex items-center gap-3">
+                            <span className={`text-sm font-medium ${billing === 'monthly' ? 'text-white' : 'text-slate-400'}`}>
+                                {t('pricingPage.billing.monthly', '月額')}
                             </span>
-                        )}
+                            <button
+                                onClick={() => setBilling(billing === 'monthly' ? 'annual' : 'monthly')}
+                                className="relative w-14 h-7 rounded-full bg-slate-700 transition-colors"
+                            >
+                                <div className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform ${billing === 'annual' ? 'translate-x-7' : 'translate-x-0.5'}`} />
+                            </button>
+                            <span className={`text-sm font-medium ${billing === 'annual' ? 'text-white' : 'text-slate-400'}`}>
+                                {t('pricingPage.billing.annual', '年額')}
+                            </span>
+                        </div>
+                        <div className="h-6 flex items-center">
+                            {billing === 'annual' && (
+                                <span className="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
+                                    {t('pricingPage.billing.discount', '最大50%OFF')}
+                                </span>
+                            )}
+                        </div>
                     </div>
 
                     {prices.isFallback && (
@@ -245,6 +249,8 @@ export default function PricingPage() {
                     {/* Guest Plan - hidden for logged-in users */}
                     {(userPlan === "guest" || userPlan === null) && (
                     <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 flex flex-col">
+                        {/* Spacer to align with badged cards */}
+                        <div className="h-7 mb-4" />
                         <div className="text-center mb-6">
                             <div className="w-12 h-12 bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <FaUser className="text-slate-400 text-xl" />
@@ -293,7 +299,7 @@ export default function PricingPage() {
 
                     {/* Free Plan */}
                     <div className="bg-slate-900/50 border border-blue-500/50 rounded-2xl p-6 flex flex-col relative">
-                        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                        <div className="flex justify-center mb-4">
                             <span className="bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-full">
                                 {t('pricingPage.free.badge')}
                             </span>
