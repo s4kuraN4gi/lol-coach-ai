@@ -5,7 +5,7 @@ import { useTranslation } from "@/contexts/LanguageContext";
 
 export default function ContactPage() {
   const { t } = useTranslation();
-  const email = "s4kuran4gi@gmail.com";
+  const email = "support@lolcoachai.com";
 
   return (
     <>
