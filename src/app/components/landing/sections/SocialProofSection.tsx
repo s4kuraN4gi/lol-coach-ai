@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { LuLink, LuBarChart3, LuTarget } from "react-icons/lu";
+import { LuLink, LuChartBar, LuTarget } from "react-icons/lu";
 import { useTranslation } from "@/contexts/LanguageContext";
 
 export default function SocialProofSection() {
@@ -16,7 +16,7 @@ export default function SocialProofSection() {
       desc: t('landingPage.howItWorks.step1Desc'),
     },
     {
-      icon: <LuBarChart3 className="text-2xl" />,
+      icon: <LuChartBar className="text-2xl" />,
       color: "purple",
       title: t('landingPage.howItWorks.step2Title'),
       desc: t('landingPage.howItWorks.step2Desc'),
