@@ -109,6 +109,9 @@ export default function PublicHeader() {
                     <Link href="/pricing" className="block text-sm text-gray-400 hover:text-white py-2" onClick={() => setMenuOpen(false)}>
                         {t('publicNav.pricing')}
                     </Link>
+                    <div className="flex items-center gap-4 pt-2">
+                        <LanguageSwitcher />
+                    </div>
                     {isLoggedIn ? (
                         <Link
                             href="/dashboard"
@@ -123,16 +126,13 @@ export default function PublicHeader() {
                             <Link href="/login" className="block text-sm text-gray-400 hover:text-white py-2" onClick={() => setMenuOpen(false)}>
                                 {t('publicNav.login')}
                             </Link>
-                            <div className="flex items-center gap-4 pt-2">
-                                <LanguageSwitcher />
-                                <Link
-                                    href="/signup"
-                                    className="px-5 py-2.5 text-sm font-bold bg-cyan-500 text-black rounded-lg"
-                                    onClick={() => setMenuOpen(false)}
-                                >
-                                    {t('publicNav.getStarted')}
-                                </Link>
-                            </div>
+                            <Link
+                                href="/signup"
+                                className="inline-block px-5 py-2.5 text-sm font-bold bg-cyan-500 text-black rounded-lg"
+                                onClick={() => setMenuOpen(false)}
+                            >
+                                {t('publicNav.getStarted')}
+                            </Link>
                         </>
                     )}
                 </div>
