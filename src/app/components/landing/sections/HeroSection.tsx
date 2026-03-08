@@ -84,7 +84,7 @@ export default function HeroSection({ bgY1, bgY2 }: HeroSectionProps) {
           >
             <MagneticButton
               href="/signup"
-              className="group relative px-8 py-4 text-lg font-bold bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg overflow-hidden"
+              className="group relative inline-block px-8 py-4 text-lg font-bold bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-lg overflow-hidden"
             >
               <span className="relative z-10">{t('landingPage.hero.ctaStart')}</span>
               <motion.div
