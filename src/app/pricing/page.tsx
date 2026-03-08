@@ -366,9 +366,10 @@ export default function PricingPage() {
                     </div>
 
                     {/* Premium Plan */}
-                    <div className="bg-gradient-to-b from-amber-900/20 to-orange-900/10 border-2 border-amber-500/50 rounded-2xl p-6 flex flex-col relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl" />
-                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 flex gap-2">
+                    <div className="bg-gradient-to-b from-amber-900/20 to-orange-900/10 border-2 border-amber-500/50 rounded-2xl p-6 flex flex-col relative">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+                        <div className="flex flex-wrap justify-center gap-2 mb-4">
                             <span className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">
                                 {t('pricingPage.premium.popularBadge', 'POPULAR')}
                             </span>
@@ -488,9 +489,10 @@ export default function PricingPage() {
                     </div>
 
                     {/* Extra Plan */}
-                    <div className="bg-gradient-to-b from-violet-900/20 to-purple-900/10 border-2 border-violet-500/60 rounded-2xl p-6 flex flex-col relative overflow-hidden ring-1 ring-violet-500/20">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/10 rounded-full blur-3xl" />
-                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                    <div className="bg-gradient-to-b from-violet-900/20 to-purple-900/10 border-2 border-violet-500/60 rounded-2xl p-6 flex flex-col relative ring-1 ring-violet-500/20">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/10 rounded-full blur-3xl pointer-events-none" />
+
+                        <div className="flex justify-center mb-4">
                             <span className="bg-gradient-to-r from-violet-500 to-purple-500 text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap shadow-lg shadow-violet-500/30">
                                 {t('pricingPage.extra.badge', 'BEST VALUE')}
                             </span>
