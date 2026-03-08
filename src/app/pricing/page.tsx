@@ -408,9 +408,7 @@ export default function PricingPage() {
                                         <span className="text-sm font-normal text-slate-400">{t('pricingPage.premium.priceUnit')}</span>
                                     </div>
                                     <p className="text-xs text-emerald-400/70 mt-1">
-                                        {t('pricingPage.billing.annualSaving', 'Annual plan: {price} (-{discount}%)')
-                                            .replace('{price}', `${prices.currencySymbol}${prices.premiumAnnualMonthly}${t('pricingPage.premium.priceUnit')}`)
-                                            .replace('{discount}', `${prices.premiumDiscount}`)}
+                                        {t('pricingPage.billing.withAnnual', '年間プランなら')} {prices.currencySymbol}{prices.premiumAnnualMonthly || '650'}{t('pricingPage.premium.priceUnit')} (-{prices.premiumDiscount || '34'}{t('pricingPage.billing.percentOff')})
                                     </p>
                                 </>
                             )}
@@ -526,9 +524,7 @@ export default function PricingPage() {
                                         <span className="text-sm font-normal text-slate-400">{t('pricingPage.extra.priceUnit')}</span>
                                     </div>
                                     <p className="text-xs text-emerald-400/70 mt-1">
-                                        {t('pricingPage.billing.annualSaving', 'Annual plan: {price} (-{discount}%)')
-                                            .replace('{price}', `${prices.currencySymbol}${prices.extraAnnualMonthly}${t('pricingPage.extra.priceUnit')}`)
-                                            .replace('{discount}', `${prices.extraDiscount}`)}
+                                        {t('pricingPage.billing.withAnnual', '年間プランなら')} {prices.currencySymbol}{prices.extraAnnualMonthly || '733'}{t('pricingPage.extra.priceUnit')} (-{prices.extraDiscount || '50'}{t('pricingPage.billing.percentOff')})
                                     </p>
                                 </>
                             )}
