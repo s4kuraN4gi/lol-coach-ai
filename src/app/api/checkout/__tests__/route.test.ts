@@ -33,7 +33,7 @@ function createChainable() {
 }
 
 const chainable = createChainable();
-const mockFrom = vi.fn(() => createChainable());
+const mockFrom = vi.fn((_table?: string) => createChainable());
 const mockRpc = vi.fn();
 
 const mockGetUserFn = vi.fn();
@@ -115,7 +115,7 @@ function setupProfileQuery(profile: Record<string, any> | null) {
     return { eq: eqFn };
   });
 
-  mockFrom.mockImplementation((table: string) => {
+  mockFrom.mockImplementation((table?: string) => {
     if (table === "profiles") {
       return { select: selectFn, eq: eqFn, single: singleFn };
     }
@@ -416,7 +416,7 @@ describe("POST /api/checkout", () => {
       setupProfileQuery({ stripe_customer_id: null, stripe_subscription_id: null });
 
       // No referral
-      mockFrom.mockImplementation((table: string) => {
+      mockFrom.mockImplementation((table?: string) => {
         if (table === "profiles") {
           const singleFn = vi.fn().mockResolvedValue({
             data: { stripe_customer_id: null, stripe_subscription_id: null },
@@ -449,7 +449,7 @@ describe("POST /api/checkout", () => {
 
     it("新規ユーザー(リファラルあり) → trial_period_days=14", async () => {
       // Has referral
-      mockFrom.mockImplementation((table: string) => {
+      mockFrom.mockImplementation((table?: string) => {
         if (table === "profiles") {
           const singleFn = vi.fn().mockResolvedValue({
             data: { stripe_customer_id: null, stripe_subscription_id: null },

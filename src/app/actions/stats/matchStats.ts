@@ -270,7 +270,7 @@ function processMatchStats(matches: MatchV5Info[], puuid: string, initialResult:
         // Unique
         if (p.firstBloodKill) { winCondTracker.firstBlood.total++; if (p.win) winCondTracker.firstBlood.wins++; }
         if (p.firstTowerKill) { winCondTracker.firstTower.total++; if (p.win) winCondTracker.firstTower.wins++; }
-        if (p.challenges?.soloKills > 0) { winCondTracker.soloKill.total++; if (p.win) winCondTracker.soloKill.wins++; }
+        if ((p.challenges?.soloKills ?? 0) > 0) { winCondTracker.soloKill.total++; if (p.win) winCondTracker.soloKill.wins++; }
 
         const enemy = info.participants.find((ep: MatchV5Participant) => ep.teamId !== p.teamId && ep.teamPosition === p.teamPosition);
         if (enemy && p.teamPosition !== 'UTILITY' && p.teamPosition !== 'JUNGLE') {
@@ -280,7 +280,7 @@ function processMatchStats(matches: MatchV5Info[], puuid: string, initialResult:
             opponentMap.set(ename, ecurr);
         }
 
-        if (p.challenges?.soloKillsTaken > 0) {
+        if ((p.challenges?.soloKillsTaken ?? 0) > 0) {
             soloDeathCount++;
         }
 

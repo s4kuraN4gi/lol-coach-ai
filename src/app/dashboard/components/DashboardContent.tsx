@@ -59,6 +59,9 @@ export default function DashboardContent({ summoner, initialStats, initialEnhanc
         }
     }, [searchParams, router]);
 
+    // After checkout success state (declared before focus trap useEffect that references it)
+    const [showUpgradeSuccess, setShowUpgradeSuccess] = useState(false);
+
     // Focus trap for Welcome & Upgrade modals
     useEffect(() => {
         const activeModal = showUpgradeSuccess ? upgradeDialogRef.current : showWelcome ? welcomeDialogRef.current : null;
@@ -87,7 +90,6 @@ export default function DashboardContent({ summoner, initialStats, initialEnhanc
     }, [showWelcome, showUpgradeSuccess]);
 
     // After checkout success, sync subscription tier from Stripe + show modal
-    const [showUpgradeSuccess, setShowUpgradeSuccess] = useState(false);
     useEffect(() => {
         if (searchParams.get('checkout') === 'success' && !syncCalledRef.current) {
             syncCalledRef.current = true;
