@@ -18,7 +18,7 @@ export type {
 } from "./riot/types";
 
 // Account & verification
-export { fetchRiotAccount, fetchThirdPartyCode } from "./riot/account";
+export { fetchRiotAccount } from "./riot/account";
 
 // Summoner
 export { fetchSummonerByPuuid } from "./riot/summoner";

@@ -4,7 +4,7 @@ import { createClient, getUser } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { createHmac } from 'crypto'
 
-import { fetchRiotAccount, fetchSummonerByPuuid, fetchThirdPartyCode } from './riot'
+import { fetchRiotAccount, fetchSummonerByPuuid } from './riot'
 import { logger } from "@/lib/logger"
 import { z } from "zod"
 
